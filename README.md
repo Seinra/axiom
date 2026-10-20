@@ -4,7 +4,12 @@ One small, dependable generics library at Echo-level quality: typed helpers for 
 
 ## Quick path
 
-1. Require it: `go get github.com/seinra/axiom` (Go ≥ 1.27).
+1. Point at it (private library — `replace`, not `go get`):
+   ```go
+   // go.mod of the consumer (e.g. Catalyst)
+   require github.com/seinra/axiom v0.0.0
+   replace github.com/seinra/axiom => ../Axiom
+   ```
 2. Use one package:
    ```go
    import (

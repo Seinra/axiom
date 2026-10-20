@@ -11,6 +11,8 @@ The Echo of Go generics: one small, dependable library that makes the hard parts
 3. Names a stranger can grep: no single-letter vars, no abbreviations, no generic names; godoc on every export with an example.
 4. Tree green after every iteration; one logical feature per iteration.
 5. AI-readable: package docs answer "which function?" without reading bodies; stable names across releases.
+6. Private now, public at maturity: consumed via `replace` while developing; published open-source (MIT/BSD) once it passes the library bar — owner decision 2026-10-20. The DLC is its onboarding ramp: students learn on the same library they keep.
+7. Teachable API: every package doubles as course content for the Catalyst generics DLC — names, godoc, and examples must work as lesson material, not just as reference.
 
 ## Non-goals
 

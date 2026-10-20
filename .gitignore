@@ -1,0 +1,32 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of `go tool cover`
+*.out
+
+# Dependency directories
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local scratch for pilot verification (never commit)
+/.tmp/
+
+# Harness state: keys are secrets (ban 2), caches are local
+.crystallize/keys/
+.atl/.skill-registry.cache.json

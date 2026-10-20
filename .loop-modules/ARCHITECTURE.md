@@ -78,3 +78,11 @@ the DLC, so curriculum need gates P2, not production usage.
 | `opt`/`result` | OrElse/AndThen/Filter/ValueOrElse/ToResult, MapFailure/UnwrapOr | Try (panic→Result) | `either` package |
 | `valid`/`repo`/`httpx`/`di` | And/Or/Not predicates | TotalPages/HasNext, ValidationFail envelope, di test Replace | — |
 | combos | — | — | combinations/permutations, Join, Race, singleflight stats |
+
+## Non-goals (rejected under the stdlib-gap + teachable gate, 2026-10-20)
+
+- SQL-style Join: adapter concern for a concrete store, not teachable generics.
+- singleflight stats/observability: no DLC lesson needs it; YAGNI.
+- DoChan/sharding/batching variants: YAGNI (see singleflight package doc).
+- Stdlib-owned duplicates, never reimplemented: sort/reverse/concat
+  (`slices`), lazy memoize (`sync.OnceValue`), atomic wrappers (`sync/atomic`).

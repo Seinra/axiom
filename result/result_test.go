@@ -482,3 +482,40 @@ func TestFlattenResultZeroOuterReportsError(t *testing.T) {
 		t.Fatal("Flatten(zero) failure = nil, want explicit error")
 	}
 }
+
+func TestFlattenResultZeroNestingTable(t *testing.T) {
+	testCases := []struct {
+		name                string
+		current             result.Result[result.Result[int]]
+		wantMessageFragment string
+	}{
+		{
+			name:                "zero outer resolves to explicit failure",
+			current:             result.Result[result.Result[int]]{},
+			wantMessageFragment: "nil failure",
+		},
+		{
+			name:                "ok of zero inner resolves to explicit zero failure",
+			current:             result.Ok(result.Result[int]{}),
+			wantMessageFragment: "zero Result",
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			flattened := result.Flatten(testCase.current)
+			if flattened.IsOk() {
+				t.Fatal("Flatten IsOk = true, want false")
+			}
+			outcome, failure := flattened.Unwrap()
+			if failure == nil {
+				t.Fatal("Flatten failure = nil, want explicit error")
+			}
+			if !strings.Contains(failure.Error(), testCase.wantMessageFragment) {
+				t.Fatalf("Flatten failure = %q, want fragment %q", failure.Error(), testCase.wantMessageFragment)
+			}
+			if outcome != 0 {
+				t.Fatalf("Flatten value = %d, want 0", outcome)
+			}
+		})
+	}
+}

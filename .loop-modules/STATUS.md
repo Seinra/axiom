@@ -62,6 +62,7 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-20 | Delivery: push + issues #14-18 | DELIVERY | branch pushed; 5 issues created with read-back confirmed; #14 approval pending for PR |
 | 2026-10-20 | Delivery: PR #19 CI verde | DELIVERY | Closes approved #14, type:feature; validate+verify pass; merge owner-gated |
 | 2026-10-20 | Delivery: PR #19 mergeado | DELIVERY | merge commit por orden owner; #14 cerrado, #15-18 abiertos |
+| 2026-10-20 | Followups #16-18/#15 quemados | VALIDATE | review-f031ddd0033b51d4 APPROVED + burned (1 relay retry); 3 parked sobre flow_test; issues #15-18 cerrados |
 
 ## Debt ledger
 

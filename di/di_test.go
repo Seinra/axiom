@@ -17,7 +17,7 @@ type auditService struct {
 	Trail string
 }
 
-var buildBoomFailure = errors.New("di test: boom")
+var errBoomFailure = errors.New("di test: boom")
 
 const hammerWorkerCount = 32
 
@@ -129,7 +129,7 @@ func TestFailingConstructorRetriesUntilSuccess(t *testing.T) {
 	provideFailure := di.Provide(injector, "flaky", func(active *di.Injector) (ledgerService, error) {
 		attempt := builds.Add(1)
 		if attempt <= 2 {
-			return ledgerService{}, buildBoomFailure
+			return ledgerService{}, errBoomFailure
 		}
 		return ledgerService{Balance: 99}, nil
 	})
@@ -137,11 +137,11 @@ func TestFailingConstructorRetriesUntilSuccess(t *testing.T) {
 		t.Fatalf("Provide failure = %v, want nil", provideFailure)
 	}
 	_, firstFailure := di.Invoke[ledgerService](injector, "flaky")
-	if !errors.Is(firstFailure, buildBoomFailure) {
+	if !errors.Is(firstFailure, errBoomFailure) {
 		t.Fatalf("first Invoke failure = %v, want boom", firstFailure)
 	}
 	_, secondFailure := di.Invoke[ledgerService](injector, "flaky")
-	if !errors.Is(secondFailure, buildBoomFailure) {
+	if !errors.Is(secondFailure, errBoomFailure) {
 		t.Fatalf("second Invoke failure = %v, want boom", secondFailure)
 	}
 	fetched, thirdFailure := di.Invoke[ledgerService](injector, "flaky")

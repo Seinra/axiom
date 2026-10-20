@@ -1,0 +1,38 @@
+# Axiom lint gate — golangci-lint v2 (local 2.13.2, go1.27).
+# Minimal enforcing set per .loop-modules/VALIDATION_GATES.md.
+version: "2"
+run:
+  timeout: 5m
+  go: "1.27"
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - errcheck
+    - ineffassign
+    - unused
+    - revive
+    - gocyclo
+  settings:
+    revive:
+      rules:
+        - name: var-naming
+          arguments:
+            - ["ID", "URL", "HTTP", "JSON", "SQL", "UUID", "HTML", "API"]
+            - ["i", "j", "k"]
+    gocyclo:
+      min-complexity: 10
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters:
+          - gocyclo
+          - revive
+formatters:
+  enable:
+    - gofmt
+    - goimports

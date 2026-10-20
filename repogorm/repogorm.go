@@ -10,6 +10,7 @@ package repogorm
 import (
 	"errors"
 	"fmt"
+	"regexp"
 
 	"gorm.io/gorm"
 
@@ -45,25 +46,15 @@ func NewStore[Record any, Identity comparable](database *gorm.DB, models []any, 
 	return &Store[Record, Identity]{database: database, orderColumn: orderColumn}, nil
 }
 
+// orderColumnPattern matches a plain dotted identifier: a leading letter or
+// underscore, then letters, digits, underscores, or dots.
+var orderColumnPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_.]*$`)
+
 // validOrderColumn reports whether name is a plain dotted identifier, keeping
 // caller-supplied order columns out of SQL-injection shape. Best-effort gate,
 // not a grammar: GORM still owns the final word at query time.
 func validOrderColumn(name string) bool {
-	for position := 0; position < len(name); position++ {
-		current := name[position]
-		letter := current == '_' || (current >= 'a' && current <= 'z') || (current >= 'A' && current <= 'Z')
-		if letter {
-			continue
-		}
-		if position == 0 {
-			return false
-		}
-		digit := current >= '0' && current <= '9'
-		if current != '.' && !digit {
-			return false
-		}
-	}
-	return len(name) > 0
+	return orderColumnPattern.MatchString(name)
 }
 
 // Store persists candidate, overwriting any record with the same identity.

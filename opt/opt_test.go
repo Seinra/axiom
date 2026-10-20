@@ -51,3 +51,13 @@ func TestMethodMapValueChains(t *testing.T) {
 		t.Fatalf("chained value = %d, want 6", got)
 	}
 }
+
+func TestZeroValueIsAbsent(t *testing.T) {
+	var current opt.Option[int]
+	if current.IsSome() {
+		t.Fatal("IsSome = true, want false")
+	}
+	if got := current.ValueOr(3); got != 3 {
+		t.Fatalf("ValueOr = %d, want 3", got)
+	}
+}

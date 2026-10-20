@@ -66,3 +66,35 @@ func TestGroupBySliceGroups(t *testing.T) {
 		t.Fatalf("GroupBySlice = %v, want %v", got, want)
 	}
 }
+
+func TestNilInputYieldsEmpty(t *testing.T) {
+	var numbers []int
+	if got := axiomslice.MapSlice(numbers, func(element int) int { return element }); got == nil || len(got) != 0 {
+		t.Fatalf("MapSlice(nil) = %v, want empty non-nil", got)
+	}
+	if got := axiomslice.FilterSlice(numbers, func(element int) bool { return true }); got == nil || len(got) != 0 {
+		t.Fatalf("FilterSlice(nil) = %v, want empty non-nil", got)
+	}
+	if got := axiomslice.ReduceSlice(numbers, 7, func(total int, element int) int { return total + element }); got != 7 {
+		t.Fatalf("ReduceSlice(nil) = %d, want 7", got)
+	}
+	if _, found := axiomslice.FindSlice(numbers, func(element int) bool { return true }); found {
+		t.Fatal("FindSlice(nil) found = true, want false")
+	}
+	if got := axiomslice.GroupBySlice(numbers, func(element int) string { return "all" }); got == nil || len(got) != 0 {
+		t.Fatalf("GroupBySlice(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestHelpersNeverMutateInput(t *testing.T) {
+	numbers := []int{3, 1, 2}
+	_ = axiomslice.MapSlice(numbers, func(element int) int { return element * 2 })
+	_ = axiomslice.FilterSlice(numbers, func(element int) bool { return element > 1 })
+	_ = axiomslice.ReduceSlice(numbers, 0, func(total int, element int) int { return total + element })
+	_, _ = axiomslice.FindSlice(numbers, func(element int) bool { return element == 1 })
+	_ = axiomslice.GroupBySlice(numbers, func(element int) string { return "all" })
+	want := []int{3, 1, 2}
+	if !reflect.DeepEqual(numbers, want) {
+		t.Fatalf("input mutated to %v, want %v", numbers, want)
+	}
+}

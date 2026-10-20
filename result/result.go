@@ -6,15 +6,22 @@
 // while carrying the failure through untouched.
 package result
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // Result holds either a success of type T or a failure.
-// The zero value is a failure with a nil error; prefer Ok/Fail constructors.
+// Never use the zero value: construct with Ok or Fail.
 type Result[T any] struct {
 	success T
 	failure error
 	isOk    bool
 }
+
+// errZeroResult is reported when Unwrap meets a zero Result, which carries no
+// failure to explain itself. It only arises from bypassing Ok and Fail.
+var errZeroResult = errors.New("axiom result: zero Result carries no failure; construct with Ok or Fail")
 
 // Ok wraps success as a successful Result.
 func Ok[T any](success T) Result[T] {
@@ -36,9 +43,13 @@ func (current Result[T]) IsOk() bool {
 }
 
 // Unwrap returns the success and the failure. Exactly one is meaningful:
-// success when IsOk is true, failure otherwise.
+// success when IsOk is true, failure otherwise. A zero Result reports an
+// error instead of a nil failure, so failures stay explicit.
 func (current Result[T]) Unwrap() (T, error) {
 	if !current.isOk {
+		if current.failure == nil {
+			return current.success, errZeroResult
+		}
 		return current.success, current.failure
 	}
 	return current.success, nil
@@ -47,10 +58,11 @@ func (current Result[T]) Unwrap() (T, error) {
 // Must returns the success, panicking only when current holds a failure.
 // Use Must solely for values known at construction time (tests, static seeds).
 func Must[T any](current Result[T]) T {
-	if !current.isOk {
-		panic(fmt.Sprintf("axiom result: Must on failure: %v", current.failure))
+	success, failure := current.Unwrap()
+	if failure != nil {
+		panic(fmt.Sprintf("axiom result: Must on failure: %v", failure))
 	}
-	return current.success
+	return success
 }
 
 // Map transforms the success side with transform, carrying failures through.

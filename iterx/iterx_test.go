@@ -127,3 +127,15 @@ func TestPipelineComposes(t *testing.T) {
 		t.Fatalf("pipeline = %v, want %v", got, want)
 	}
 }
+
+func TestRerangeReruns(t *testing.T) {
+	pipeline := iterx.MapSeq(naturals(1, 4), func(candidate int) int { return candidate * 2 })
+	first := slices.Collect(pipeline)
+	second := slices.Collect(pipeline)
+	if !reflect.DeepEqual(first, second) {
+		t.Fatalf("re-range = %v, want repeat of %v", second, first)
+	}
+	if !reflect.DeepEqual(first, []int{2, 4, 6}) {
+		t.Fatalf("collect = %v, want [2 4 6]", first)
+	}
+}

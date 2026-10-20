@@ -116,3 +116,22 @@ func TestPickNilYieldsEmpty(t *testing.T) {
 		t.Fatal("Pick(nil) = nil, want empty non-nil map")
 	}
 }
+
+func TestKeyByNilYieldsEmpty(t *testing.T) {
+	var courses []lesson
+	indexed := mapx.KeyBy(courses, func(candidate lesson) string { return candidate.slug })
+	if indexed == nil {
+		t.Fatal("KeyBy(nil) = nil, want empty non-nil map")
+	}
+	if len(indexed) != 0 {
+		t.Fatalf("len = %d, want 0", len(indexed))
+	}
+}
+
+func TestMergeNilNilYieldsEmpty(t *testing.T) {
+	var first, second map[string]int
+	combined := mapx.Merge(first, second, func(key string, oldScore int, newScore int) int { return oldScore + newScore })
+	if combined == nil {
+		t.Fatal("Merge(nil, nil) = nil, want empty non-nil map")
+	}
+}

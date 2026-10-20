@@ -153,3 +153,14 @@ func TestMapValueTransformsAndDedups(t *testing.T) {
 		}
 	}
 }
+
+func TestCombinationsNeverMutateInputs(t *testing.T) {
+	first := set.Of(1, 2)
+	second := set.Of(2, 3)
+	_ = first.Union(second)
+	_ = first.Intersection(second)
+	_ = first.Difference(second)
+	if !first.Equal(set.Of(1, 2)) || !second.Equal(set.Of(2, 3)) {
+		t.Fatalf("inputs mutated: first = %v, second = %v", first.Members(), second.Members())
+	}
+}

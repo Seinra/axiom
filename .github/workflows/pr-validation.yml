@@ -13,11 +13,16 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
       - name: Check issue reference
         env:
           BODY: ${{ github.event.pull_request.body }}
         run: |
-          if ! printf '%s' "$BODY" | grep -qiE '(closes|fixes|resolves) #[0-9]+'; then
+          if ! printf '%s' "$BODY" | grep -qiE \
+            '(closes|fixes|resolves) #[0-9]+'; then
             echo "PR body must contain Closes/Fixes/Resolves #N"
             exit 1
           fi
@@ -27,9 +32,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BODY: ${{ github.event.pull_request.body }}
         run: |
-          NUMBER=$(printf '%s' "$BODY" | grep -oiE '(closes|fixes|resolves) #[0-9]+' | head -1 | grep -oE '[0-9]+')
+          NUMBER=$(printf '%s' "$BODY" | grep -oiE \
+            '(closes|fixes|resolves) #[0-9]+' | head -1 | grep -oE '[0-9]+')
           if [ -z "$NUMBER" ]; then echo "no issue number found"; exit 1; fi
-          if ! gh issue view "$NUMBER" --json labels --jq '.labels[].name' | grep -qx 'status:approved'; then
+          if ! gh issue view "$NUMBER" --json labels \
+            --jq '.labels[].name' | grep -qx 'status:approved'; then
             echo "issue #$NUMBER lacks the status:approved label"
             exit 1
           fi
@@ -39,7 +46,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          COUNT=$(gh pr view "$PR" --json labels --jq '[.labels[].name | select(startswith("type:"))] | length')
+          COUNT=$(gh pr view "$PR" --json labels \
+            --jq '[.labels[].name | select(startswith("type:"))] | length')
           if [ "$COUNT" != "1" ]; then
             echo "PR must carry exactly one type:* label (found $COUNT)"
             exit 1
@@ -49,7 +57,9 @@ jobs:
         env:
           BRANCH: ${{ github.head_ref }}
         run: |
-          if ! printf '%s' "$BRANCH" | grep -qE '^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)/[a-z0-9._-]+$'; then
+          PATTERN='^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)'
+          PATTERN="$PATTERN/[a-z0-9._-]+$"
+          if ! printf '%s' "$BRANCH" | grep -qE "$PATTERN"; then
             echo "branch '$BRANCH' must match type/description (lowercase)"
             exit 1
           fi
@@ -59,8 +69,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          gh pr view "$PR" --json commits --jq '.commits[].messageHeadline' | while IFS= read -r subject; do
-            if ! printf '%s' "$subject" | grep -qE '^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9._-]+\))?!?: .+'; then
+          gh pr view "$PR" --json commits \
+            --jq '.commits[].messageHeadline' | while IFS= read -r subject; do
+            CCPAT='^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)'
+            CCPAT="$CCPAT(\\([a-z0-9._-]+\\))?!?: .+"
+            if ! printf '%s' "$subject" | grep -qE "$CCPAT"; then
               echo "non-conventional subject: $subject"
               exit 1
             fi

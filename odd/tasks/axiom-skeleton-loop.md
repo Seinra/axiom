@@ -19,10 +19,10 @@ Biblioteca de genéricos Go desde 0 (módulo github.com/seinra/axiom, Go 1.27), 
 
 ## Tasks
 
-- T1 (S4, S9): git init + go.mod Go 1.27 + commit inicial — route: inline — commit: pendiente
-- T2 (S7, S11): AXIOM_LOOP.md + .loop-modules/* + VISION.md + loop-config.yaml — route: inline — commit: pendiente
-- T3 (S1, S2, S3, S5, S12): esqueleto result/opt/slice con godoc + tests verdes + golangci mínimo — route: inline (small path dentro de large) — commit: pendiente
-- T4 (S7, S8): README con shape cognitive-doc-design + ARCHITECTURE que declara cobertura futura — route: inline — commit: pendiente
+- T1 (S4, S9): git init + go.mod Go 1.27 + commit inicial — route: inline — commit: b2ff3bb
+- T2 (S7, S11): AXIOM_LOOP.md + .loop-modules/* + VISION.md + loop-config.yaml — route: inline — commit: 6385387
+- T3 (S1, S2, S3, S5, S12): esqueleto result/opt/slice con godoc + tests verdes + golangci mínimo — route: inline (small path dentro de large) — commit: af7a9cd
+- T4 (S7, S8): README con shape cognitive-doc-design + ARCHITECTURE que declara cobertura futura — route: inline — commit: c7e69a6
 - T5 (S3): verificación de consumo piloto desde Catalyst (replace directive en scratch, nunca commit en Catalyst) — route: inline — commit: n/a
 
 ## Log

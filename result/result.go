@@ -4,6 +4,22 @@
 // paths explicitly, Must unwraps a known success (it panics only on programmer
 // error, never for control flow), and Map/MapValue transform the success side
 // while carrying the failure through untouched.
+//
+// Which function?
+//
+// | When you want to ...                | Reach for ...      |
+// |-------------------------------------|--------------------|
+// | Wrap a success                      | Ok                 |
+// | Wrap a failure                      | Fail               |
+// | Ask which side is held              | IsOk               |
+// | Split both paths explicitly         | Unwrap             |
+// | Read a known success (tests, seeds) | Must               |
+// | Read with an explicit fallback      | UnwrapOr           |
+// | Transform the success side          | Map / MapValue     |
+// | Transform the failure side          | MapFailure         |
+// | Chain to the next Result            | AndThen            |
+// | Recover from a failure              | OrElse             |
+// | Convert panicking code at a boundary| Try                |
 package result
 
 import (

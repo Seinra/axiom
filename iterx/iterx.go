@@ -7,6 +7,20 @@
 // caller ranges or collects, and early termination (break, Take) propagates
 // upstream — see TestTakeStopsEarly. Re-ranging a sequence re-runs the whole
 // pipeline from the source.
+//
+// Which function?
+//
+// | When you want to ...                          | Reach for ...           |
+// |------------------------------------------------|-------------------------|
+// | Transform elements lazily                      | MapSeq                  |
+// | Keep matching elements lazily                  | FilterSeq               |
+// | Map and flatten in one lazy pass               | FlatMapSeq / FlattenSeq |
+// | Keep / skip the first count                    | Take / Drop             |
+// | Keep / skip while a condition holds            | TakeWhile / DropWhile   |
+// | Pair positions / pair two sequences            | Enumerate / ZipSeq      |
+// | Observe elements without changing flow         | TapSeq                  |
+// | Repeat one value / cycle a slice (bound with Take) | Repeat / Cycle       |
+// | Collapse adjacent duplicates                   | DedupSeq                |
 package iterx
 
 import "iter"

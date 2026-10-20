@@ -5,6 +5,17 @@
 // queries (Has, Len, IsEmpty, Equal) and combinations (Union, Intersection,
 // Difference, MapValue) never mutate. Members snapshots come unordered: never
 // assert order, only membership.
+//
+// Which function?
+//
+// | When you want to ...           | Reach for ...                                  |
+// |-------------------------------|----------------------------------------------|
+// | Start empty / start with values | New / Of                                   |
+// | Add / drop / reset members    | Add / Remove / Clear                       |
+// | Ask membership or size        | Has / Len / IsEmpty                        |
+// | Merge holdings                | Union / Intersection / Difference / SymmetricDifference |
+// | Compare holdings              | Equal / IsSubsetOf / IsSupersetOf / Overlaps |
+// | Snapshot or transform members | Members / MapValue                         |
 package set
 
 // Set holds distinct members of type Member.

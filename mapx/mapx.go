@@ -7,6 +7,20 @@
 // Keys/Values/Collect/Clone reach for the stdlib maps package directly. All
 // helpers are pure: inputs are never mutated, and nil inputs yield empty
 // non-nil maps.
+//
+// Which function?
+//
+// | When you want to ...           | Reach for ... |
+// |-------------------------------|-----------------|
+// | Index a slice by key          | KeyBy           |
+// | Group values by key           | GroupByMapped   |
+// | Keep only matching entries    | Filter          |
+// | Transform every value         | MapValues       |
+// | Combine two maps              | Merge           |
+// | Keep only listed keys         | Pick            |
+// | Drop listed keys              | Omit            |
+// | Flip values into key groups   | Invert          |
+// | Read with an explicit fallback| ValueOr         |
 package mapx
 
 // KeyBy indexes elements by keyOf. On key collision the last element wins.

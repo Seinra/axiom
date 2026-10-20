@@ -4,6 +4,30 @@
 // Reach for these when lo-style Map/Filter/Reduce/Find/GroupBy reads clearer
 // than a hand-rolled loop; reach for the stdlib directly when it already names
 // the operation. All helpers are pure: inputs are never mutated.
+//
+// Which function?
+//
+// | When you want to ...                  | Reach for ...               |
+// |----------------------------------------|-----------------------------|
+// | Transform every element                | MapSlice / MapIndexed       |
+// | Keep only matching elements            | FilterSlice / FilterIndexed |
+// | Fold to one value                      | ReduceSlice / Sum           |
+// | Find the first match                   | FindSlice                 |
+// | Smallest / largest, plain or by key    | Min / Max / MinBy / MaxBy   |
+// | Mean of numbers                        | Average                   |
+// | Bucket elements by key                 | GroupBySlice / Counts       |
+// | Map each element to a slice, then join | FlatMap / Flatten           |
+// | Fixed chunks / sliding windows         | Chunked / Windows           |
+// | Pair two slices / split pairs back     | Zip / Unzip (see Pair)      |
+// | Drop later duplicates                  | Distinct                  |
+// | Split into matching plus rest          | Partition                 |
+// | Slot a separator between elements      | Intersperse               |
+//
+// The (value, bool) return on FindSlice, Min, Max, MinBy, MaxBy, and
+// Average is this package's OrNull: the bool reports presence and the
+// value is the zero value when absent. Empty input or no match is a normal
+// outcome here, never an error; for failures with causes, see the result
+// package, and for a wrapped maybe, see opt.
 package slice
 
 import "cmp"
@@ -40,6 +64,7 @@ func ReduceSlice[Element any, Accumulation any](elements []Element, initial Accu
 
 // FindSlice returns the first element where match reports true.
 // found is false when no element matches; matched is then the zero value.
+// The (matched, found) pair is the OrNull shape: check found before trusting matched.
 func FindSlice[Element any](elements []Element, match func(Element) bool) (matched Element, found bool) {
 	for _, element := range elements {
 		if match(element) {
@@ -76,6 +101,7 @@ type number interface {
 
 // Min returns the smallest element.
 // Empty or nil input yields the zero value and false, consistent with FindSlice.
+// The (lowest, ok) pair is the OrNull shape: check ok before trusting the value.
 func Min[Element cmp.Ordered](elements []Element) (Element, bool) {
 	if len(elements) == 0 {
 		var empty Element
@@ -92,6 +118,7 @@ func Min[Element cmp.Ordered](elements []Element) (Element, bool) {
 
 // Max returns the largest element.
 // Empty or nil input yields the zero value and false, consistent with FindSlice.
+// The (highest, ok) pair is the OrNull shape: check ok before trusting the value.
 func Max[Element cmp.Ordered](elements []Element) (Element, bool) {
 	if len(elements) == 0 {
 		var empty Element
@@ -108,6 +135,7 @@ func Max[Element cmp.Ordered](elements []Element) (Element, bool) {
 
 // MinBy returns the element with the smallest keyOf key; ties keep the first minimal element.
 // Empty or nil input yields the zero value and false, consistent with FindSlice.
+// The (lowest, ok) pair is the OrNull shape: check ok before trusting the value.
 func MinBy[Element any, Key cmp.Ordered](elements []Element, keyOf func(Element) Key) (Element, bool) {
 	if len(elements) == 0 {
 		var empty Element
@@ -127,6 +155,7 @@ func MinBy[Element any, Key cmp.Ordered](elements []Element, keyOf func(Element)
 
 // MaxBy returns the element with the largest keyOf key; ties keep the first maximal element.
 // Empty or nil input yields the zero value and false, consistent with FindSlice.
+// The (highest, ok) pair is the OrNull shape: check ok before trusting the value.
 func MaxBy[Element any, Key cmp.Ordered](elements []Element, keyOf func(Element) Key) (Element, bool) {
 	if len(elements) == 0 {
 		var empty Element
@@ -156,6 +185,7 @@ func Sum[Number number](numbers []Number) Number {
 
 // Average returns the arithmetic mean of numbers.
 // Empty or nil input yields 0 and false, consistent with Min and Max.
+// The (mean, ok) pair is the OrNull shape: check ok before trusting the mean.
 // The sum accumulates in float64, so the result is best-effort precision,
 // not exactness, for large magnitudes or non-binary fractions.
 func Average[Number number](numbers []Number) (float64, bool) {

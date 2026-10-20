@@ -254,3 +254,12 @@ func TestConcurrentStoreFetchHammer(t *testing.T) {
 		t.Fatalf("final List len = %d, want %d (one record per worker plus shared)", len(listed), workerCount+1)
 	}
 }
+
+func TestNilKeyOfPanics(t *testing.T) {
+	defer func() {
+		if recovered := recover(); recovered == nil {
+			t.Fatal("NewMemoryRepository(nil) did not panic")
+		}
+	}()
+	_ = repo.NewMemoryRepository[lesson, string](nil)
+}

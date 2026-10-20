@@ -1,0 +1,19 @@
+name: Feature request
+description: Propose a new Axiom package or API addition
+title: "[feat]: "
+labels: ["type:feature"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What to add, why stdlib does not cover it, and the proposed API shape
+    validations:
+      required: true
+  - type: textarea
+    id: consumer
+    attributes:
+      label: Consumer fit
+      description: Which Catalyst (or DLC lesson) need this serves, if any
+    validations:
+      required: false

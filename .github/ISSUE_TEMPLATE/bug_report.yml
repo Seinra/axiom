@@ -1,0 +1,19 @@
+name: Bug report
+description: Report a defect in Axiom behavior or docs
+title: "[bug]: "
+labels: ["type:bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happens, what should happen, and a minimal reproduction (package, function, inputs)
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Output of `go version`, OS, and the Axiom commit or tag under test
+    validations:
+      required: false

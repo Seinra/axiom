@@ -15,6 +15,7 @@
 // | Ask membership or size        | Has / Len / IsEmpty                        |
 // | Merge holdings                | Union / Intersection / Difference / SymmetricDifference |
 // | Compare holdings              | Equal / IsSubsetOf / IsSupersetOf / Overlaps |
+// | Ask whether holdings share nothing | IsDisjoint                         |
 // | Snapshot or transform members | Members / MapValue                         |
 package set
 
@@ -167,6 +168,16 @@ func (current Set[Member]) Overlaps(other Set[Member]) bool {
 		}
 	}
 	return false
+}
+
+// IsDisjoint reports whether current and other share no member.
+// It is the complement of Overlaps: current.IsDisjoint(other) equals
+// !current.Overlaps(other). Like the other queries it is zero-value safe:
+// an empty set shares nothing, so empty against anything is disjoint.
+// For example, Of(1, 2).IsDisjoint(Of(3, 4)) is true
+// while Of(1, 2).IsDisjoint(Of(2, 3)) is false.
+func (current Set[Member]) IsDisjoint(other Set[Member]) bool {
+	return !current.Overlaps(other)
 }
 
 // Members returns a snapshot slice of held members in unspecified order.

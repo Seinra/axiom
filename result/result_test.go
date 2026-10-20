@@ -339,3 +339,146 @@ func TestTryNilAttemptRecovers(t *testing.T) {
 		t.Fatalf("Try nil failure = %q, want recovered panic marker", failure.Error())
 	}
 }
+
+func TestUnwrapOrElseTable(t *testing.T) {
+	sentinel := errors.New("fallback cause")
+	testCases := []struct {
+		name     string
+		current  result.Result[int]
+		fallback func(error) int
+		want     int
+	}{
+		{
+			name:     "success yields held value",
+			current:  result.Ok(4),
+			fallback: func(failure error) int { return 99 },
+			want:     4,
+		},
+		{
+			name:     "failure yields fallback outcome",
+			current:  result.Fail[int](sentinel),
+			fallback: func(failure error) int { return 9 },
+			want:     9,
+		},
+		{
+			name:     "zero yields fallback outcome",
+			current:  result.Result[int]{},
+			fallback: func(failure error) int { return 7 },
+			want:     7,
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := result.UnwrapOrElse(testCase.current, testCase.fallback); got != testCase.want {
+				t.Fatalf("UnwrapOrElse = %d, want %d", got, testCase.want)
+			}
+		})
+	}
+}
+
+func TestUnwrapOrElseForwardsFailure(t *testing.T) {
+	sentinel := errors.New("forward me")
+	var received error
+	got := result.UnwrapOrElse(result.Fail[int](sentinel), func(failure error) int {
+		received = failure
+		return 9
+	})
+	if got != 9 {
+		t.Fatalf("UnwrapOrElse = %d, want 9", got)
+	}
+	if !errors.Is(received, sentinel) {
+		t.Fatalf("fallback received = %v, want %v", received, sentinel)
+	}
+}
+
+func TestUnwrapOrElseLazySkipsFallback(t *testing.T) {
+	ranFallback := false
+	got := result.UnwrapOrElse(result.Ok(5), func(failure error) int {
+		ranFallback = true
+		return 9
+	})
+	if got != 5 {
+		t.Fatalf("UnwrapOrElse success = %d, want 5", got)
+	}
+	if ranFallback {
+		t.Fatal("UnwrapOrElse ran fallback on success, want lazy skip")
+	}
+}
+
+func TestUnwrapOrElseZeroReportsExplicitFailure(t *testing.T) {
+	var current result.Result[int]
+	var received error
+	got := result.UnwrapOrElse(current, func(failure error) int {
+		received = failure
+		return 7
+	})
+	if got != 7 {
+		t.Fatalf("UnwrapOrElse zero = %d, want 7", got)
+	}
+	if received == nil {
+		t.Fatal("UnwrapOrElse zero fallback received nil, want explicit error")
+	}
+}
+
+func TestFlattenResultTable(t *testing.T) {
+	sentinelInner := errors.New("inner boom")
+	sentinelOuter := errors.New("outer boom")
+	testCases := []struct {
+		name        string
+		current     result.Result[result.Result[int]]
+		wantOk      bool
+		wantValue   int
+		wantFailure error
+	}{
+		{
+			name:      "ok of ok yields inner success",
+			current:   result.Ok(result.Ok(3)),
+			wantOk:    true,
+			wantValue: 3,
+		},
+		{
+			name:        "ok of failure yields inner failure",
+			current:     result.Ok(result.Fail[int](sentinelInner)),
+			wantOk:      false,
+			wantFailure: sentinelInner,
+		},
+		{
+			name:        "failure yields outer failure",
+			current:     result.Fail[result.Result[int]](sentinelOuter),
+			wantOk:      false,
+			wantFailure: sentinelOuter,
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			flattened := result.Flatten(testCase.current)
+			if flattened.IsOk() != testCase.wantOk {
+				t.Fatalf("Flatten IsOk = %v, want %v", flattened.IsOk(), testCase.wantOk)
+			}
+			got, failure := flattened.Unwrap()
+			if testCase.wantOk {
+				if failure != nil {
+					t.Fatalf("Flatten failure = %v, want nil", failure)
+				}
+				if got != testCase.wantValue {
+					t.Fatalf("Flatten = %d, want %d", got, testCase.wantValue)
+				}
+				return
+			}
+			if !errors.Is(failure, testCase.wantFailure) {
+				t.Fatalf("Flatten failure = %v, want %v", failure, testCase.wantFailure)
+			}
+		})
+	}
+}
+
+func TestFlattenResultZeroOuterReportsError(t *testing.T) {
+	var current result.Result[result.Result[int]]
+	flattened := result.Flatten(current)
+	if flattened.IsOk() {
+		t.Fatal("Flatten(zero) IsOk = true, want false")
+	}
+	if _, failure := flattened.Unwrap(); failure == nil {
+		t.Fatal("Flatten(zero) failure = nil, want explicit error")
+	}
+}

@@ -15,9 +15,11 @@
 // | Split both paths explicitly         | Unwrap             |
 // | Read a known success (tests, seeds) | Must               |
 // | Read with an explicit fallback      | UnwrapOr           |
+// | Read with a lazy fallback           | UnwrapOrElse       |
 // | Transform the success side          | Map / MapValue     |
 // | Transform the failure side          | MapFailure         |
 // | Chain to the next Result            | AndThen            |
+// | Collapse one nesting level          | Flatten            |
 // | Recover from a failure              | OrElse             |
 // | Convert panicking code at a boundary| Try                |
 package result
@@ -125,12 +127,39 @@ func OrElse[T any](current Result[T], handleFailure func(error) Result[T]) Resul
 	return handleFailure(current.failure)
 }
 
+// Flatten collapses one nesting level: Fail yields Fail carrying the outer
+// failure, Ok(inner) yields inner. A zero outer Result yields Fail with an
+// explicit error, matching Map on a zero Result.
+// For example, Flatten(Ok(Ok(3))) holds 3 while Flatten(Ok(Fail(cause))) holds cause.
+func Flatten[Outcome any](current Result[Result[Outcome]]) Result[Outcome] {
+	if !current.isOk {
+		return Fail[Outcome](current.failure)
+	}
+	return current.success
+}
+
 // UnwrapOr returns the held success, or fallback when current holds a failure.
 func UnwrapOr[T any](current Result[T], fallback T) T {
 	if !current.isOk {
 		return fallback
 	}
 	return current.success
+}
+
+// UnwrapOrElse returns the held success, or fallback(failure) when current holds a failure.
+// Fallback runs lazily: it never runs when current holds a success, mirroring
+// opt.ValueOrElse for the failure channel. A zero Result carries no failure, so
+// fallback receives errZeroResult instead of nil and failures stay explicit.
+// For example, UnwrapOrElse(Fail(cause), describe) yields describe(cause)
+// while UnwrapOrElse(Ok(4), describe) yields 4 without running describe.
+func UnwrapOrElse[Outcome any](current Result[Outcome], fallback func(error) Outcome) Outcome {
+	if current.isOk {
+		return current.success
+	}
+	if current.failure == nil {
+		return fallback(errZeroResult)
+	}
+	return fallback(current.failure)
 }
 
 // Try runs attempt and wraps its value in Ok, converting a panic into Fail

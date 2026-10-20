@@ -270,3 +270,65 @@ func TestOverlapsEmptyEdges(t *testing.T) {
 		t.Fatal("empty Overlaps empty = true, want false")
 	}
 }
+
+func TestIsDisjointTable(t *testing.T) {
+	testCases := []struct {
+		name   string
+		first  set.Set[int]
+		second set.Set[int]
+		want   bool
+	}{
+		{
+			name:   "disjoint holdings",
+			first:  set.Of(1, 2),
+			second: set.Of(3, 4),
+			want:   true,
+		},
+		{
+			name:   "shared member",
+			first:  set.Of(1, 2, 3),
+			second: set.Of(3, 4),
+			want:   false,
+		},
+		{
+			name:   "identical non-empty",
+			first:  set.Of(1, 2),
+			second: set.Of(1, 2),
+			want:   false,
+		},
+		{
+			name:   "subset shares members",
+			first:  set.Of(1),
+			second: set.Of(1, 2),
+			want:   false,
+		},
+		{
+			name:   "empty against populated",
+			first:  set.Set[int]{},
+			second: set.Of(1),
+			want:   true,
+		},
+		{
+			name:   "populated against empty",
+			first:  set.Of(1),
+			second: set.Set[int]{},
+			want:   true,
+		},
+		{
+			name:   "both empty",
+			first:  set.Set[int]{},
+			second: set.New[int](),
+			want:   true,
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := testCase.first.IsDisjoint(testCase.second); got != testCase.want {
+				t.Fatalf("IsDisjoint = %v, want %v", got, testCase.want)
+			}
+			if got := testCase.first.IsDisjoint(testCase.second); got != !testCase.first.Overlaps(testCase.second) {
+				t.Fatalf("IsDisjoint = %v, want complement of Overlaps %v", got, testCase.first.Overlaps(testCase.second))
+			}
+		})
+	}
+}

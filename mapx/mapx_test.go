@@ -2,6 +2,7 @@ package mapx_test
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/seinra/axiom/mapx"
@@ -242,5 +243,197 @@ func TestGroupByMappedNilYieldsEmpty(t *testing.T) {
 	}
 	if len(grouped) != 0 {
 		t.Fatalf("len = %d, want 0", len(grouped))
+	}
+}
+
+func TestMapKeysTable(t *testing.T) {
+	testCases := []struct {
+		name    string
+		entries map[string]int
+		keyOf   func(string) string
+		want    map[string]int
+	}{
+		{
+			name:    "nil yields empty",
+			entries: nil,
+			keyOf:   strings.ToUpper,
+			want:    map[string]int{},
+		},
+		{
+			name:    "empty yields empty",
+			entries: map[string]int{},
+			keyOf:   strings.ToUpper,
+			want:    map[string]int{},
+		},
+		{
+			name:    "remaps keys keeping values",
+			entries: map[string]int{"a": 1, "b": 2},
+			keyOf:   strings.ToUpper,
+			want:    map[string]int{"A": 1, "B": 2},
+		},
+		{
+			name:    "identity keeps entries",
+			entries: map[string]int{"a": 1, "b": 2},
+			keyOf:   func(candidate string) string { return candidate },
+			want:    map[string]int{"a": 1, "b": 2},
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			remapped := mapx.MapKeys(testCase.entries, testCase.keyOf)
+			if remapped == nil {
+				t.Fatal("MapKeys = nil, want empty non-nil map")
+			}
+			if !reflect.DeepEqual(remapped, testCase.want) {
+				t.Fatalf("MapKeys = %v, want %v", remapped, testCase.want)
+			}
+		})
+	}
+}
+
+func TestMapKeysCollisionCollapses(t *testing.T) {
+	// apple/avocado share initial "a": last write wins, so one value survives.
+	entries := map[string]int{"apple": 1, "avocado": 2, "banana": 3}
+	remapped := mapx.MapKeys(entries, func(candidate string) string { return candidate[:1] })
+	if len(remapped) != 2 {
+		t.Fatalf("len(MapKeys) = %d, want 2 (a-collision collapses)", len(remapped))
+	}
+	if got := remapped["b"]; got != 3 {
+		t.Fatalf("remapped[b] = %d, want 3", got)
+	}
+	collided, present := remapped["a"]
+	if !present {
+		t.Fatal("remapped[a] missing, want one colliding value")
+	}
+	if collided != 1 && collided != 2 {
+		t.Fatalf("remapped[a] = %d, want 1 or 2 (last write wins)", collided)
+	}
+}
+
+func TestMapKeysNeverMutatesInputs(t *testing.T) {
+	entries := map[string]int{"a": 1, "b": 2}
+	snapshot := map[string]int{"a": 1, "b": 2}
+	remapped := mapx.MapKeys(entries, func(candidate string) string { return candidate + "!" })
+	if !reflect.DeepEqual(entries, snapshot) {
+		t.Fatalf("inputs mutated: entries = %v, want %v", entries, snapshot)
+	}
+	if !reflect.DeepEqual(remapped, map[string]int{"a!": 1, "b!": 2}) {
+		t.Fatalf("MapKeys = %v, want remapped keys", remapped)
+	}
+}
+
+func TestFilterKeysTable(t *testing.T) {
+	keepLong := func(candidate string) bool { return len(candidate) > 1 }
+	testCases := []struct {
+		name    string
+		entries map[string]int
+		keep    func(string) bool
+		want    map[string]int
+	}{
+		{
+			name:    "nil yields empty",
+			entries: nil,
+			keep:    keepLong,
+			want:    map[string]int{},
+		},
+		{
+			name:    "empty yields empty",
+			entries: map[string]int{},
+			keep:    keepLong,
+			want:    map[string]int{},
+		},
+		{
+			name:    "keeps matching keys",
+			entries: map[string]int{"a": 1, "bb": 2, "ccc": 3},
+			keep:    keepLong,
+			want:    map[string]int{"bb": 2, "ccc": 3},
+		},
+		{
+			name:    "keep none yields empty",
+			entries: map[string]int{"a": 1},
+			keep:    func(candidate string) bool { return false },
+			want:    map[string]int{},
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			kept := mapx.FilterKeys(testCase.entries, testCase.keep)
+			if kept == nil {
+				t.Fatal("FilterKeys = nil, want empty non-nil map")
+			}
+			if !reflect.DeepEqual(kept, testCase.want) {
+				t.Fatalf("FilterKeys = %v, want %v", kept, testCase.want)
+			}
+		})
+	}
+}
+
+func TestFilterKeysNeverMutatesInputs(t *testing.T) {
+	entries := map[string]int{"a": 1, "bb": 2}
+	snapshot := map[string]int{"a": 1, "bb": 2}
+	kept := mapx.FilterKeys(entries, func(candidate string) bool { return len(candidate) > 1 })
+	if !reflect.DeepEqual(entries, snapshot) {
+		t.Fatalf("inputs mutated: entries = %v, want %v", entries, snapshot)
+	}
+	if !reflect.DeepEqual(kept, map[string]int{"bb": 2}) {
+		t.Fatalf("FilterKeys = %v, want map[bb:2]", kept)
+	}
+}
+
+func TestFilterValuesTable(t *testing.T) {
+	keepEven := func(candidate int) bool { return candidate%2 == 0 }
+	testCases := []struct {
+		name    string
+		entries map[string]int
+		keep    func(int) bool
+		want    map[string]int
+	}{
+		{
+			name:    "nil yields empty",
+			entries: nil,
+			keep:    keepEven,
+			want:    map[string]int{},
+		},
+		{
+			name:    "empty yields empty",
+			entries: map[string]int{},
+			keep:    keepEven,
+			want:    map[string]int{},
+		},
+		{
+			name:    "keeps matching values",
+			entries: map[string]int{"a": 1, "b": 2, "c": 3},
+			keep:    keepEven,
+			want:    map[string]int{"b": 2},
+		},
+		{
+			name:    "keep none yields empty",
+			entries: map[string]int{"a": 1},
+			keep:    func(candidate int) bool { return false },
+			want:    map[string]int{},
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			kept := mapx.FilterValues(testCase.entries, testCase.keep)
+			if kept == nil {
+				t.Fatal("FilterValues = nil, want empty non-nil map")
+			}
+			if !reflect.DeepEqual(kept, testCase.want) {
+				t.Fatalf("FilterValues = %v, want %v", kept, testCase.want)
+			}
+		})
+	}
+}
+
+func TestFilterValuesNeverMutatesInputs(t *testing.T) {
+	entries := map[string]int{"a": 1, "b": 2}
+	snapshot := map[string]int{"a": 1, "b": 2}
+	kept := mapx.FilterValues(entries, func(candidate int) bool { return candidate%2 == 0 })
+	if !reflect.DeepEqual(entries, snapshot) {
+		t.Fatalf("inputs mutated: entries = %v, want %v", entries, snapshot)
+	}
+	if !reflect.DeepEqual(kept, map[string]int{"b": 2}) {
+		t.Fatalf("FilterValues = %v, want map[b:2]", kept)
 	}
 }

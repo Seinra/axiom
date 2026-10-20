@@ -206,3 +206,47 @@ func TestToResultNilFailureGuards(t *testing.T) {
 		t.Fatal("ToResult nil failure = nil, want guard error")
 	}
 }
+
+func TestFlattenTable(t *testing.T) {
+	testCases := []struct {
+		name      string
+		current   opt.Option[opt.Option[int]]
+		wantSome  bool
+		wantValue int
+	}{
+		{
+			name:     "none yields none",
+			current:  opt.None[opt.Option[int]](),
+			wantSome: false,
+		},
+		{
+			name:     "some none yields none",
+			current:  opt.Some(opt.None[int]()),
+			wantSome: false,
+		},
+		{
+			name:      "some some yields inner",
+			current:   opt.Some(opt.Some(8)),
+			wantSome:  true,
+			wantValue: 8,
+		},
+		{
+			name:     "zero yields none",
+			current:  opt.Option[opt.Option[int]]{},
+			wantSome: false,
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			flattened := opt.Flatten(testCase.current)
+			if flattened.IsSome() != testCase.wantSome {
+				t.Fatalf("Flatten IsSome = %v, want %v", flattened.IsSome(), testCase.wantSome)
+			}
+			if testCase.wantSome {
+				if got := flattened.ValueOr(0); got != testCase.wantValue {
+					t.Fatalf("Flatten = %d, want %d", got, testCase.wantValue)
+				}
+			}
+		})
+	}
+}

@@ -16,6 +16,7 @@
 // | Read with a lazy fallback     | ValueOrElse          |
 // | Transform the held value      | MapOption / MapValue |
 // | Chain to the next Option      | AndThen              |
+// | Collapse one nesting level      | Flatten              |
 // | Fall back to another Option   | OrElse               |
 // | Keep the value only when it fits | Filter            |
 // | Convert absence into a failure| ToResult (see result)|
@@ -89,6 +90,16 @@ func AndThen[T any, Transformed any](current Option[T], transform func(T) Option
 		return None[Transformed]()
 	}
 	return transform(current.success)
+}
+
+// Flatten collapses one nesting level: None yields None and Some(inner) yields inner.
+// Absence carries through like the other short-circuiting combinators.
+// For example, Flatten(Some(Some(8))) holds 8 while Flatten(Some(None[int]())) is absent.
+func Flatten[Outcome any](current Option[Option[Outcome]]) Option[Outcome] {
+	if !current.isSome {
+		return None[Outcome]()
+	}
+	return current.success
 }
 
 // Filter keeps the held success only when keep reports true, else None.

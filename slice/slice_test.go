@@ -7,6 +7,16 @@ import (
 	axiomslice "github.com/seinra/axiom/slice"
 )
 
+func TestMinFindsMinimum(t *testing.T) {
+	lowest, found := axiomslice.Min([]int{3, 1, 2})
+	if !found {
+		t.Fatal("found = false, want true")
+	}
+	if lowest != 1 {
+		t.Fatalf("Min = %d, want 1", lowest)
+	}
+}
+
 func TestMapSliceTransforms(t *testing.T) {
 	got := axiomslice.MapSlice([]int{1, 2, 3}, func(success int) int { return success * 2 })
 	want := []int{2, 4, 6}
@@ -96,5 +106,478 @@ func TestHelpersNeverMutateInput(t *testing.T) {
 	want := []int{3, 1, 2}
 	if !reflect.DeepEqual(numbers, want) {
 		t.Fatalf("input mutated to %v, want %v", numbers, want)
+	}
+}
+
+func TestMinEmptyYieldsNotFound(t *testing.T) {
+	if _, found := axiomslice.Min([]int{}); found {
+		t.Fatal("Min(empty) found = true, want false")
+	}
+}
+
+func TestMinNilYieldsNotFound(t *testing.T) {
+	var numbers []int
+	if _, found := axiomslice.Min(numbers); found {
+		t.Fatal("Min(nil) found = true, want false")
+	}
+}
+
+func TestMinSingletonReturnsElement(t *testing.T) {
+	lowest, found := axiomslice.Min([]string{"only"})
+	if !found || lowest != "only" {
+		t.Fatalf("Min(singleton) = %q, %v, want %q, true", lowest, found, "only")
+	}
+}
+
+func TestMaxFindsMaximum(t *testing.T) {
+	highest, found := axiomslice.Max([]int{3, 1, 2})
+	if !found {
+		t.Fatal("found = false, want true")
+	}
+	if highest != 3 {
+		t.Fatalf("Max = %d, want 3", highest)
+	}
+}
+
+func TestMaxEmptyYieldsNotFound(t *testing.T) {
+	if _, found := axiomslice.Max([]int{}); found {
+		t.Fatal("Max(empty) found = true, want false")
+	}
+}
+
+func TestMaxNilYieldsNotFound(t *testing.T) {
+	var numbers []int
+	if _, found := axiomslice.Max(numbers); found {
+		t.Fatal("Max(nil) found = true, want false")
+	}
+}
+
+func TestMaxSingletonReturnsElement(t *testing.T) {
+	highest, found := axiomslice.Max([]string{"only"})
+	if !found || highest != "only" {
+		t.Fatalf("Max(singleton) = %q, %v, want %q, true", highest, found, "only")
+	}
+}
+
+func TestMinBySelectsSmallestKey(t *testing.T) {
+	words := []string{"aaa", "b", "cc"}
+	shortest, found := axiomslice.MinBy(words, func(candidate string) int { return len(candidate) })
+	if !found || shortest != "b" {
+		t.Fatalf("MinBy = %q, %v, want %q, true", shortest, found, "b")
+	}
+}
+
+func TestMinByTieKeepsFirst(t *testing.T) {
+	words := []string{"aaa", "bb", "cc"}
+	shortest, found := axiomslice.MinBy(words, func(candidate string) int { return len(candidate) })
+	if !found || shortest != "bb" {
+		t.Fatalf("MinBy tie = %q, %v, want %q, true", shortest, found, "bb")
+	}
+}
+
+func TestMinByEmptyYieldsNotFound(t *testing.T) {
+	if _, found := axiomslice.MinBy([]string{}, func(candidate string) int { return len(candidate) }); found {
+		t.Fatal("MinBy(empty) found = true, want false")
+	}
+}
+
+func TestMinByNilYieldsNotFound(t *testing.T) {
+	var words []string
+	if _, found := axiomslice.MinBy(words, func(candidate string) int { return len(candidate) }); found {
+		t.Fatal("MinBy(nil) found = true, want false")
+	}
+}
+
+func TestMaxBySelectsLargestKey(t *testing.T) {
+	words := []string{"a", "bb", "dddd"}
+	longest, found := axiomslice.MaxBy(words, func(candidate string) int { return len(candidate) })
+	if !found || longest != "dddd" {
+		t.Fatalf("MaxBy = %q, %v, want %q, true", longest, found, "dddd")
+	}
+}
+
+func TestMaxByTieKeepsFirst(t *testing.T) {
+	words := []string{"a", "bb", "cc", "d"}
+	longest, found := axiomslice.MaxBy(words, func(candidate string) int { return len(candidate) })
+	if !found || longest != "bb" {
+		t.Fatalf("MaxBy tie = %q, %v, want %q, true", longest, found, "bb")
+	}
+}
+
+func TestMaxByEmptyYieldsNotFound(t *testing.T) {
+	if _, found := axiomslice.MaxBy([]string{}, func(candidate string) int { return len(candidate) }); found {
+		t.Fatal("MaxBy(empty) found = true, want false")
+	}
+}
+
+func TestMaxByNilYieldsNotFound(t *testing.T) {
+	var words []string
+	if _, found := axiomslice.MaxBy(words, func(candidate string) int { return len(candidate) }); found {
+		t.Fatal("MaxBy(nil) found = true, want false")
+	}
+}
+
+func TestSumAddsIntegers(t *testing.T) {
+	total := axiomslice.Sum([]int{1, 2, 3, 4})
+	if total != 10 {
+		t.Fatalf("Sum = %d, want 10", total)
+	}
+}
+
+func TestSumEmptyYieldsZero(t *testing.T) {
+	if total := axiomslice.Sum([]int{}); total != 0 {
+		t.Fatalf("Sum(empty) = %d, want 0", total)
+	}
+}
+
+func TestSumNilYieldsZero(t *testing.T) {
+	var numbers []int
+	if total := axiomslice.Sum(numbers); total != 0 {
+		t.Fatalf("Sum(nil) = %d, want 0", total)
+	}
+}
+
+func TestSumFloats(t *testing.T) {
+	total := axiomslice.Sum([]float64{1.5, 2.5})
+	if total != 4.0 {
+		t.Fatalf("Sum = %v, want 4", total)
+	}
+}
+
+func TestSumNamedNumberType(t *testing.T) {
+	type customCount int
+	total := axiomslice.Sum([]customCount{1, 2, 3})
+	if total != 6 {
+		t.Fatalf("Sum = %d, want 6", total)
+	}
+}
+
+func TestFlatMapConcatenates(t *testing.T) {
+	got := axiomslice.FlatMap([]int{1, 2, 3}, func(element int) []int { return []int{element, element * 10} })
+	want := []int{1, 10, 2, 20, 3, 30}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("FlatMap = %v, want %v", got, want)
+	}
+}
+
+func TestFlatMapNilYieldsEmpty(t *testing.T) {
+	var numbers []int
+	got := axiomslice.FlatMap(numbers, func(element int) []int { return []int{element} })
+	if got == nil || len(got) != 0 {
+		t.Fatalf("FlatMap(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestFlatMapSkipsNilPieces(t *testing.T) {
+	got := axiomslice.FlatMap([]int{1, 2}, func(element int) []int {
+		if element%2 == 1 {
+			return nil
+		}
+		return []int{element}
+	})
+	want := []int{2}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("FlatMap = %v, want %v", got, want)
+	}
+}
+
+func TestFlattenConcatenates(t *testing.T) {
+	got := axiomslice.Flatten([][]int{{1, 2}, {}, {3}})
+	want := []int{1, 2, 3}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Flatten = %v, want %v", got, want)
+	}
+}
+
+func TestFlattenNilYieldsEmpty(t *testing.T) {
+	var nested [][]int
+	got := axiomslice.Flatten(nested)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Flatten(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestChunkedSplitsEvenChunks(t *testing.T) {
+	got := axiomslice.Chunked([]int{1, 2, 3, 4}, 2)
+	want := [][]int{{1, 2}, {3, 4}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Chunked = %v, want %v", got, want)
+	}
+}
+
+func TestChunkedLastChunkShort(t *testing.T) {
+	got := axiomslice.Chunked([]int{1, 2, 3, 4, 5}, 2)
+	want := [][]int{{1, 2}, {3, 4}, {5}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Chunked = %v, want %v", got, want)
+	}
+}
+
+func TestChunkedInvalidSizeYieldsEmpty(t *testing.T) {
+	for _, width := range []int{0, -1} {
+		got := axiomslice.Chunked([]int{1, 2}, width)
+		if got == nil || len(got) != 0 {
+			t.Fatalf("Chunked(size %d) = %v, want empty non-nil", width, got)
+		}
+	}
+}
+
+func TestChunkedNilYieldsEmpty(t *testing.T) {
+	var numbers []int
+	got := axiomslice.Chunked(numbers, 2)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Chunked(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestWindowsSlidesOverElements(t *testing.T) {
+	got := axiomslice.Windows([]int{1, 2, 3, 4}, 2)
+	want := [][]int{{1, 2}, {2, 3}, {3, 4}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Windows = %v, want %v", got, want)
+	}
+}
+
+func TestWindowsFullLengthYieldsSingleton(t *testing.T) {
+	got := axiomslice.Windows([]int{1, 2}, 2)
+	want := [][]int{{1, 2}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Windows = %v, want %v", got, want)
+	}
+}
+
+func TestWindowsInvalidSizeYieldsEmpty(t *testing.T) {
+	for _, width := range []int{0, -1, 5} {
+		got := axiomslice.Windows([]int{1, 2, 3}, width)
+		if got == nil || len(got) != 0 {
+			t.Fatalf("Windows(size %d) = %v, want empty non-nil", width, got)
+		}
+	}
+}
+
+func TestWindowsNilYieldsEmpty(t *testing.T) {
+	var numbers []int
+	got := axiomslice.Windows(numbers, 2)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Windows(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestZipStopsAtShorter(t *testing.T) {
+	got := axiomslice.Zip([]int{1, 2, 3}, []string{"a", "b"})
+	want := []axiomslice.Pair[int, string]{{First: 1, Second: "a"}, {First: 2, Second: "b"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Zip = %v, want %v", got, want)
+	}
+}
+
+func TestZipEmptyYieldsEmpty(t *testing.T) {
+	got := axiomslice.Zip([]int{}, []string{"a"})
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Zip(empty) = %v, want empty non-nil", got)
+	}
+}
+
+func TestZipNilYieldsEmpty(t *testing.T) {
+	var numbers []int
+	got := axiomslice.Zip(numbers, []string{"a"})
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Zip(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestUnzipSplitsPairs(t *testing.T) {
+	pairs := []axiomslice.Pair[int, string]{{First: 1, Second: "a"}, {First: 2, Second: "b"}}
+	firsts, seconds := axiomslice.Unzip(pairs)
+	if !reflect.DeepEqual(firsts, []int{1, 2}) {
+		t.Fatalf("Unzip firsts = %v, want [1 2]", firsts)
+	}
+	if !reflect.DeepEqual(seconds, []string{"a", "b"}) {
+		t.Fatalf("Unzip seconds = %v, want [a b]", seconds)
+	}
+}
+
+func TestUnzipNilYieldsEmptyPair(t *testing.T) {
+	var pairs []axiomslice.Pair[int, string]
+	firsts, seconds := axiomslice.Unzip(pairs)
+	if firsts == nil || len(firsts) != 0 {
+		t.Fatalf("Unzip(nil) firsts = %v, want empty non-nil", firsts)
+	}
+	if seconds == nil || len(seconds) != 0 {
+		t.Fatalf("Unzip(nil) seconds = %v, want empty non-nil", seconds)
+	}
+}
+
+func TestDistinctKeepsFirstOccurrence(t *testing.T) {
+	got := axiomslice.Distinct([]int{2, 1, 2, 3, 1})
+	want := []int{2, 1, 3}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Distinct = %v, want %v", got, want)
+	}
+}
+
+func TestDistinctCollisionCollapses(t *testing.T) {
+	got := axiomslice.Distinct([]int{5, 5, 5})
+	want := []int{5}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Distinct = %v, want %v", got, want)
+	}
+}
+
+func TestDistinctNilYieldsEmpty(t *testing.T) {
+	var numbers []int
+	got := axiomslice.Distinct(numbers)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Distinct(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestPartitionSplitsMatching(t *testing.T) {
+	matching, rest := axiomslice.Partition([]int{1, 2, 3, 4}, func(element int) bool { return element%2 == 0 })
+	if !reflect.DeepEqual(matching, []int{2, 4}) {
+		t.Fatalf("Partition matching = %v, want [2 4]", matching)
+	}
+	if !reflect.DeepEqual(rest, []int{1, 3}) {
+		t.Fatalf("Partition rest = %v, want [1 3]", rest)
+	}
+}
+
+func TestPartitionNilYieldsEmptyPair(t *testing.T) {
+	var numbers []int
+	matching, rest := axiomslice.Partition(numbers, func(element int) bool { return true })
+	if matching == nil || len(matching) != 0 {
+		t.Fatalf("Partition(nil) matching = %v, want empty non-nil", matching)
+	}
+	if rest == nil || len(rest) != 0 {
+		t.Fatalf("Partition(nil) rest = %v, want empty non-nil", rest)
+	}
+}
+
+func TestPartitionNoneMatchingKeepsRest(t *testing.T) {
+	matching, rest := axiomslice.Partition([]int{1, 3}, func(element int) bool { return element%2 == 0 })
+	if matching == nil || len(matching) != 0 {
+		t.Fatalf("Partition matching = %v, want empty non-nil", matching)
+	}
+	if !reflect.DeepEqual(rest, []int{1, 3}) {
+		t.Fatalf("Partition rest = %v, want [1 3]", rest)
+	}
+}
+
+func TestMapIndexedUsesPosition(t *testing.T) {
+	got := axiomslice.MapIndexed([]int{10, 20, 30}, func(position int, element int) int { return position + element })
+	want := []int{10, 21, 32}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("MapIndexed = %v, want %v", got, want)
+	}
+}
+
+func TestMapIndexedNilYieldsEmpty(t *testing.T) {
+	var numbers []int
+	got := axiomslice.MapIndexed(numbers, func(position int, element int) int { return element })
+	if got == nil || len(got) != 0 {
+		t.Fatalf("MapIndexed(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestFilterIndexedKeepsByPosition(t *testing.T) {
+	got := axiomslice.FilterIndexed([]int{10, 20, 30, 40}, func(position int, element int) bool { return position%2 == 0 })
+	want := []int{10, 30}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("FilterIndexed = %v, want %v", got, want)
+	}
+}
+
+func TestFilterIndexedNilYieldsEmpty(t *testing.T) {
+	var numbers []int
+	got := axiomslice.FilterIndexed(numbers, func(position int, element int) bool { return true })
+	if got == nil || len(got) != 0 {
+		t.Fatalf("FilterIndexed(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestIntersperseInsertsSeparator(t *testing.T) {
+	got := axiomslice.Intersperse([]int{1, 2, 3}, 0)
+	want := []int{1, 0, 2, 0, 3}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Intersperse = %v, want %v", got, want)
+	}
+}
+
+func TestIntersperseSingletonCopies(t *testing.T) {
+	original := []int{7}
+	got := axiomslice.Intersperse(original, 0)
+	if !reflect.DeepEqual(got, []int{7}) {
+		t.Fatalf("Intersperse(singleton) = %v, want [7]", got)
+	}
+	got[0] = 99
+	if original[0] != 7 {
+		t.Fatalf("Intersperse singleton shares backing array: %v", original)
+	}
+}
+
+func TestIntersperseEmptyYieldsEmpty(t *testing.T) {
+	got := axiomslice.Intersperse([]int{}, 0)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Intersperse(empty) = %v, want empty non-nil", got)
+	}
+}
+
+func TestIntersperseNilYieldsEmpty(t *testing.T) {
+	var numbers []int
+	got := axiomslice.Intersperse(numbers, 0)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Intersperse(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestCountsTalliesCollision(t *testing.T) {
+	got := axiomslice.Counts([]string{"a", "b", "a", "c", "b", "a"})
+	want := map[string]int{"a": 3, "b": 2, "c": 1}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Counts = %v, want %v", got, want)
+	}
+}
+
+func TestCountsSingletonTalliesOnce(t *testing.T) {
+	got := axiomslice.Counts([]string{"only"})
+	want := map[string]int{"only": 1}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Counts = %v, want %v", got, want)
+	}
+}
+
+func TestCountsNilYieldsEmptyMap(t *testing.T) {
+	var words []string
+	got := axiomslice.Counts(words)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Counts(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestCollectionHelpersNeverMutateInput(t *testing.T) {
+	numbers := []int{3, 1, 2, 1}
+	nested := [][]int{{3, 1}, {2, 1}}
+	_, _ = axiomslice.Min(numbers)
+	_, _ = axiomslice.Max(numbers)
+	_, _ = axiomslice.MinBy(numbers, func(element int) int { return element })
+	_, _ = axiomslice.MaxBy(numbers, func(element int) int { return element })
+	_ = axiomslice.Sum(numbers)
+	_ = axiomslice.FlatMap(numbers, func(element int) []int { return []int{element} })
+	_ = axiomslice.Flatten(nested)
+	_ = axiomslice.Chunked(numbers, 2)
+	_ = axiomslice.Windows(numbers, 2)
+	_ = axiomslice.Zip(numbers, []string{"a", "b", "c", "d"})
+	_, _ = axiomslice.Unzip([]axiomslice.Pair[int, string]{{First: 1, Second: "a"}})
+	_ = axiomslice.Distinct(numbers)
+	_, _ = axiomslice.Partition(numbers, func(element int) bool { return element > 1 })
+	_ = axiomslice.MapIndexed(numbers, func(position int, element int) int { return element })
+	_ = axiomslice.FilterIndexed(numbers, func(position int, element int) bool { return true })
+	_ = axiomslice.Intersperse(numbers, 0)
+	_ = axiomslice.Counts(numbers)
+	if !reflect.DeepEqual(numbers, []int{3, 1, 2, 1}) {
+		t.Fatalf("input mutated to %v", numbers)
+	}
+	if !reflect.DeepEqual(nested, [][]int{{3, 1}, {2, 1}}) {
+		t.Fatalf("nested mutated to %v", nested)
 	}
 }

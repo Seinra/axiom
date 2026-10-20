@@ -143,6 +143,14 @@ func TestDoErrorPropagatesToWaiters(t *testing.T) {
 	}
 }
 
+// waiterAttachWindow bounds the waiter's attach (a map lookup plus a channel
+// wait, microsecond-scale) before Forget runs. Not a rendezvous: black-box
+// callers cannot observe attach, so a generous fixed window stands in; a
+// miss only flakes the run, quarantined per VALIDATION_GATES, never a wrong
+// verdict. A true rendezvous would need a library hook, declined: no API
+// surface exists for tests alone.
+const waiterAttachWindow = 50 * time.Millisecond
+
 func TestForgetDuringFlightForcesRerun(t *testing.T) {
 	t.Parallel()
 	var flight singleflight.Group[string, int]
@@ -167,7 +175,7 @@ func TestForgetDuringFlightForcesRerun(t *testing.T) {
 		outcome, _, _ := flight.Do("lonely", produce)
 		waiterDone <- outcome
 	}()
-	time.Sleep(50 * time.Millisecond)
+	time.Sleep(waiterAttachWindow)
 	flight.Forget("lonely")
 	freshOutcome, failure, _ := flight.Do("lonely", produce)
 	if failure != nil {

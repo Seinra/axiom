@@ -37,15 +37,15 @@ Owner principles 2026-10-20: (1) human readability first, students, pre-v0 windo
 | `result.Must` | KEEP + contrast table | Go `Must*` convention; table Must/MustResolve/Try | docs only |
 | `New`×9 | KEEP + constructor guide | Go convention, qualified reads fine | docs only |
 | Package names (`di/opt/httpx/…`) | KEEP | ecosystem precedent (`lo/mo/do`); import churn too big | — |
+| Other type params | KEEP | `T` universal; rest positional-but-harmless; document | docs only |
+| bare-`any` publics | KEEP + document | GORM-forced + envelope; revisit at v0 | docs only |
+| Seeding verbs | KEEP + mapping table | five verbs, one table | docs only |
 
 ## Bounds sign-off (owner, R3 — cierra R4-001/R4-002)
 
 | Decision | Sign-off |
 |---|---|
 | `slice.Chunked/Windows` y `iterx.ChunkedSeq/WindowsSeq` panic en `size <= 0` (paridad stdlib `slices.Chunk`); oversize/empty siguen empty | owner 2026-10-20 L7: "Panic como stdlib, rompo tests" |
-| Other type params | KEEP | `T` universal; rest positional-but-harmless; document | docs only |
-| bare-`any` publics | KEEP + document | GORM-forced + envelope; revisit at v0 | docs only |
-| Seeding verbs | KEEP + mapping table | five verbs, one table | docs only |
 
 ## Research staged (evidence gathered, analysis pending next session)
 

@@ -84,6 +84,9 @@ func callTransform[Input any, Output any](taskContext context.Context, candidate
 // workGroup.
 func mapRunner[Input any, Output any](taskContext context.Context, positions <-chan int, inputs []Input, transform func(context.Context, Input) (Output, error), ordered []Output, shared *runShared, cancelTask context.CancelFunc, workGroup *sync.WaitGroup) {
 	defer workGroup.Done()
+	// Drained positions stay zero-valued, but a drain implies a latched failure
+	// or panic, so Map never returns a holed slice: failure returns nil and a
+	// latched panic re-panics in the caller.
 	for position := range positions {
 		select {
 		case <-taskContext.Done():
@@ -307,8 +310,7 @@ func Race[Input any, Output any](active context.Context, inputs []Input, workerC
 		go raceRunner(taskContext, positions, inputs, transform, shared, cancelTask, &workGroup)
 	}
 	workGroup.Wait()
-	// A latched panic poisons the Race even when a champion exists: programmer
-	// bugs re-panic in the caller instead of hiding behind a lucky winner.
+	// Poison beats champion: see Race's godoc panic policy.
 	if shared.firstPanic != nil {
 		panic(shared.firstPanic)
 	}

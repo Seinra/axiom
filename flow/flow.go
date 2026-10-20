@@ -91,10 +91,7 @@ func mapRunner[Input any, Output any](taskContext context.Context, positions <-c
 		default:
 		}
 		transformed, transformFailure, didPanic := callTransform(taskContext, inputs[position], transform, func(payload any) {
-			shared.panicOnce.Do(func() {
-				shared.firstPanic = payload
-			})
-			cancelTask()
+			latchFirstPanic(&shared.panicOnce, &shared.firstPanic, payload, cancelTask)
 		})
 		if didPanic {
 			return
@@ -204,6 +201,16 @@ type raceShared[Output any] struct {
 	firstPanic    any
 }
 
+// latchFirstPanic records the first panic payload once and cancels siblings.
+// Shared by Map and Race runners so the latch-and-cancel pairing cannot drift
+// between them.
+func latchFirstPanic(panicOnce *sync.Once, firstPanic *any, payload any, cancelTask context.CancelFunc) {
+	panicOnce.Do(func() {
+		*firstPanic = payload
+	})
+	cancelTask()
+}
+
 // raceRunner drains positions until the first success cancels the task
 // context. Failures latch the first one and keep racing; a success claims
 // the championship once and stops this runner, while concurrent successes
@@ -220,10 +227,7 @@ func raceRunner[Input any, Output any](taskContext context.Context, positions <-
 		default:
 		}
 		transformed, transformFailure, didPanic := callTransform(taskContext, inputs[position], transform, func(payload any) {
-			shared.panicOnce.Do(func() {
-				shared.firstPanic = payload
-			})
-			cancelTask()
+			latchFirstPanic(&shared.panicOnce, &shared.firstPanic, payload, cancelTask)
 		})
 		if didPanic {
 			return

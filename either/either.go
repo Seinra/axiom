@@ -15,8 +15,8 @@
 // | Hold the first side                   | Left            |
 // | Hold the second side                  | Right           |
 // | Ask which side is held                | IsLeft/IsRight  |
-// | Split both sides into one outcome     | Match          |
-// | Transform the Right side              | MapRight             |
+// | Split both sides into one outcome     | Match           |
+// | Transform the Right side              | MapRight        |
 // | Transform the Left side               | MapLeft         |
 // | Exchange the two sides                | Swap            |
 // | Bridge into result.Result             | ToResult        |

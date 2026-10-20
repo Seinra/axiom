@@ -538,7 +538,7 @@ func TestRaceFirstWinSticksWithContextIgnoringSiblings(t *testing.T) {
 
 var errPanicSentinel = errors.New("panic sentinel")
 
-func recoverPanic(panicked any, want error, t *testing.T) {
+func assertPanicPayload(panicked any, want error, t *testing.T) {
 	t.Helper()
 	payload, holds := panicked.(error)
 	if !holds || !errors.Is(payload, want) {
@@ -563,7 +563,7 @@ func TestMapPanicPropagatesPayload(t *testing.T) {
 		_, _ = flow.Map(active, inputs, 1, transform)
 		return nil
 	}()
-	recoverPanic(panicked, errPanicSentinel, t)
+	assertPanicPayload(panicked, errPanicSentinel, t)
 	if ran[3] {
 		t.Fatal("Map ran input 3 after panic, want stop")
 	}
@@ -592,7 +592,7 @@ func TestMapPanicCancelsSiblings(t *testing.T) {
 		_, _ = flow.Map(active, inputs, 2, transform)
 		return nil
 	}()
-	recoverPanic(panicked, errPanicSentinel, t)
+	assertPanicPayload(panicked, errPanicSentinel, t)
 	select {
 	case <-sawCancel:
 	default:
@@ -612,7 +612,7 @@ func TestRaceAllPanicRepanicsPayload(t *testing.T) {
 		_, _ = flow.Race(active, inputs, 1, transform)
 		return nil
 	}()
-	recoverPanic(panicked, errPanicSentinel, t)
+	assertPanicPayload(panicked, errPanicSentinel, t)
 }
 
 func TestRacePanicBeforeSuccessPoisons(t *testing.T) {
@@ -630,7 +630,7 @@ func TestRacePanicBeforeSuccessPoisons(t *testing.T) {
 		_, _ = flow.Race(active, inputs, 1, transform)
 		return nil
 	}()
-	recoverPanic(panicked, errPanicSentinel, t)
+	assertPanicPayload(panicked, errPanicSentinel, t)
 }
 
 func TestRaceSuccessBeforePanicWins(t *testing.T) {
@@ -667,7 +667,7 @@ func TestForEachPanicPropagatesPayload(t *testing.T) {
 		_ = flow.ForEach(active, inputs, 1, consume)
 		return nil
 	}()
-	recoverPanic(panicked, errPanicSentinel, t)
+	assertPanicPayload(panicked, errPanicSentinel, t)
 }
 
 var errPanicOther = errors.New("other panic")
@@ -736,7 +736,7 @@ func TestMapPanicWinsOverFailure(t *testing.T) {
 		_, _ = flow.Map(active, inputs, 2, transform)
 		return nil
 	}()
-	recoverPanic(panicked, errPanicSentinel, t)
+	assertPanicPayload(panicked, errPanicSentinel, t)
 }
 
 func TestRaceFailureThenPanicPoisons(t *testing.T) {
@@ -756,8 +756,35 @@ func TestRaceFailureThenPanicPoisons(t *testing.T) {
 		_, _ = flow.Race(active, inputs, 1, transform)
 		return nil
 	}()
-	recoverPanic(panicked, errPanicSentinel, t)
+	assertPanicPayload(panicked, errPanicSentinel, t)
 	if calls != 2 {
 		t.Fatalf("Race calls = %d, want 2 (failure keeps racing into the panic)", calls)
 	}
+}
+
+func TestRaceChampionThenPanicPoisons(t *testing.T) {
+	// Poison contract: a panic latched while a champion is already claimed
+	// still re-panics in the caller, even though the winner stands. The gate
+	// makes the interleaving deterministic: the panicker is guaranteed
+	// in flight (sleeping) when the champion lands, so scheduling cannot
+	// drain the panic away; only the duration depends on slowDelay.
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	started := make(chan struct{}) // closed when the panicker goes in flight
+	inputs := []int{1, 2}
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		if candidate == 2 {
+			close(started)
+			time.Sleep(slowDelay)
+			panic(errPanicSentinel)
+		}
+		<-started // champion waits until the panicker is in flight
+		return candidate * outputFactor, nil
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_, _ = flow.Race(active, inputs, 2, transform)
+		return nil
+	}()
+	assertPanicPayload(panicked, errPanicSentinel, t)
 }

@@ -22,16 +22,16 @@
 // | Keep / skip the first count                        | Take / Drop             |
 // | Keep / skip while a condition holds                | TakeWhile / DropWhile   |
 // | Pair positions / pair two sequences                | Enumerate / ZipSeq      |
-// | Observe elements without changing flow             | OnEachSeq                  |
+// | Observe elements without changing flow             | OnEachSeq               |
 // | Repeat one value / cycle a slice (bound with Take) | Repeat / Cycle          |
-// | Collapse adjacent duplicates                       | DeduplicateSeq                |
+// | Collapse adjacent duplicates                       | DeduplicateSeq          |
 // | Unfold evolving state into values                  | Unfold                  |
 // | Generate values until a stop                       | Generate                |
 // | Map and keep only some results                     | FilterMapSeq            |
 // | Fixed chunks, last short (slice.Chunked)           | ChunkedSeq              |
 // | Sliding windows (slice.Windows)                    | WindowsSeq              |
 // | Slot a separator between elements                  | IntersperseSeq          |
-// | Concatenate sequences in order                     | ConcatSeq                   |
+// | Concatenate sequences in order                     | ConcatSeq             |
 package iterx
 
 import (

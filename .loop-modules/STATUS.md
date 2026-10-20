@@ -51,6 +51,7 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-20 | T3 result/mapx/set (worker mvgy2wu4-3-ttiu) | IMPLEMENT | parent fix IsDisjoint to method shape; UnwrapOrElse zero-routing accepted; suite+lint green; committed db20ebc |
 | 2026-10-20 | T4 iterx lazy block (worker mvgy2wu4-4-0b2v) | IMPLEMENT | parent-verified (laziness pins, mirrors); -race+lint green; committed 607acb1 |
 | 2026-10-20 | T5a either + T5b Race (workers mvgy2wu4-5-fvxk, mvgy2wu5-6-gbxh) | IMPLEMENT | parent-verified; Race refactored to raceRunner (gocyclo); -race+lint green; committed c1264b3, 8d7ee0d |
+| 2026-10-20 | T6 verifier Go + close (worker mvgydeqy-7-8go6) | VALIDATE | 0 BLOCKER/WARNING, 3 SUGGESTIONs parked (docs pass); native review unavailable for range (2× candidate-mismatch); suite 15 pkgs + lint 0 issues; push owner-gated |
 
 ## Debt ledger
 

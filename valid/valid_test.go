@@ -155,3 +155,21 @@ func TestEmptyValidatorAcceptsEverything(t *testing.T) {
 		})
 	}
 }
+
+func TestNilCheckCarriesName(t *testing.T) {
+	namelessCheck := valid.Rule[int]{
+		Name:    "score checked",
+		Message: "exam score failed an absent check",
+	}
+	applyFailure := namelessCheck.Apply(85)
+	if applyFailure == nil {
+		t.Fatal("Apply with nil Check failure = nil, want failure carrying rule name")
+	}
+	failureText := applyFailure.Error()
+	if !strings.Contains(failureText, namelessCheck.Name) {
+		t.Fatalf("failure %q does not carry rule name %q", failureText, namelessCheck.Name)
+	}
+	if !strings.Contains(failureText, namelessCheck.Message) {
+		t.Fatalf("failure %q does not carry rule message %q", failureText, namelessCheck.Message)
+	}
+}

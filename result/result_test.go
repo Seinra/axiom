@@ -122,3 +122,12 @@ func TestZeroValueReportsError(t *testing.T) {
 		t.Fatal("zero Unwrap failure = nil, want explicit error")
 	}
 }
+
+func TestMapZeroReportsError(t *testing.T) {
+	var current result.Result[int]
+	mapped := result.Map(current, func(success int) string { return "unreachable" })
+	_, failure := mapped.Unwrap()
+	if failure == nil {
+		t.Fatal("Map(zero) Unwrap failure = nil, want explicit error")
+	}
+}

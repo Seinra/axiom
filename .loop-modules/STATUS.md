@@ -57,6 +57,7 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-20 | R1 slice T2 quemado en Axiom-1 | VALIDATE | review-82c353710ed9e967 APPROVED + burned (readability+reliability); 3 SUGGESTIONs parked (R2-001 slice.go:381-82, R2-002 slice.go:24-25, R2-003 slice_test.go:685) |
 | 2026-10-20 | R2 extras T3 quemado en Axiom-1 | VALIDATE | review-98a70286018a012c APPROVED + burned (readability+reliability); 1 SUGGESTION parked (R3-flatten-zero-inner-coverage result.go:136-138) |
 | 2026-10-20 | R3 iterx T4 quemado en Axiom-1 | VALIDATE | review-c8924c5717aab643 APPROVED + burned (readability+reliability); 1 SUGGESTION parked (R2-001 iterx.go:385-386) |
+| 2026-10-20 | R4 either T5a quemado en Axiom-1 | VALIDATE | review-612ac359ff6bc350 APPROVED + burned (readability+reliability); 4 parked (R2-001 WARNING either.go:76-77, R2-002/003 SUGGESTIONs test, R3-001 WARNING either.go:106-112) |
 
 ## Debt ledger
 

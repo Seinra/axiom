@@ -1,0 +1,32 @@
+# Axiom loop state (machine-readable). ODD-track canonical is odd/tasks/*.md + Engram mirror + todo projection; phase-*.json is content-loops-only and NOT used here.
+schemaVersion: 1
+loop: AXIOM_LOOP.md
+vision: VISION.md
+methodology: ODD
+phases:
+  - id: CONTEXT
+    skills: [foundry-explore]
+    gate: map with path:line evidence
+  - id: INVESTIGATE
+    skills: [external-evidence]
+    gate: cited findings with REFERENCES pins
+  - id: PLAN
+    skills: [foundry-requirements, cognitive-doc-design]
+    gate: odd/tasks/<feature>.md + mirror + todo reconciled
+  - id: IMPLEMENT
+    skills: [foundry]
+    gate: verifiable artifact, craft-floor clean
+  - id: VALIDATE
+    skills: [foundry-testing, foundry-review]
+    gate: go test + vet + gofmt green; Go/No-Go ledger when gated
+  - id: FIX
+    skills: [bounded-writer]
+    gate: fix ≤ 3 attempts, then STOP to HITL
+  - id: DEPOSIT
+    skills: [engram]
+    gate: typed deposits + session summary
+dependencies:
+  go: "1.27"
+  module: github.com/seinra/axiom
+  consumer: catalyst
+currentFeature: odd/tasks/axiom-skeleton-loop.md

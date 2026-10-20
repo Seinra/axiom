@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          # Exact patch: 1.27.2 stdlib exports (v5) break
+          # golangci-lint 2.13.2; 1.27.0 is verified locally.
+          go-version: "1.27.0"
+
+      - name: Test
+        run: go test -count=1 ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Format
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "gofmt reports unformatted files:"
+            gofmt -l .
+            exit 1
+          fi
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.13.2
+          args: --timeout=5m

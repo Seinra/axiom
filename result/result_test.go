@@ -82,3 +82,52 @@ func TestMustPanicsOnFailure(t *testing.T) {
 	}()
 	_ = result.Must(result.Fail[int](errors.New("must boom")))
 }
+
+func TestFailNilYieldsError(t *testing.T) {
+	current := result.Fail[int](nil)
+	if current.IsOk() {
+		t.Fatal("IsOk = true, want false")
+	}
+	_, failure := current.Unwrap()
+	if failure == nil {
+		t.Fatal("Unwrap failure = nil, want descriptive error")
+	}
+}
+
+func TestMustReturnsSuccess(t *testing.T) {
+	if got := result.Must(result.Ok("kept")); got != "kept" {
+		t.Fatalf("Must = %q, want %q", got, "kept")
+	}
+}
+
+func TestMapValueCarriesFailure(t *testing.T) {
+	sentinel := errors.New("carried")
+	mapped := result.Fail[int](sentinel).MapValue(func(success int) string { return "unreachable" })
+	if mapped.IsOk() {
+		t.Fatal("IsOk = true, want false")
+	}
+	_, failure := mapped.Unwrap()
+	if !errors.Is(failure, sentinel) {
+		t.Fatalf("Unwrap failure = %v, want %v", failure, sentinel)
+	}
+}
+
+func TestZeroValueReportsError(t *testing.T) {
+	var current result.Result[int]
+	if current.IsOk() {
+		t.Fatal("IsOk = true, want false")
+	}
+	_, failure := current.Unwrap()
+	if failure == nil {
+		t.Fatal("zero Unwrap failure = nil, want explicit error")
+	}
+}
+
+func TestMapZeroReportsError(t *testing.T) {
+	var current result.Result[int]
+	mapped := result.Map(current, func(success int) string { return "unreachable" })
+	_, failure := mapped.Unwrap()
+	if failure == nil {
+		t.Fatal("Map(zero) Unwrap failure = nil, want explicit error")
+	}
+}

@@ -26,3 +26,13 @@ Per-layer command tables + evidence rules. Run the narrowest scope first, then t
 
 - Library logic: YES — RED → GREEN → TRIANGULATE with commands recorded.
 - Prose/assets/config: NO — state the one-line why (no branch, no money/security path).
+
+## Standing review orders (owner 2026-10-20)
+
+- Independent verifier (read-only, with the skills fitting the unit) roughly every ~400 authored lines.
+- The independent verifier always runs before any native review of the same candidate.
+- Native review never runs on docs-only candidates (not designed for prose).
+- Commits proceed autonomously; pushes stay owner-gated (permission prompt).
+- Findings never overwrite each other (owner 2026-10-20, Engram has no dedup rule): every verifier/review batch is a NEW observation with a source- and commit-scoped topic_key (e.g. axiom/findings/<source>-<short-hash>); cross-reference prior batches, never update-in-place.
+- Never wait on a subagent without verifying it is running (owner 2026-10-20): check subagent_list_tasks/subagent_status at the decision boundary before assuming background work is in flight.
+- Implementations go to bounded workers (owner 2026-10-20, context hygiene): one package per worker, disjoint Allowed edit surfaces, skills injected per unit; the orchestrator scopes, verifies, commits.

@@ -109,6 +109,7 @@ func (current Set[Member]) Difference(other Set[Member]) Set[Member] {
 }
 
 // Members returns a snapshot slice of held members in unspecified order.
+// The snapshot is never nil: an empty set yields an empty slice.
 func (current Set[Member]) Members() []Member {
 	members := make([]Member, 0, len(current.members))
 	for member := range current.members {

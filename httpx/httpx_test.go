@@ -179,3 +179,88 @@ func TestFailEnvelopeOmitsDataKey(t *testing.T) {
 		t.Fatalf("fail envelope = %s, want exactly an error key", string(encoded))
 	}
 }
+
+func TestValidationFailJoinsMultipleFailures(t *testing.T) {
+	engine := echo.New()
+	httpContext, recorder := newBareContext(engine)
+	failures := []error{errors.New("name is required"), errors.New("age must be positive")}
+	if writeFailure := httpx.ValidationFail(httpContext, failures); writeFailure != nil {
+		t.Fatalf("ValidationFail multi: unexpected failure: %v", writeFailure)
+	}
+	if recorder.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("ValidationFail multi: status = %d, want %d", recorder.Code, http.StatusUnprocessableEntity)
+	}
+	var envelope httpx.Response[personPayload]
+	if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
+		t.Fatalf("ValidationFail multi: decode failure: %v", decodeFailure)
+	}
+	if envelope.Error != "name is required; age must be positive" {
+		t.Fatalf("ValidationFail multi: Error = %q, want joined messages", envelope.Error)
+	}
+}
+
+func TestValidationFailSingleFailure(t *testing.T) {
+	engine := echo.New()
+	httpContext, recorder := newBareContext(engine)
+	failures := []error{errors.New("name is required")}
+	if writeFailure := httpx.ValidationFail(httpContext, failures); writeFailure != nil {
+		t.Fatalf("ValidationFail single: unexpected failure: %v", writeFailure)
+	}
+	if recorder.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("ValidationFail single: status = %d, want %d", recorder.Code, http.StatusUnprocessableEntity)
+	}
+	var envelope httpx.Response[personPayload]
+	if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
+		t.Fatalf("ValidationFail single: decode failure: %v", decodeFailure)
+	}
+	if envelope.Error != "name is required" {
+		t.Fatalf("ValidationFail single: Error = %q, want %q", envelope.Error, "name is required")
+	}
+}
+
+func TestValidationFailEmptySliceGuard(t *testing.T) {
+	for _, scenario := range []struct {
+		scenarioName string
+		failures     []error
+	}{
+		{scenarioName: "nil failures", failures: nil},
+		{scenarioName: "empty failures", failures: []error{}},
+	} {
+		engine := echo.New()
+		httpContext, recorder := newBareContext(engine)
+		if writeFailure := httpx.ValidationFail(httpContext, scenario.failures); writeFailure != nil {
+			t.Fatalf("ValidationFail %s: unexpected failure: %v", scenario.scenarioName, writeFailure)
+		}
+		if recorder.Code != http.StatusUnprocessableEntity {
+			t.Fatalf("ValidationFail %s: status = %d, want %d", scenario.scenarioName, recorder.Code, http.StatusUnprocessableEntity)
+		}
+		var envelope httpx.Response[personPayload]
+		if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
+			t.Fatalf("ValidationFail %s: decode failure: %v", scenario.scenarioName, decodeFailure)
+		}
+		if envelope.Error == "" {
+			t.Fatalf("ValidationFail %s: Error is empty, want descriptive message", scenario.scenarioName)
+		}
+	}
+}
+
+// TestValidationFailSkipsNilEntries pins that nil entries inside failures
+// are skipped instead of panicking or contributing empty messages.
+func TestValidationFailSkipsNilEntries(t *testing.T) {
+	engine := echo.New()
+	httpContext, recorder := newBareContext(engine)
+	failures := []error{nil, errors.New("name is required"), nil}
+	if writeFailure := httpx.ValidationFail(httpContext, failures); writeFailure != nil {
+		t.Fatalf("ValidationFail nil entries: unexpected failure: %v", writeFailure)
+	}
+	if recorder.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("ValidationFail nil entries: status = %d, want %d", recorder.Code, http.StatusUnprocessableEntity)
+	}
+	var envelope httpx.Response[personPayload]
+	if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
+		t.Fatalf("ValidationFail nil entries: decode failure: %v", decodeFailure)
+	}
+	if envelope.Error != "name is required" {
+		t.Fatalf("ValidationFail nil entries: Error = %q, want %q", envelope.Error, "name is required")
+	}
+}

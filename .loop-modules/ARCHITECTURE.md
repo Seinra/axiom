@@ -73,11 +73,11 @@ the DLC, so curriculum need gates P2, not production usage.
 
 | Area | P0 (next slices) | P1 | P2 (parked) |
 | --- | --- | --- | --- |
-| `slice` | Min/Max/Sum(+By), FlatMap/Flatten, Chunked/Windows, Zip/Unzip, Distinct, Partition, MapIndexed/FilterIndexed, Intersperse, Counts | Average, SortBy convenience | — |
-| `iterx` | TakeWhile/DropWhile, FlatMap/FlattenSeq, ZipSeq, TapSeq, Repeat/Cycle, DedupSeq | — | — |
+| `slice` | Min/Max/Sum(+By), FlatMap/Flatten, Chunked/Windows, Zip/Unzip, Distinct, Partition, MapIndexed/FilterIndexed, Intersperse, Tally | Average, SortBy convenience | — |
+| `iterx` | TakeWhile/DropWhile, FlatMap/FlattenSeq, ZipSeq, OnEachSeq, Repeat/Cycle, DeduplicateSeq | — | — |
 | `set`/`mapx` | SymmetricDifference/IsSubsetOf/Overlaps, Omit/Invert/ValueOr, GroupByMapped | — | — |
 | `opt`/`result` | OrElse/AndThen/Filter/ValueOrElse/ToResult, MapFailure/UnwrapOr | Try (panic→Result) | `either` package |
-| `valid`/`repo`/`httpx`/`di` | And/Or/Not predicates | TotalPages/HasNext, ValidationFail envelope, di test Replace | — |
+| `valid`/`repo`/`httpx`/`di` | And/Or/Not predicates | TotalPages/HasNext, ValidationWriteError envelope, di test Replace | — |
 | combos | — | — | combinations/permutations, Join, Race, singleflight stats |
 
 ## Non-goals (rejected under the stdlib-gap + teachable gate, 2026-10-20)

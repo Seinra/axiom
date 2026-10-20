@@ -84,7 +84,7 @@ func TestMatchSplitsBothSides(t *testing.T) {
 	}
 }
 
-func TestMapTransformsRightCarriesLeft(t *testing.T) {
+func TestMapRightTransformsRightCarriesLeft(t *testing.T) {
 	testCases := []struct {
 		scenario      string
 		current       either.Either[string, int]
@@ -147,7 +147,7 @@ func TestMapLeftTransformsLeftCarriesRight(t *testing.T) {
 	}
 }
 
-func TestMapSkipsTransformOnCarriedSide(t *testing.T) {
+func TestMapRightSkipsTransformOnCarriedSide(t *testing.T) {
 	ranTransform := false
 	current := either.Left[string, int]("locked")
 	mapped := either.MapRight(current, func(slotCount int) string {

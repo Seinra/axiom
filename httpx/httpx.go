@@ -29,7 +29,7 @@ type Response[Body any] struct {
 }
 
 // Decode parses the current request into a fresh payload of type Body.
-// Binding failures return the Echo failure wrapped with the target type name
+// Decode failures return the Echo failure wrapped with the target type name
 // for teachable messages.
 func Decode[Body any](httpContext *echo.Context) (Body, error) {
 	var payload Body
@@ -54,7 +54,7 @@ func WriteError(httpContext *echo.Context, status int, failure error) error {
 	return httpContext.JSON(status, Response[any]{Error: failure.Error()})
 }
 
-// ValidationFail writes validator failures as a 422 envelope with the
+// ValidationWriteError writes validator failures as a 422 envelope with the
 // failure messages joined by "; ". Nil entries inside failures are
 // skipped. Empty or all-nil failures write a descriptive guard message,
 // never an empty envelope.
@@ -67,7 +67,7 @@ func ValidationWriteError(httpContext *echo.Context, failures []error) error {
 		messages = append(messages, failure.Error())
 	}
 	if len(messages) == 0 {
-		return WriteError(httpContext, http.StatusUnprocessableEntity, errors.New("axiom httpx: ValidationFail needs at least one failure"))
+		return WriteError(httpContext, http.StatusUnprocessableEntity, errors.New("axiom httpx: ValidationWriteError needs at least one failure"))
 	}
 	return WriteError(httpContext, http.StatusUnprocessableEntity, errors.New(strings.Join(messages, "; ")))
 }

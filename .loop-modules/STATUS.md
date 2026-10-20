@@ -45,10 +45,11 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-20 | P0 valid combinators (worker) | IMPLEMENT | And/Or/Not with vacuous+short-circuit+nil documented; parent spot-checked, suite/vet/gofmt green; committed 8f0d58e |
 | 2026-10-20 | P0 complete (5 workers) | IMPLEMENT | slice 17 ops + iterx 9 adapters + set/mapx extras + opt/result FP; parent spot-checked all (TakeWhile honesty, ZipSeq pairing, OrElse rename, set swap, Chunked copies), suites/vet/gofmt green |
 | 2026-10-20 | P0 opt/result/set/mapx (2 workers) | IMPLEMENT | 9 FP combinators + set/mapx extras with ran-flag proofs; parent renamed OrElse recover→handleFailure (builtin shadow), spot-checked set ops, re-ran suites/vet/gofmt green |
+| 2026-10-20 | P2 gate re-gated stdlib-gap + teachable | PLAN | owner decision gate-stdlib-ensenable (Engram axiom/p2/gate-stdlib-ensenable): P2 enters on stdlib gap + DLC-teachable, no Catalyst production use required; supersedes Catalyst-use-case gate |
 
 ## Debt ledger
 
 | Item | Phase | Ceiling | Upgrade Path |
 | --- | --- | --- | --- |
-| gap slices P0/P1 (issues #8-12) + parked candidates (#13) | future slices | coverage-gap survey in ARCHITECTURE | one worker slice per group, verifier before review |
+| gap slices P0/P1 (issues #8-12) + P2 re-gated stdlib-gap + teachable (#13) | future slices | coverage-gap survey in ARCHITECTURE | one worker slice per group, verifier before review; P2 needs lesson sketch + stdlib-gap proof |
 | Catalyst replace-directive pilot | T5 | scratch only | versioned release + pin before any Catalyst commit |

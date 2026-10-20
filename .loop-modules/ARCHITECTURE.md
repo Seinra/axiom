@@ -64,7 +64,11 @@ Core packages MUST NOT import Echo, Gin, or GORM. Adapter packages (`httpx`, `re
 
 Compared against Rust itertools, Kotlin stdlib, C# LINQ, Java Streams, Swift
 Algorithms, and C++ ranges. P0 = unanimous across libs, small. P1 =
-valuable, medium. P2 = parked candidates needing a Catalyst use case first.
+valuable, medium. P2 = stdlib-gap + teachable candidates (owner decision
+2026-10-20: gate-stdlib-ensenable, Engram axiom/p2/gate-stdlib-ensenable).
+P2 enters when the stdlib lacks it AND it is teachable as DLC lesson material
+(godoc + example), even if Catalyst has no production use yet. Axiom precedes
+the DLC, so curriculum need gates P2, not production usage.
 
 | Area | P0 (next slices) | P1 | P2 (parked) |
 | --- | --- | --- | --- |

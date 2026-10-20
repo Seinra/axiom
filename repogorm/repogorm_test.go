@@ -213,3 +213,12 @@ func TestNewStoreSurfacesMigrationFailure(t *testing.T) {
 		t.Fatal("NewStore(closed database): expected failure, got nil")
 	}
 }
+
+func TestNewStoreRejectsShapedOrderColumn(t *testing.T) {
+	shaped := []string{"id; DROP TABLE lessons", "id DESC --", "lessons.id) OR (1=1", ".id", "9lives"}
+	for _, column := range shaped {
+		if _, buildFailure := repogorm.NewStore[Lesson, uint](openTestDatabase(t), []any{Lesson{}}, column); buildFailure == nil {
+			t.Fatalf("NewStore(%q): expected failure, got nil", column)
+		}
+	}
+}

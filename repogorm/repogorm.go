@@ -36,10 +36,34 @@ func NewStore[Record any, Identity comparable](database *gorm.DB, models []any, 
 	if orderColumn == "" {
 		return nil, errors.New("axiom repogorm: NewStore needs a non-empty order column")
 	}
+	if !validOrderColumn(orderColumn) {
+		return nil, fmt.Errorf("axiom repogorm: order column %q is not a plain identifier", orderColumn)
+	}
 	if migrateFailure := database.AutoMigrate(models...); migrateFailure != nil {
 		return nil, fmt.Errorf("axiom repogorm: migrate %d models: %w", len(models), migrateFailure)
 	}
 	return &Store[Record, Identity]{database: database, orderColumn: orderColumn}, nil
+}
+
+// validOrderColumn reports whether name is a plain dotted identifier, keeping
+// caller-supplied order columns out of SQL-injection shape. Best-effort gate,
+// not a grammar: GORM still owns the final word at query time.
+func validOrderColumn(name string) bool {
+	for position := 0; position < len(name); position++ {
+		current := name[position]
+		letter := current == '_' || (current >= 'a' && current <= 'z') || (current >= 'A' && current <= 'Z')
+		if letter {
+			continue
+		}
+		if position == 0 {
+			return false
+		}
+		digit := current >= '0' && current <= '9'
+		if current != '.' && !digit {
+			return false
+		}
+	}
+	return len(name) > 0
 }
 
 // Store persists candidate, overwriting any record with the same identity.

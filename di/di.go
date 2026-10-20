@@ -122,11 +122,7 @@ func Invoke[Service any](injector *Injector, serviceName string) (Service, error
 		injector.mutex.Unlock()
 		built, constructionFailure := invokeBuild(injector, entry, settled, build)
 		if constructionFailure != nil {
-			injector.mutex.Lock()
-			entry.building = false
-			entry.settled = nil
-			injector.mutex.Unlock()
-			close(settled)
+			abandonBuild(injector, entry, settled)
 			return empty, fmt.Errorf("axiom di: build service %q: %w", serviceName, constructionFailure)
 		}
 		injector.mutex.Lock()
@@ -140,6 +136,17 @@ func Invoke[Service any](injector *Injector, serviceName string) (Service, error
 	}
 }
 
+// abandonBuild resets entry for the next attempt and wakes its waiters by
+// closing settled exactly once. Shared by the failure and panic paths so the
+// reset-and-wake pairing cannot drift between them.
+func abandonBuild(injector *Injector, entry *serviceEntry, settled chan struct{}) {
+	injector.mutex.Lock()
+	entry.building = false
+	entry.settled = nil
+	injector.mutex.Unlock()
+	close(settled)
+}
+
 // invokeBuild runs build outside the table lock, resetting the entry and
 // waking waiters before re-panicking when build panics. Without the reset,
 // waiters would block forever on a channel that never closes: every caller
@@ -147,11 +154,7 @@ func Invoke[Service any](injector *Injector, serviceName string) (Service, error
 func invokeBuild(injector *Injector, entry *serviceEntry, settled chan struct{}, build func(*Injector) (any, error)) (built any, constructionFailure error) {
 	defer func() {
 		if payload := recover(); payload != nil {
-			injector.mutex.Lock()
-			entry.building = false
-			entry.settled = nil
-			injector.mutex.Unlock()
-			close(settled)
+			abandonBuild(injector, entry, settled)
 			panic(payload)
 		}
 	}()

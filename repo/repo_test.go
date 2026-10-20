@@ -263,3 +263,20 @@ func TestNilKeyOfPanics(t *testing.T) {
 	}()
 	_ = repo.NewMemoryRepository[lesson, string](nil)
 }
+
+func TestHugePageYieldsEmpty(t *testing.T) {
+	// (1<<62-1)*4 overflows int64 to a negative offset: without the guard
+	// the slice below would panic on a negative index.
+	lessonStore := repo.NewMemoryRepository(lessonKeyOf)
+	seedLessons(t, lessonStore, []lesson{{Slug: "only-lesson", Title: "Only"}})
+	overflowed, listFailure := lessonStore.List(repo.Page{Number: 1 << 62, Size: 4})
+	if listFailure != nil {
+		t.Fatalf("List huge page: unexpected failure: %v", listFailure)
+	}
+	if overflowed == nil {
+		t.Fatal("List huge page = nil slice, want empty non-nil slice")
+	}
+	if len(overflowed) != 0 {
+		t.Fatalf("List huge page len = %d, want 0", len(overflowed))
+	}
+}

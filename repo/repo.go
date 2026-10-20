@@ -119,7 +119,8 @@ func (current *MemoryRepository[Record, Identity]) List(page Page) ([]Record, er
 
 // slicePage carves page out of records, holding the pagination convention GORM
 // and SQL adapters will reuse: 1-based Number, Offset skips, Size caps, past
-// the end yields an empty non-nil slice.
+// the end yields an empty non-nil slice. Arithmetic overflow lands past the
+// end as well, never in a negative-index panic.
 func slicePage[Record any](records []Record, page Page) ([]Record, error) {
 	if page.Number < 1 {
 		return nil, fmt.Errorf("axiom repo: list page number %d: %w (numbers start at 1)", page.Number, ErrInvalidPage)
@@ -128,7 +129,7 @@ func slicePage[Record any](records []Record, page Page) ([]Record, error) {
 		return nil, fmt.Errorf("axiom repo: list page size %d: %w (sizes start at 1)", page.Size, ErrInvalidPage)
 	}
 	start := page.Offset()
-	if start >= len(records) {
+	if start < 0 || start >= len(records) {
 		return []Record{}, nil
 	}
 	finish := start + page.Size

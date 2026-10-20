@@ -2,10 +2,12 @@ package di_test
 
 import (
 	"errors"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/seinra/axiom/di"
 )
@@ -357,5 +359,153 @@ func TestPanickingConstructorRetriesUntilSuccess(t *testing.T) {
 	}
 	if builds.Load() != 3 {
 		t.Fatalf("constructor calls = %d, want 3 (two panics then cached success)", builds.Load())
+	}
+}
+
+func TestReplaceThenInvokeRebuilds(t *testing.T) {
+	replaceInjector := di.New()
+	var firstBuilds atomic.Int64
+	var secondBuilds atomic.Int64
+	provideFailure := di.Provide(replaceInjector, "ledger", func(active *di.Injector) (ledgerService, error) {
+		firstBuilds.Add(1)
+		return ledgerService{Balance: 1}, nil
+	})
+	if provideFailure != nil {
+		t.Fatalf("Provide failure = %v, want nil", provideFailure)
+	}
+	firstFetched, firstFailure := di.Invoke[ledgerService](replaceInjector, "ledger")
+	if firstFailure != nil {
+		t.Fatalf("first Invoke failure = %v, want nil", firstFailure)
+	}
+	if firstFetched.Balance != 1 {
+		t.Fatalf("first Invoke Balance = %d, want 1", firstFetched.Balance)
+	}
+	replaceFailure := di.Replace(replaceInjector, "ledger", func(active *di.Injector) (ledgerService, error) {
+		secondBuilds.Add(1)
+		return ledgerService{Balance: 2}, nil
+	})
+	if replaceFailure != nil {
+		t.Fatalf("Replace failure = %v, want nil", replaceFailure)
+	}
+	secondFetched, secondFailure := di.Invoke[ledgerService](replaceInjector, "ledger")
+	if secondFailure != nil {
+		t.Fatalf("second Invoke failure = %v, want nil", secondFailure)
+	}
+	if secondFetched.Balance != 2 {
+		t.Fatalf("second Invoke Balance = %d, want 2", secondFetched.Balance)
+	}
+	if firstBuilds.Load() != 1 {
+		t.Fatalf("first constructor calls = %d, want 1", firstBuilds.Load())
+	}
+	if secondBuilds.Load() != 1 {
+		t.Fatalf("second constructor calls = %d, want 1 (rebuild after Replace)", secondBuilds.Load())
+	}
+	cached, thirdFailure := di.Invoke[ledgerService](replaceInjector, "ledger")
+	if thirdFailure != nil {
+		t.Fatalf("third Invoke failure = %v, want nil", thirdFailure)
+	}
+	if cached.Balance != 2 {
+		t.Fatalf("third Invoke Balance = %d, want 2", cached.Balance)
+	}
+	if secondBuilds.Load() != 1 {
+		t.Fatalf("second constructor calls after cache = %d, want 1", secondBuilds.Load())
+	}
+}
+
+func TestReplaceUnknownReportsNotFound(t *testing.T) {
+	missingInjector := di.New()
+	replaceFailure := di.Replace(missingInjector, "missing", func(active *di.Injector) (ledgerService, error) {
+		return ledgerService{Balance: 1}, nil
+	})
+	if replaceFailure == nil {
+		t.Fatal("Replace failure = nil, want ErrServiceNotFound")
+	}
+	if !errors.Is(replaceFailure, di.ErrServiceNotFound) {
+		t.Fatalf("Replace failure = %v, want ErrServiceNotFound", replaceFailure)
+	}
+}
+
+func TestReplaceDuringBlockedBuildReportsInFlight(t *testing.T) {
+	blockedInjector := di.New()
+	var executions atomic.Int64
+	releaseBuild := make(chan struct{})
+	provideFailure := di.Provide(blockedInjector, "blocked", func(active *di.Injector) (ledgerService, error) {
+		executions.Add(1)
+		<-releaseBuild
+		return ledgerService{Balance: 21}, nil
+	})
+	if provideFailure != nil {
+		t.Fatalf("Provide failure = %v, want nil", provideFailure)
+	}
+	waiterDone := make(chan struct{})
+	var waiterFetched ledgerService
+	var waiterFailure error
+	go func() {
+		defer close(waiterDone)
+		waiterFetched, waiterFailure = di.Invoke[ledgerService](blockedInjector, "blocked")
+	}()
+	deadline := time.Now().Add(2 * time.Second)
+	for executions.Load() < 1 {
+		if time.Now().After(deadline) {
+			t.Fatal("blocked build did not start before deadline")
+		}
+		runtime.Gosched()
+	}
+	replaceFailure := di.Replace(blockedInjector, "blocked", func(active *di.Injector) (ledgerService, error) {
+		return ledgerService{Balance: 99}, nil
+	})
+	if !errors.Is(replaceFailure, di.ErrBuildInFlight) {
+		t.Fatalf("Replace during build failure = %v, want ErrBuildInFlight", replaceFailure)
+	}
+	close(releaseBuild)
+	<-waiterDone
+	if waiterFailure != nil {
+		t.Fatalf("waiter Invoke failure = %v, want nil", waiterFailure)
+	}
+	if waiterFetched.Balance != 21 {
+		t.Fatalf("waiter Balance = %d, want 21 (original build wins)", waiterFetched.Balance)
+	}
+	cached, invokeFailure := di.Invoke[ledgerService](blockedInjector, "blocked")
+	if invokeFailure != nil {
+		t.Fatalf("Invoke after blocked build failure = %v, want nil", invokeFailure)
+	}
+	if cached.Balance != 21 {
+		t.Fatalf("Invoke after blocked build Balance = %d, want 21 (Replace changed nothing)", cached.Balance)
+	}
+	if executions.Load() != 1 {
+		t.Fatalf("constructor calls = %d, want 1 (no rebuild from refused Replace)", executions.Load())
+	}
+}
+
+func TestReplaceGuardsReportErrors(t *testing.T) {
+	var nilInjector *di.Injector
+	nilFailure := di.Replace(nilInjector, "ledger", func(active *di.Injector) (ledgerService, error) {
+		return ledgerService{}, nil
+	})
+	if !errors.Is(nilFailure, di.ErrServiceNotFound) {
+		t.Fatalf("Replace on nil failure = %v, want ErrServiceNotFound", nilFailure)
+	}
+	guardInjector := di.New()
+	provideFailure := di.Provide(guardInjector, "ledger", func(active *di.Injector) (ledgerService, error) {
+		return ledgerService{Balance: 1}, nil
+	})
+	if provideFailure != nil {
+		t.Fatalf("Provide failure = %v, want nil", provideFailure)
+	}
+	emptyFailure := di.Replace(guardInjector, "", func(active *di.Injector) (ledgerService, error) {
+		return ledgerService{}, nil
+	})
+	if emptyFailure == nil {
+		t.Fatal("Replace empty name failure = nil, want descriptive error")
+	}
+	nilConstructorFailure := di.Replace[ledgerService](guardInjector, "ledger", nil)
+	if nilConstructorFailure == nil {
+		t.Fatal("Replace nil constructor failure = nil, want descriptive error")
+	}
+	unknownFailure := di.Replace(guardInjector, "missing", func(active *di.Injector) (ledgerService, error) {
+		return ledgerService{}, nil
+	})
+	if !errors.Is(unknownFailure, di.ErrServiceNotFound) {
+		t.Fatalf("Replace unknown failure = %v, want ErrServiceNotFound", unknownFailure)
 	}
 }

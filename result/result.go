@@ -116,3 +116,18 @@ func UnwrapOr[T any](current Result[T], fallback T) T {
 	}
 	return current.success
 }
+
+// Try runs attempt and wraps its value in Ok, converting a panic into Fail
+// with fmt.Errorf("axiom result: recovered panic: %v", payload).
+// The Scala Try precedent: Try is for boundary conversion of panicking code
+// (parsers, callbacks, legacy calls) into an explicit Result, not for control
+// flow — never use it to steer ordinary branching. A nil attempt panics when
+// called and is recovered like any other panic, yielding the same Fail shape.
+func Try[T any](attempt func() T) (outcome Result[T]) {
+	defer func() {
+		if payload := recover(); payload != nil {
+			outcome = Fail[T](fmt.Errorf("axiom result: recovered panic: %v", payload))
+		}
+	}()
+	return Ok(attempt())
+}

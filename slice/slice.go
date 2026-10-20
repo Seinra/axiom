@@ -154,6 +154,21 @@ func Sum[Number number](numbers []Number) Number {
 	return total
 }
 
+// Average returns the arithmetic mean of numbers.
+// Empty or nil input yields 0 and false, consistent with Min and Max.
+// The sum accumulates in float64, so the result is best-effort precision,
+// not exactness, for large magnitudes or non-binary fractions.
+func Average[Number number](numbers []Number) (float64, bool) {
+	if len(numbers) == 0 {
+		return 0, false
+	}
+	var total float64
+	for _, element := range numbers {
+		total += float64(element)
+	}
+	return total / float64(len(numbers)), true
+}
+
 // FlatMap maps each element to a slice and concatenates the pieces in order.
 // Nil or empty input yields an empty non-nil slice; nil pieces contribute nothing.
 func FlatMap[Element any, Transformed any](elements []Element, transform func(Element) []Transformed) []Transformed {

@@ -36,6 +36,41 @@ func (current Page) Offset() int {
 	return (current.Number - 1) * current.Size
 }
 
+// TotalPages returns how many pages hold totalCount records at pageSize per page.
+// It divides upward: a remainder needs one more page. A non-positive totalCount
+// or pageSize yields 0: there is nothing to paginate or no page size to paginate with.
+func TotalPages(totalCount int, pageSize int) int {
+	if totalCount <= 0 {
+		return 0
+	}
+	if pageSize <= 0 {
+		return 0
+	}
+	pages := totalCount / pageSize
+	if totalCount%pageSize != 0 {
+		pages++
+	}
+	return pages
+}
+
+// HasNextPage reports whether a further page after current still holds records.
+// It holds when current.Number*current.Size falls short of totalCount, checked
+// without multiplying to stay safe on huge pages. An invalid current page
+// (Number < 1 or Size < 1) or a non-positive totalCount yields false: an empty
+// store never has a next page.
+func HasNextPage(current Page, totalCount int) bool {
+	if current.Number < 1 {
+		return false
+	}
+	if current.Size < 1 {
+		return false
+	}
+	if totalCount <= 0 {
+		return false
+	}
+	return current.Number <= (totalCount-1)/current.Size
+}
+
 // Repository stores and retrieves records addressed by an identity.
 // Implementations decide ordering: List order is unspecified unless the
 // implementation documents otherwise.

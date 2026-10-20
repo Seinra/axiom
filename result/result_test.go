@@ -2,6 +2,7 @@ package result_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/seinra/axiom/result"
@@ -278,5 +279,63 @@ func TestUnwrapOrSuccess(t *testing.T) {
 func TestUnwrapOrFailureYieldsFallback(t *testing.T) {
 	if got := result.UnwrapOr(result.Fail[int](errors.New("gone")), 9); got != 9 {
 		t.Fatalf("UnwrapOr failure = %d, want 9", got)
+	}
+}
+
+func TestTrySuccessReturnsValue(t *testing.T) {
+	current := result.Try(func() int { return 41 + 1 })
+	if !current.IsOk() {
+		t.Fatal("Try IsOk = false, want true")
+	}
+	got, failure := current.Unwrap()
+	if failure != nil {
+		t.Fatalf("Try Unwrap failure = %v, want nil", failure)
+	}
+	if got != 42 {
+		t.Fatalf("Try value = %d, want 42", got)
+	}
+}
+
+func TestTryStringPayloadBecomesFailure(t *testing.T) {
+	current := result.Try(func() int { panic("try boom") })
+	if current.IsOk() {
+		t.Fatal("Try panic IsOk = true, want false")
+	}
+	_, failure := current.Unwrap()
+	if failure == nil {
+		t.Fatal("Try panic failure = nil, want recovered panic")
+	}
+	if !strings.Contains(failure.Error(), "axiom result: recovered panic: try boom") {
+		t.Fatalf("Try panic failure = %q, want recovered panic with payload", failure.Error())
+	}
+}
+
+func TestTryErrorPayloadBecomesFailure(t *testing.T) {
+	sentinel := errors.New("inner boom")
+	current := result.Try(func() int { panic(sentinel) })
+	if current.IsOk() {
+		t.Fatal("Try error panic IsOk = true, want false")
+	}
+	_, failure := current.Unwrap()
+	if failure == nil {
+		t.Fatal("Try error panic failure = nil, want recovered panic")
+	}
+	if !strings.Contains(failure.Error(), "axiom result: recovered panic: inner boom") {
+		t.Fatalf("Try error panic failure = %q, want recovered panic with payload", failure.Error())
+	}
+}
+
+func TestTryNilAttemptRecovers(t *testing.T) {
+	var attempt func() int
+	current := result.Try(attempt)
+	if current.IsOk() {
+		t.Fatal("Try nil IsOk = true, want false")
+	}
+	_, failure := current.Unwrap()
+	if failure == nil {
+		t.Fatal("Try nil failure = nil, want recovered panic")
+	}
+	if !strings.Contains(failure.Error(), "axiom result: recovered panic:") {
+		t.Fatalf("Try nil failure = %q, want recovered panic marker", failure.Error())
 	}
 }

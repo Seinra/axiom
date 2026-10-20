@@ -609,3 +609,66 @@ func TestCollectionHelpersNeverMutateInput(t *testing.T) {
 		t.Fatalf("nested mutated to %v", nested)
 	}
 }
+
+func TestAverageIntsAveragesEvenly(t *testing.T) {
+	average, found := axiomslice.Average([]int{1, 2, 3, 4})
+	if !found {
+		t.Fatal("Average found = false, want true")
+	}
+	if average != 2.5 {
+		t.Fatalf("Average = %v, want 2.5", average)
+	}
+}
+
+func TestAverageFloatsAveragesFraction(t *testing.T) {
+	average, found := axiomslice.Average([]float64{1.5, 2.5})
+	if !found {
+		t.Fatal("Average found = false, want true")
+	}
+	if average != 2.0 {
+		t.Fatalf("Average = %v, want 2", average)
+	}
+}
+
+func TestAverageEmptyYieldsNotFound(t *testing.T) {
+	average, found := axiomslice.Average([]int{})
+	if found {
+		t.Fatal("Average(empty) found = true, want false")
+	}
+	if average != 0 {
+		t.Fatalf("Average(empty) = %v, want 0", average)
+	}
+}
+
+func TestAverageNilYieldsNotFound(t *testing.T) {
+	var numbers []int
+	average, found := axiomslice.Average(numbers)
+	if found {
+		t.Fatal("Average(nil) found = true, want false")
+	}
+	if average != 0 {
+		t.Fatalf("Average(nil) = %v, want 0", average)
+	}
+}
+
+func TestAverageSingletonReturnsElement(t *testing.T) {
+	average, found := axiomslice.Average([]int{7})
+	if !found || average != 7.0 {
+		t.Fatalf("Average(singleton) = %v, %v, want 7, true", average, found)
+	}
+}
+
+func TestAverageNegativeMixBalances(t *testing.T) {
+	average, found := axiomslice.Average([]int{-4, -2, 6})
+	if !found || average != 0 {
+		t.Fatalf("Average(negative mix) = %v, %v, want 0, true", average, found)
+	}
+}
+
+func TestAverageNeverMutatesInput(t *testing.T) {
+	numbers := []int{3, 1, 2, 1}
+	_, _ = axiomslice.Average(numbers)
+	if !reflect.DeepEqual(numbers, []int{3, 1, 2, 1}) {
+		t.Fatalf("input mutated to %v", numbers)
+	}
+}

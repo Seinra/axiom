@@ -1,0 +1,61 @@
+# Axiom rename readability-first — design document (next session kickoff)
+
+Owner principles 2026-10-20: (1) human readability first, students, pre-v0 window with zero consumers; (2) convenience outweighs minimalism; (3) readability first again; (4) research dynamic/adaptive bounds + countermeasures; (5) engineer opinion with cross-library panic research; (6) combinatorics parked until the class exists; (7) timing research. No subagents launched yet — all below is parent proposal + staged research, ready to execute next session.
+
+## Specs
+
+- S1: "1) Legibilidad humana primero, necesitamos que los alumnos entienda el codigo que implementan y leen. Se aprovecha ahora que todavia nadie consume Axiom."
+- S2: "2) stdlib como preferencia, pero conveniencia pesa mas que minimalismo (ej para ahorrar lineas de codigo, y otros casos de conveniencia), ese nivel de dinamismo tiene que tener esta libreria."
+- S3: "3) De nuevo, legibilidad humana primero."
+- S4: "4) Investigacion para lograr algo dinamico y adaptable, con comentarios u otras formas de contrarestar/informar el problema/debilidad de lo elegido de acuerdo a la situacion."
+- S5: "5) Aca necesitamos opinion de ingeniero con investigacion de como lo resolvieron otras librerias/frameworks."
+- S6: "6) Meh, si el problema es que aun no existe clase, se deja parked hasta que exista."
+- S7: "7) Invesgicacion."
+- S8: "No lances sub-agentes aun, simplemente prepara todo para dejarlo listo y arrancar en la proxima sesion."
+
+## Rename proposal (parent architect call, needs owner sign-off per row)
+
+| Current | Proposed | Why | Price |
+|---|---|---|---|
+| `either.Map` | `MapRight` | asymmetric partial map is the documented trap; mirrors `MapLeft` | cheap, symmetric |
+| `singleflight.Do` | `Call` | `Do` carries zero intent; `flight.Call(key, fn)` reads | cheap |
+| `di.Invoke` / `di.MustInvoke` | `Resolve` / `MustResolve` | domain verb; `Invoke` opaque first-read | medium (docs+tests) |
+| `either.Bifold` | `Match` | Rust-match intuition for students | cheap |
+| `slice.Scan` | `RunningFold` | Kotlin precedent, explicit running semantics | cheap |
+| `iterx.TapSeq` | `OnEachSeq` | Kotlin `onEach` precedent; `Tap` opaque | cheap |
+| `iterx.DedupSeq` | `DeduplicateSeq` | un-abbreviate (ban-14) | cheap |
+| `iterx.Chain` | `ConcatSeq` | explicit concat vocabulary | cheap |
+| `slice.Counts` | `Tally` | verb reads; noun read as property | cheap |
+| `httpx.JSON` / `httpx.Fail` | `WriteJSON` / `WriteError` | kills `encoding/json` collision; symmetric pair | medium (adapters) |
+| `httpx.Bind` | `Decode` | `Decode[Body](ctx)` explicit vs bare verb | medium |
+| `flow.Each` | `ForEach` | explicit; `Each` empty first-read | cheap |
+| `either` params `L/R` | `LeftT/RightT` | readability-first + ban-13; single letters hurt novices/grep — REVERSES #18 `L/R` call, flagged explicitly | cheap, needs explicit sign-off |
+| `valid.And/Or/Not` | KEEP + vacuous-truth table | boolean ops fine qualified; churn not worth it | docs only |
+| Fallback 5-way stems | KEEP + mapping table | `Else`-suffix encodes eager/lazy — good design once documented | docs only |
+| `Filter`/`Flatten` families | KEEP suffixes + tables | suffixes disambiguate; rename churn massive | docs only |
+| `result.Must` | KEEP + contrast table | Go `Must*` convention; table Must/MustResolve/Try | docs only |
+| `New`×9 | KEEP + constructor guide | Go convention, qualified reads fine | docs only |
+| Package names (`di/opt/httpx/…`) | KEEP | ecosystem precedent (`lo/mo/do`); import churn too big | — |
+| Other type params | KEEP | `T` universal; rest positional-but-harmless; document | docs only |
+| bare-`any` publics | KEEP + document | GORM-forced + envelope; revisit at v0 | docs only |
+| Seeding verbs | KEEP + mapping table | five verbs, one table | docs only |
+
+## Research staged (evidence gathered, analysis pending next session)
+
+- R-bounds: web_search responseId `mvh4ffk6jftiar` queryIndex 0 (Kotlin eager chunked/windowed vs C++ lazy views + others); fetched `mvh4fmz94ye2mq` urlIndex 2 (KEEP window-sliding). Open: synctest details, Rayon panic docs depth, PLINQ article.
+- R-panic: same responseId queryIndex 1 (Rayon catch-panic thread, issues #638/#1270, PLINQ AggregateException SO). Fetched urlIndex 1 (rayon #638). Open: rayon join-panics doc, PLINQ article, Java Streams/LINQ behavior.
+- R-timing: same responseId queryIndex 0? No — queryIndex 2 (Go synctest #67434, jMock scheduler, OpenDST, unflake, FakeClock). Fetched urlIndex 0 (synctest issue, 150k chars — get_search_content findText failed, retry with plain offset paging). Open: synctest availability in go1.27, clockwork-style options for plain `go test -race`.
+- SDD researcher agents are RETIRED (`retired SDD delegation is not supported`) — research runs parent-inline with web_search/fetch_content next session.
+
+## Tasks (next session, in order)
+
+- R0: owner signs off rename table row by row (esp. `LeftT/RightT` reversal + `Invoke→Resolve` + `WriteJSON/WriteError`).
+- R1: finish R-bounds/R-panic/R-timing evidence + engineer opinion (panic policy).
+- R2: implement approved renames (bounded workers, tests+docs together).
+- R3: implement approved bounds + counters.
+- R4: review chain per slice + delivery.
+
+## Log
+
+- L1 (verbatim principles): "1) Legibilidad humana primero, necesitamos que los alumnos entienda el codigo que implementan y leen. Se aprovecha ahora que todavia nadie consume Axiom. 2) stdlib como preferencia, pero conveniencia pesa mas que minimalismo (ej para ahorrar lineas de codigo, y otros casos de conveniencia), ese nivel de dinamismo tiene que tener esta libreria. 3) De nuevo, legibilidad humana primero. 4) Investigacion para lograr algo dinamico y adaptable, con comentarios u otras formas de contrarestar/informar el problema/debilidad de lo elegido de acuerdo a la situacion. 5) Aca necesitamos opinion de ingeniero con investigacion de como lo resolvieron otras librerias/frameworks. 6) Meh, si el problema es que aun no existe clase, se deja parked hasta que exista. 7) Invesgicacion."
+- L2 (verbatim): "No lances sub-agentes aun, simplemente prepara todo para dejarlo listo y arrancar en la proxima sesion."

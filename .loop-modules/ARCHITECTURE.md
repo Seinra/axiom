@@ -49,6 +49,7 @@ Core packages MUST NOT import Echo, Gin, or GORM. Adapter packages (`httpx`, `re
 4. Naming per foundry code-style: no single-letter vars (except ≤5-line loop index), no abbreviations (`usr`/`cfg`/`req`/`res`), no generic names (`data`/`item`/`result`); collections are plural nouns; predicates are `is/has/can/should`.
 5. Fewest files: one file per boundary, never single-export files (ban 22) — co-locate until the file earns its boundary.
 6. Functions ≤50 lines / complexity ≤10 / params ≤4; guard clauses over nesting; sentinel errors + `fmt.Errorf("…: %w", …)` wrapping.
+7. Convenience outweighs minimalism (owner decision 2026-10-20): a stdlib-adjacent helper that saves lines or teaches better stays even if it wraps stdlib thinly; YAGNI still kills speculative generality, never proven convenience.
 7. Skeleton slice ships only `result` + `opt` + `slice`; everything else is declared future scope, never stubbed speculatively.
 
 ## Coverage map (present → future)

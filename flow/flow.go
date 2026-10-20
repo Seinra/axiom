@@ -2,10 +2,13 @@
 //
 // Map runs a transform over inputs with at most workerCount concurrent
 // runners and reports results in input order. Each applies a consume step
-// for side effects without collecting results. The first transform failure
-// cancels its siblings through context cancellation and wins as the
-// returned failure, matching errgroup parity: one failure in, that failure
-// out, siblings stopped.
+// for side effects without collecting results. Race runs the same transform
+// and returns the first success, canceling its siblings; reach for Race when
+// any single success is enough and input order does not matter. The first
+// transform failure cancels its Map and Each siblings through context
+// cancellation and wins as the returned failure, matching errgroup parity:
+// one failure in, that failure out, siblings stopped. A Race with every
+// transform failed instead reports the zero Output plus the first failure.
 //
 // Worker sizing follows a documented convention, not magic: a workerCount
 // of zero or less falls back to runtime.NumCPU.
@@ -29,6 +32,8 @@ package flow
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"runtime"
 	"sync"
 )
@@ -126,4 +131,109 @@ func Each[Input any](active context.Context, inputs []Input, workerCount int, co
 		return struct{}{}, consumeFailure
 	})
 	return mapFailure
+}
+
+// ErrNoRaceInputs reports a Race call with no inputs: with nothing to race
+// there is no winner, so Race returns the zero Output plus this sentinel
+// wrapped for errors.Is matching instead of a silent zero value.
+var ErrNoRaceInputs = errors.New("axiom flow: Race needs at least one input")
+
+// raceShared carries the mutable Race outcome across runners. The champion
+// fields change under outcomeMutex; the first failure latches once.
+type raceShared[Output any] struct {
+	outcomeMutex  sync.Mutex
+	champion      Output
+	championFound bool
+	failureOnce   sync.Once
+	firstFailure  error
+}
+
+// raceRunner drains positions until the first success cancels the task
+// context. Failures latch the first one and keep racing; a success claims
+// the championship once and stops this runner. Every path joins workGroup.
+func raceRunner[Input any, Output any](taskContext context.Context, positions <-chan int, inputs []Input, transform func(context.Context, Input) (Output, error), shared *raceShared[Output], cancelTask context.CancelFunc, workGroup *sync.WaitGroup) {
+	defer workGroup.Done()
+	for position := range positions {
+		select {
+		case <-taskContext.Done():
+			continue
+		default:
+		}
+		transformed, transformFailure := transform(taskContext, inputs[position])
+		if transformFailure != nil {
+			shared.failureOnce.Do(func() {
+				shared.firstFailure = transformFailure
+			})
+			continue
+		}
+		shared.outcomeMutex.Lock()
+		if !shared.championFound {
+			shared.champion = transformed
+			shared.championFound = true
+			cancelTask()
+		}
+		shared.outcomeMutex.Unlock()
+		return
+	}
+}
+
+// Race runs transform over inputs with at most workerCount concurrent
+// runners and returns the first success in time, canceling its siblings via
+// context cancellation: one outcome in, siblings stopped, matching the
+// errgroup parity Map documents. Use Race when any single success is enough
+// and input order does not matter; use Map when every transformed value is
+// needed in input order.
+//
+// A workerCount of zero or less falls back to runtime.NumCPU. Empty inputs
+// yield the zero Output plus ErrNoRaceInputs wrapped, never a silent zero.
+// An already-canceled active context returns promptly with active.Err() and
+// starts no transform.
+//
+// The first success in time wins, even when an earlier input position is
+// still running. Runners that observe the win drain their remaining
+// positions without invoking transform, so unstarted inputs never run after
+// the win. A transform already in flight still runs to completion (Go cannot
+// preempt it), and a transform that ignores the context runs to completion
+// too — extra work stays bounded by the runner count, never by the input
+// length.
+//
+// Transform failures never cancel siblings: runners keep racing until the
+// first success or until every input fails. When every transform fails, Race
+// returns the zero Output plus the first failure in time. Sibling transforms
+// must honor the context, as shown in the package example, for prompt
+// shutdown after the win. Every spawned runner joins through a WaitGroup on
+// all paths, and no lock is held while transform runs.
+func Race[Input any, Output any](active context.Context, inputs []Input, workerCount int, transform func(context.Context, Input) (Output, error)) (winner Output, failure error) {
+	if active.Err() != nil {
+		var empty Output
+		return empty, active.Err()
+	}
+	if len(inputs) == 0 {
+		var empty Output
+		return empty, fmt.Errorf("axiom flow: Race with no inputs: %w", ErrNoRaceInputs)
+	}
+	runners := normalizeWorkerCount(workerCount, len(inputs))
+	taskContext, cancelTask := context.WithCancel(active)
+	defer cancelTask()
+	positions := make(chan int, len(inputs))
+	for position := range inputs {
+		positions <- position
+	}
+	close(positions)
+	var workGroup sync.WaitGroup
+	shared := &raceShared[Output]{}
+	for range runners {
+		workGroup.Add(1)
+		go raceRunner(taskContext, positions, inputs, transform, shared, cancelTask, &workGroup)
+	}
+	workGroup.Wait()
+	if shared.championFound {
+		return shared.champion, nil
+	}
+	if shared.firstFailure != nil {
+		var empty Output
+		return empty, shared.firstFailure
+	}
+	var empty Output
+	return empty, taskContext.Err()
 }

@@ -67,6 +67,7 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-20 | Nit flow_test quemado (2do review) | VALIDATE | review-8dad1ade0ec45460 APPROVED + burned sin reintentos; 2 parked nuevos (R2-hidden-coupling WARNING, R3-flow-test-timing) |
 | 2026-10-20 | Delivery followups: PR #21 CI verde | DELIVERY | Closes approved #15, type:feature; validate+verify pass; merge owner-gated |
 | 2026-10-20 | Delivery followups: PR #21 mergeado | DELIVERY | merge commit por orden owner; #15 cerrado, #16-18 ya cerrados, #20 abierto |
+| 2026-10-20 | R2 renames readability-first | IMPLEMENT | 16 files +340/-332 en feat/axiom-rename-readability, commit 70955f4; suite 15 pkgs ok, vet 0, gofmt clean, cero refs viejas |
 
 ## Debt ledger
 

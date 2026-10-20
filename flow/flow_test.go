@@ -535,3 +535,137 @@ func TestRaceFirstWinSticksWithContextIgnoringSiblings(t *testing.T) {
 		t.Fatalf("Race latency = %v, want < %v", raceLatency, winLatencyCeiling)
 	}
 }
+
+var errPanicSentinel = errors.New("panic sentinel")
+
+func recoverPanic(panicked any, want error, t *testing.T) {
+	t.Helper()
+	payload, holds := panicked.(error)
+	if !holds || !errors.Is(payload, want) {
+		t.Fatalf("panic = %v, want sentinel %v", panicked, want)
+	}
+}
+
+func TestMapPanicPropagatesPayload(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	inputs := []int{1, 2, 3}
+	ran := make(map[int]bool)
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		ran[candidate] = true
+		if candidate == 2 {
+			panic(errPanicSentinel)
+		}
+		return candidate * outputFactor, nil
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_, _ = flow.Map(active, inputs, 1, transform)
+		return nil
+	}()
+	recoverPanic(panicked, errPanicSentinel, t)
+	if ran[3] {
+		t.Fatal("Map ran input 3 after panic, want stop")
+	}
+}
+
+func TestMapPanicCancelsSiblings(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	gate := make(chan struct{}) // never closed: progress comes only from cancellation
+	sawCancel := make(chan struct{}, 1)
+	inputs := []int{0, 1}
+	transform := func(taskContext context.Context, candidate int) (string, error) {
+		if candidate == 1 {
+			panic(errPanicSentinel)
+		}
+		select {
+		case <-gate:
+			return "gated", nil
+		case <-taskContext.Done():
+			sawCancel <- struct{}{}
+			return "", taskContext.Err()
+		}
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_, _ = flow.Map(active, inputs, 2, transform)
+		return nil
+	}()
+	recoverPanic(panicked, errPanicSentinel, t)
+	select {
+	case <-sawCancel:
+	default:
+		t.Fatal("Map sibling did not observe cancellation after panic")
+	}
+}
+
+func TestRaceAllPanicRepanicsPayload(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	inputs := []int{1, 2}
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		panic(errPanicSentinel)
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_, _ = flow.Race(active, inputs, 1, transform)
+		return nil
+	}()
+	recoverPanic(panicked, errPanicSentinel, t)
+}
+
+func TestRacePanicBeforeSuccessPoisons(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	inputs := []int{1, 2}
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		if candidate == 1 {
+			panic(errPanicSentinel)
+		}
+		return candidate * outputFactor, nil
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_, _ = flow.Race(active, inputs, 1, transform)
+		return nil
+	}()
+	recoverPanic(panicked, errPanicSentinel, t)
+}
+
+func TestRaceSuccessBeforePanicWins(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	inputs := []int{1, 2}
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		if candidate == 2 {
+			panic(errPanicSentinel)
+		}
+		return candidate * outputFactor, nil
+	}
+	winner, raceFailure := flow.Race(active, inputs, 1, transform)
+	if raceFailure != nil {
+		t.Fatalf("Race failure = %v, want nil", raceFailure)
+	}
+	if winner != outputFactor {
+		t.Fatalf("Race winner = %v, want %v", winner, outputFactor)
+	}
+}
+
+func TestForEachPanicPropagatesPayload(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	inputs := []int{1, 2, 3}
+	consume := func(taskContext context.Context, candidate int) error {
+		if candidate == 2 {
+			panic(errPanicSentinel)
+		}
+		return nil
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_ = flow.ForEach(active, inputs, 1, consume)
+		return nil
+	}()
+	recoverPanic(panicked, errPanicSentinel, t)
+}

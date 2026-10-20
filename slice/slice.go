@@ -34,6 +34,7 @@ package slice
 
 import (
 	"cmp"
+	"fmt"
 	"slices"
 )
 
@@ -229,9 +230,16 @@ func Flatten[Element any](nested [][]Element) []Element {
 }
 
 // Chunked splits elements into consecutive chunks of at most size, copying each chunk.
-// Size <= 0, or nil/empty input, yields an empty non-nil slice; the last chunk may be short.
+// Size <= 0 panics: a non-positive chunk size is a programmer error, matching
+// slices.Chunk. Nil/empty input yields an empty non-nil slice; the last chunk
+// may be short.
+//
+// Cost: O(n) time and O(n) space for n elements — every element is copied once.
 func Chunked[Element any](elements []Element, size int) [][]Element {
-	if size <= 0 || len(elements) == 0 {
+	if size <= 0 {
+		panic(fmt.Sprintf("axiom slice: Chunked needs size >= 1, got %d", size))
+	}
+	if len(elements) == 0 {
 		return make([][]Element, 0)
 	}
 	chunked := make([][]Element, 0, (len(elements)+size-1)/size)
@@ -248,9 +256,16 @@ func Chunked[Element any](elements []Element, size int) [][]Element {
 }
 
 // Windows returns every consecutive sliding window of exactly size, copying each window.
-// Size <= 0, size beyond the input length, or nil/empty input yields an empty non-nil slice.
+// Size <= 0 panics: a non-positive window size is a programmer error, matching
+// slices.Chunk. Size beyond the input length, or nil/empty input, yields an
+// empty non-nil slice.
+//
+// Cost: O(n*size) time and space for n elements — every window copies size elements.
 func Windows[Element any](elements []Element, size int) [][]Element {
-	if size <= 0 || size > len(elements) {
+	if size <= 0 {
+		panic(fmt.Sprintf("axiom slice: Windows needs size >= 1, got %d", size))
+	}
+	if size > len(elements) {
 		return make([][]Element, 0)
 	}
 	windows := make([][]Element, 0, len(elements)-size+1)

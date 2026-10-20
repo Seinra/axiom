@@ -24,6 +24,10 @@ var ErrInvalidPage = errors.New("axiom repo: invalid page")
 
 // Page selects one slice of a listing. Number is 1-based: the first page is
 // Number 1, never 0. Size caps how many records List returns for the page.
+//
+// Size is application policy, not a repository clamp: List rejects Size < 1
+// with ErrInvalidPage but never clamps an oversized Size, so cap Size at the
+// handler edge before listing.
 type Page struct {
 	Number int
 	Size   int

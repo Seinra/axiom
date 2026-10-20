@@ -313,11 +313,15 @@ func TestChunkedLastChunkShort(t *testing.T) {
 	}
 }
 
-func TestChunkedInvalidSizeYieldsEmpty(t *testing.T) {
+func TestChunkedInvalidSizePanics(t *testing.T) {
 	for _, width := range []int{0, -1} {
-		got := axiomslice.Chunked([]int{1, 2}, width)
-		if got == nil || len(got) != 0 {
-			t.Fatalf("Chunked(size %d) = %v, want empty non-nil", width, got)
+		panicked := func() (didPanic any) {
+			defer func() { didPanic = recover() }()
+			_ = axiomslice.Chunked([]int{1, 2}, width)
+			return nil
+		}()
+		if panicked == nil {
+			t.Fatalf("Chunked(size %d) did not panic, want panic", width)
 		}
 	}
 }
@@ -346,12 +350,23 @@ func TestWindowsFullLengthYieldsSingleton(t *testing.T) {
 	}
 }
 
-func TestWindowsInvalidSizeYieldsEmpty(t *testing.T) {
-	for _, width := range []int{0, -1, 5} {
-		got := axiomslice.Windows([]int{1, 2, 3}, width)
-		if got == nil || len(got) != 0 {
-			t.Fatalf("Windows(size %d) = %v, want empty non-nil", width, got)
+func TestWindowsInvalidSizePanics(t *testing.T) {
+	for _, width := range []int{0, -1} {
+		panicked := func() (didPanic any) {
+			defer func() { didPanic = recover() }()
+			_ = axiomslice.Windows([]int{1, 2, 3}, width)
+			return nil
+		}()
+		if panicked == nil {
+			t.Fatalf("Windows(size %d) did not panic, want panic", width)
 		}
+	}
+}
+
+func TestWindowsOversizeYieldsEmpty(t *testing.T) {
+	got := axiomslice.Windows([]int{1, 2, 3}, 5)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Windows(size 5) = %v, want empty non-nil", got)
 	}
 }
 

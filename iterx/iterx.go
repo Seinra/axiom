@@ -30,7 +30,10 @@
 // | Concatenate sequences in order                     | ConcatSeq                   |
 package iterx
 
-import "iter"
+import (
+	"fmt"
+	"iter"
+)
 
 // MapSeq transforms every element of sequence, preserving order.
 func MapSeq[Element any, Transformed any](sequence iter.Seq[Element], transform func(Element) Transformed) iter.Seq[Transformed] {
@@ -346,15 +349,21 @@ func FilterMapSeq[Element any, Transformed any](sequence iter.Seq[Element], tran
 // Example: ChunkedSeq(slices.Values([]int{1, 2, 3, 4, 5}), 2) yields
 // [1 2], [3 4], [5].
 //
-// A non-positive size yields an empty sequence. Chunks fill lazily as the
-// caller pulls; breaking early stops pulling the source, and re-ranging
-// re-runs from the source.
+// Size <= 0 panics at call time: a non-positive chunk size is a programmer
+// error, matching slices.Chunk. Chunks fill lazily as the caller pulls;
+// breaking early stops pulling the source, and re-ranging re-runs from
+// the source.
+//
+// Cost: O(n) time and O(size) working space for n elements — every element
+// is copied once into a fresh chunk.
 func ChunkedSeq[Element any](sequence iter.Seq[Element], size int) iter.Seq[[]Element] {
+	if size <= 0 {
+		panic(fmt.Sprintf("axiom iterx: ChunkedSeq needs size >= 1, got %d", size))
+	}
 	return func(yield func([]Element) bool) {
-		if size <= 0 {
-			return
-		}
-		chunk := make([]Element, 0, size)
+		// No presized backing: a huge size must not allocate upfront. The chunk
+		// grows incrementally and never exceeds size elements.
+		chunk := make([]Element, 0)
 		for element := range sequence {
 			chunk = append(chunk, element)
 			if len(chunk) < size {
@@ -381,15 +390,20 @@ func ChunkedSeq[Element any](sequence iter.Seq[Element], size int) iter.Seq[[]El
 // Example: WindowsSeq(slices.Values([]int{1, 2, 3}), 2) yields
 // [1 2], [2 3].
 //
-// A non-positive size, or a size beyond the input length, yields an empty
-// sequence. Windows fill lazily as the caller pulls; breaking early stops
-// pulling the source, and re-ranging re-runs from the source.
+// Size <= 0 panics at call time: a non-positive window size is a programmer
+// error, matching slices.Chunk. A size beyond the input length yields an
+// empty sequence. Windows fill lazily as the caller pulls; breaking early
+// stops pulling the source, and re-ranging re-runs from the source.
+//
+// Cost: O(n*size) element copies for n elements — every window is a fresh copy.
 func WindowsSeq[Element any](sequence iter.Seq[Element], size int) iter.Seq[[]Element] {
+	if size <= 0 {
+		panic(fmt.Sprintf("axiom iterx: WindowsSeq needs size >= 1, got %d", size))
+	}
 	return func(yield func([]Element) bool) {
-		if size <= 0 {
-			return
-		}
-		window := make([]Element, 0, size)
+		// No presized backing: a huge size must not allocate upfront. The window
+		// grows incrementally and never exceeds size elements.
+		window := make([]Element, 0)
 		for element := range sequence {
 			window = append(window, element)
 			if len(window) < size {

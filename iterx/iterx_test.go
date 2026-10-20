@@ -873,10 +873,15 @@ func TestChunkedSeqSplits(t *testing.T) {
 	}
 }
 
-func TestChunkedSeqInvalidSizeYieldsEmpty(t *testing.T) {
+func TestChunkedSeqInvalidSizePanics(t *testing.T) {
 	for _, chunkSize := range []int{0, -3} {
-		if got := slices.Collect(iterx.ChunkedSeq(naturals(1, 4), chunkSize)); len(got) != 0 {
-			t.Fatalf("ChunkedSeq(%d) = %v, want empty", chunkSize, got)
+		panicked := func() (didPanic any) {
+			defer func() { didPanic = recover() }()
+			_ = iterx.ChunkedSeq(naturals(1, 4), chunkSize)
+			return nil
+		}()
+		if panicked == nil {
+			t.Fatalf("ChunkedSeq(%d) did not panic, want panic", chunkSize)
 		}
 	}
 }
@@ -958,12 +963,20 @@ func TestWindowsSeqSlides(t *testing.T) {
 	}
 }
 
-func TestWindowsSeqInvalidSizeYieldsEmpty(t *testing.T) {
+func TestWindowsSeqInvalidSizePanics(t *testing.T) {
 	for _, windowSize := range []int{0, -2} {
-		if got := slices.Collect(iterx.WindowsSeq(naturals(1, 4), windowSize)); len(got) != 0 {
-			t.Fatalf("WindowsSeq(%d) = %v, want empty", windowSize, got)
+		panicked := func() (didPanic any) {
+			defer func() { didPanic = recover() }()
+			_ = iterx.WindowsSeq(naturals(1, 4), windowSize)
+			return nil
+		}()
+		if panicked == nil {
+			t.Fatalf("WindowsSeq(%d) did not panic, want panic", windowSize)
 		}
 	}
+}
+
+func TestWindowsSeqOversizeYieldsEmpty(t *testing.T) {
 	if got := slices.Collect(iterx.WindowsSeq(slices.Values([]int{1, 2}), 5)); len(got) != 0 {
 		t.Fatalf("WindowsSeq oversize = %v, want empty", got)
 	}

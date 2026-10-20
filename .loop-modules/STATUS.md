@@ -54,6 +54,7 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-20 | T6 verifier Go + close (worker mvgydeqy-7-8go6) | VALIDATE | 0 BLOCKER/WARNING, 3 SUGGESTIONs parked (docs pass); native review unavailable for range (2× candidate-mismatch); suite 15 pkgs + lint 0 issues; push owner-gated |
 | 2026-10-20 | T6 review slices intento (R1 slice) | VALIDATE | 5 worktrees con slices aislados; R1 START OK pero capture_group 3× rechazado (transporte, sin drift) → STOP, worktrees removidos; cierre con verifier+suite+lint |
 | 2026-10-20 | Abandon lineage R1 (orden owner) | VALIDATE | review-266a6029d4739212 operator_disposition committed, 0 findings, cuarentena; Axiom-1 clonado con r1-t2-slice (experimento detenido); worktree w-exp-t2 removido |
+| 2026-10-20 | R1 slice T2 quemado en Axiom-1 | VALIDATE | review-82c353710ed9e967 APPROVED + burned (readability+reliability); 3 SUGGESTIONs parked (R2-001 slice.go:381-82, R2-002 slice.go:24-25, R2-003 slice_test.go:685) |
 
 ## Debt ledger
 

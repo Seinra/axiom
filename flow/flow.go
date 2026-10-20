@@ -66,6 +66,7 @@ type runShared struct {
 // instead of unwinding the runner goroutine (an escaping panic would take the
 // whole process down). The zero transform result on the panic path is
 // discarded: callers must check didPanic before touching the other returns.
+// panic(nil) arrives as *PanicNilError (Go 1.21+) and re-panics as such.
 func callTransform[Input any, Output any](taskContext context.Context, candidate Input, transform func(context.Context, Input) (Output, error), onPanic func(payload any)) (transformed Output, transformFailure error, didPanic bool) {
 	defer func() {
 		if payload := recover(); payload != nil {
@@ -127,8 +128,7 @@ func mapRunner[Input any, Output any](taskContext context.Context, positions <-c
 // in flight still runs to completion (Go cannot preempt it), and a transform
 // that ignores the context runs to completion too — extra work stays bounded
 // by the runner count, never by the input length. Every spawned runner joins
-// through a WaitGroup on all paths, and no lock
-// is held while transform runs.
+// through a WaitGroup on all paths, and no lock is held while transform runs.
 //
 // A panicking transform never escapes its runner goroutine: the first panic
 // payload latches, siblings cancel through the same context path as failures,
@@ -275,8 +275,9 @@ func raceRunner[Input any, Output any](taskContext context.Context, positions <-
 // all paths, and no lock is held while transform runs.
 //
 // Panics follow the Map policy: the first payload latches, siblings cancel,
-// and the caller re-panics the original payload — even when another input
-// already claimed the championship. A latched panic poisons the Race:
+// and the caller re-panics the original payload. A *latched* panic poisons
+// even a claimed championship; inputs never started after a win never run,
+// so an unstarted panic never fires. A latched panic poisons the Race:
 // programmer bugs never hide behind a lucky winner.
 func Race[Input any, Output any](active context.Context, inputs []Input, workerCount int, transform func(context.Context, Input) (Output, error)) (winner Output, failure error) {
 	if active.Err() != nil {

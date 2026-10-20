@@ -8,6 +8,10 @@
 // upstream — see TestTakeStopsEarly. Re-ranging a sequence re-runs the whole
 // pipeline from the source.
 //
+// Fail-fast exception: ChunkedSeq and WindowsSeq validate size at call time
+// and panic on size <= 0 instead of yielding nothing — valid sizes stay
+// fully lazy.
+//
 // Which function?
 //
 // | When you want to ...                               | Reach for ...           |

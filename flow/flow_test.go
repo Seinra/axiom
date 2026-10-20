@@ -669,3 +669,95 @@ func TestForEachPanicPropagatesPayload(t *testing.T) {
 	}()
 	recoverPanic(panicked, errPanicSentinel, t)
 }
+
+var errPanicOther = errors.New("other panic")
+
+func TestMapConcurrentPanicsLatchOne(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	var gate sync.Mutex
+	release := make(chan struct{})
+	arrived := 0
+	barrier := func() {
+		gate.Lock()
+		arrived++
+		if arrived == 2 {
+			close(release)
+		}
+		gate.Unlock()
+		<-release
+	}
+	ran := make(map[int]bool)
+	var ranGuard sync.Mutex
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		barrier()
+		ranGuard.Lock()
+		ran[candidate] = true
+		ranGuard.Unlock()
+		if candidate == 1 {
+			panic(errPanicSentinel)
+		}
+		panic(errPanicOther)
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_, _ = flow.Map(active, []int{1, 2}, 2, transform)
+		return nil
+	}()
+	payload, holds := panicked.(error)
+	if !holds || (!errors.Is(payload, errPanicSentinel) && !errors.Is(payload, errPanicOther)) {
+		t.Fatalf("Map panic = %v, want one of the two sentinels", panicked)
+	}
+	ranGuard.Lock()
+	defer ranGuard.Unlock()
+	if !ran[1] || !ran[2] {
+		t.Fatalf("Map ran = %v, want both inputs attempted", ran)
+	}
+}
+
+func TestMapPanicWinsOverFailure(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	gate := make(chan struct{}) // never closed: failure path resolves only via cancellation
+	inputs := []int{0, 1}
+	transform := func(taskContext context.Context, candidate int) (string, error) {
+		if candidate == 1 {
+			panic(errPanicSentinel)
+		}
+		select {
+		case <-gate:
+			return "gated", nil
+		case <-taskContext.Done():
+			return "", taskContext.Err()
+		}
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_, _ = flow.Map(active, inputs, 2, transform)
+		return nil
+	}()
+	recoverPanic(panicked, errPanicSentinel, t)
+}
+
+func TestRaceFailureThenPanicPoisons(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	inputs := []int{1, 2}
+	calls := 0
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		calls++
+		if candidate == 1 {
+			return 0, errFastFailure
+		}
+		panic(errPanicSentinel)
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_, _ = flow.Race(active, inputs, 1, transform)
+		return nil
+	}()
+	recoverPanic(panicked, errPanicSentinel, t)
+	if calls != 2 {
+		t.Fatalf("Race calls = %d, want 2 (failure keeps racing into the panic)", calls)
+	}
+}

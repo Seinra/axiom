@@ -135,3 +135,112 @@ func TestMergeNilNilYieldsEmpty(t *testing.T) {
 		t.Fatal("Merge(nil, nil) = nil, want empty non-nil map")
 	}
 }
+
+func TestOmitExcludesKeys(t *testing.T) {
+	omitted := mapx.Omit(map[string]int{"a": 1, "b": 2, "c": 3}, "a", "c")
+	want := map[string]int{"b": 2}
+	if !reflect.DeepEqual(omitted, want) {
+		t.Fatalf("Omit = %v, want %v", omitted, want)
+	}
+}
+
+func TestOmitMissingKeysIgnored(t *testing.T) {
+	omitted := mapx.Omit(map[string]int{"a": 1, "b": 2}, "missing", "a")
+	want := map[string]int{"b": 2}
+	if !reflect.DeepEqual(omitted, want) {
+		t.Fatalf("Omit = %v, want %v", omitted, want)
+	}
+}
+
+func TestOmitNilYieldsEmpty(t *testing.T) {
+	var entries map[string]int
+	omitted := mapx.Omit(entries, "a")
+	if omitted == nil {
+		t.Fatal("Omit(nil) = nil, want empty non-nil map")
+	}
+	if len(omitted) != 0 {
+		t.Fatalf("len = %d, want 0", len(omitted))
+	}
+}
+
+func TestOmitNeverMutatesInputs(t *testing.T) {
+	entries := map[string]int{"a": 1, "b": 2}
+	_ = mapx.Omit(entries, "a")
+	want := map[string]int{"a": 1, "b": 2}
+	if !reflect.DeepEqual(entries, want) {
+		t.Fatalf("inputs mutated: entries = %v, want %v", entries, want)
+	}
+}
+
+func TestInvertGroupsCollidingValues(t *testing.T) {
+	grouped := mapx.Invert(map[string]string{"a": "x", "b": "y", "c": "x"})
+	if len(grouped) != 2 {
+		t.Fatalf("len(Invert) = %d, want 2", len(grouped))
+	}
+	for _, key := range grouped["x"] {
+		if key != "a" && key != "c" {
+			t.Fatalf("Invert[x] holds %q, want a or c", key)
+		}
+	}
+	if len(grouped["x"]) != 2 {
+		t.Fatalf("len(Invert[x]) = %d, want 2", len(grouped["x"]))
+	}
+	if !reflect.DeepEqual(grouped["y"], []string{"b"}) {
+		t.Fatalf("Invert[y] = %v, want [b]", grouped["y"])
+	}
+}
+
+func TestInvertNilYieldsEmpty(t *testing.T) {
+	var entries map[string]string
+	grouped := mapx.Invert(entries)
+	if grouped == nil {
+		t.Fatal("Invert(nil) = nil, want empty non-nil map")
+	}
+	if len(grouped) != 0 {
+		t.Fatalf("len = %d, want 0", len(grouped))
+	}
+}
+
+func TestValueOrReturnsHeldOrFallback(t *testing.T) {
+	entries := map[string]int{"a": 1}
+	if got := mapx.ValueOr(entries, "a", 99); got != 1 {
+		t.Fatalf("ValueOr(held) = %d, want 1", got)
+	}
+	if got := mapx.ValueOr(entries, "missing", 99); got != 99 {
+		t.Fatalf("ValueOr(missing) = %d, want 99", got)
+	}
+}
+
+func TestValueOrNilYieldsFallback(t *testing.T) {
+	var entries map[string]int
+	if got := mapx.ValueOr(entries, "a", 7); got != 7 {
+		t.Fatalf("ValueOr(nil, a) = %d, want 7", got)
+	}
+}
+
+func TestGroupByMappedGroupsValues(t *testing.T) {
+	courses := []lesson{{slug: "go-basics", level: 1}, {slug: "go-maps", level: 1}, {slug: "rust-adv", level: 2}}
+	grouped := mapx.GroupByMapped(
+		courses,
+		func(candidate lesson) int { return candidate.level },
+		func(candidate lesson) string { return candidate.slug },
+	)
+	if len(grouped[1]) != 2 || len(grouped[2]) != 1 {
+		t.Fatalf("GroupByMapped = %v, want 2 in level 1 and 1 in level 2", grouped)
+	}
+}
+
+func TestGroupByMappedNilYieldsEmpty(t *testing.T) {
+	var courses []lesson
+	grouped := mapx.GroupByMapped(
+		courses,
+		func(candidate lesson) int { return candidate.level },
+		func(candidate lesson) string { return candidate.slug },
+	)
+	if grouped == nil {
+		t.Fatal("GroupByMapped(nil) = nil, want empty non-nil map")
+	}
+	if len(grouped) != 0 {
+		t.Fatalf("len = %d, want 0", len(grouped))
+	}
+}

@@ -108,6 +108,56 @@ func (current Set[Member]) Difference(other Set[Member]) Set[Member] {
 	return remaining
 }
 
+// SymmetricDifference returns the set of members held by exactly one side.
+func (current Set[Member]) SymmetricDifference(other Set[Member]) Set[Member] {
+	differed := New[Member]()
+	for member := range current.members {
+		if !other.Has(member) {
+			differed.Add(member)
+		}
+	}
+	for member := range other.members {
+		if !current.Has(member) {
+			differed.Add(member)
+		}
+	}
+	return differed
+}
+
+// IsSubsetOf reports whether every member of current is held by other.
+func (current Set[Member]) IsSubsetOf(other Set[Member]) bool {
+	if len(current.members) > len(other.members) {
+		return false
+	}
+	for member := range current.members {
+		if !other.Has(member) {
+			return false
+		}
+	}
+	return true
+}
+
+// IsSupersetOf reports whether every member of other is held by current.
+func (current Set[Member]) IsSupersetOf(other Set[Member]) bool {
+	return other.IsSubsetOf(current)
+}
+
+// Overlaps reports whether current and other share any member.
+// It iterates the smaller side so the fewest Has probes run.
+func (current Set[Member]) Overlaps(other Set[Member]) bool {
+	smaller := current
+	larger := other
+	if len(smaller.members) > len(larger.members) {
+		smaller, larger = larger, smaller
+	}
+	for member := range smaller.members {
+		if larger.Has(member) {
+			return true
+		}
+	}
+	return false
+}
+
 // Members returns a snapshot slice of held members in unspecified order.
 // The snapshot is never nil: an empty set yields an empty slice.
 func (current Set[Member]) Members() []Member {

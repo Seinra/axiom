@@ -67,3 +67,49 @@ func Pick[Key comparable, Value any](entries map[Key]Value, keys ...Key) map[Key
 	}
 	return picked
 }
+
+// Omit returns a new map without the listed keys. Missing keys are ignored.
+// It is the complement of Pick.
+func Omit[Key comparable, Value any](entries map[Key]Value, keys ...Key) map[Key]Value {
+	excluded := make(map[Key]struct{}, len(keys))
+	for _, key := range keys {
+		excluded[key] = struct{}{}
+	}
+	omitted := make(map[Key]Value, len(entries))
+	for key, value := range entries {
+		if _, skip := excluded[key]; !skip {
+			omitted[key] = value
+		}
+	}
+	return omitted
+}
+
+// Invert groups keys by their shared value. Colliding values collect into a
+// slice instead of last-wins overwriting, so no key is silently dropped.
+func Invert[Key comparable, Value comparable](entries map[Key]Value) map[Value][]Key {
+	grouped := make(map[Value][]Key, len(entries))
+	for key, value := range entries {
+		grouped[value] = append(grouped[value], key)
+	}
+	return grouped
+}
+
+// ValueOr returns the value held for key, or fallback when key is absent.
+// It mirrors the Kotlin getOrDefault precedent.
+func ValueOr[Key comparable, Value any](entries map[Key]Value, key Key, fallback Value) Value {
+	if held, present := entries[key]; present {
+		return held
+	}
+	return fallback
+}
+
+// GroupByMapped groups valueOf(element) by keyOf(element).
+// It mirrors the Kotlin groupBy precedent with separate key and value transforms.
+func GroupByMapped[Element any, Key comparable, Value any](elements []Element, keyOf func(Element) Key, valueOf func(Element) Value) map[Key][]Value {
+	grouped := make(map[Key][]Value)
+	for _, element := range elements {
+		key := keyOf(element)
+		grouped[key] = append(grouped[key], valueOf(element))
+	}
+	return grouped
+}

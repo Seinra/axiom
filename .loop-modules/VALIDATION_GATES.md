@@ -33,3 +33,4 @@ Per-layer command tables + evidence rules. Run the narrowest scope first, then t
 - The independent verifier always runs before any native review of the same candidate.
 - Native review never runs on docs-only candidates (not designed for prose).
 - Commits proceed autonomously; pushes stay owner-gated (permission prompt).
+- Implementations go to bounded workers (owner 2026-10-20, context hygiene): one package per worker, disjoint Allowed edit surfaces, skills injected per unit; the orchestrator scopes, verifies, commits.

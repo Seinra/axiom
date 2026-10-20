@@ -222,3 +222,13 @@ func TestNewStoreRejectsShapedOrderColumn(t *testing.T) {
 		}
 	}
 }
+
+func TestNewStoreAcceptsDottedOrderColumn(t *testing.T) {
+	lessonStore, buildFailure := repogorm.NewStore[Lesson, uint](openTestDatabase(t), []any{Lesson{}}, "lessons.id")
+	if buildFailure != nil {
+		t.Fatalf("NewStore(dotted column): unexpected failure: %v", buildFailure)
+	}
+	if lessonStore == nil {
+		t.Fatal("NewStore(dotted column) = nil store, want non-nil")
+	}
+}

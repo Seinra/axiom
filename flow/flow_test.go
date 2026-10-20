@@ -158,6 +158,45 @@ func TestEachFirstFailureCancelsSiblings(t *testing.T) {
 	}
 }
 
+func TestMapSkipsUnstartedWorkAfterFailure(t *testing.T) {
+	// Drain contract: after the first failure, runners stop starting new
+	// work even when the transform ignores the context. In-flight
+	// context-ignoring transforms still run to completion, so extra work is
+	// bounded by the runner count and Map returns without hanging.
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	workerTotal := 4
+	inputTotal := 50
+	inputs := make([]int, inputTotal)
+	for position := range inputs {
+		inputs[position] = position
+	}
+	var started atomic.Int64
+	ignoring := func(taskContext context.Context, candidate int) (int, error) {
+		started.Add(1)
+		if candidate == 0 {
+			return 0, errFastFailure
+		}
+		// Ignores taskContext on purpose: proves unstarted work is still
+		// skipped (via the drain) while in-flight work completes.
+		time.Sleep(slowDelay)
+		return candidate, nil
+	}
+	began := time.Now()
+	_, mapFailure := flow.Map(active, inputs, workerTotal, ignoring)
+	cancelLatency := time.Since(began)
+	if !errors.Is(mapFailure, errFastFailure) {
+		t.Fatalf("Map failure = %v, want %v", mapFailure, errFastFailure)
+	}
+	if observed := started.Load(); observed > int64(workerTotal) {
+		t.Fatalf("Map started = %d, want <= %d", observed, workerTotal)
+	}
+	noHangCeiling := 5 * time.Second
+	if cancelLatency >= noHangCeiling {
+		t.Fatalf("Map cancel latency = %v, want < %v", cancelLatency, noHangCeiling)
+	}
+}
+
 func TestWorkerCountDefaultsWhenNotPositive(t *testing.T) {
 	active, cancelTask := contextWithTestTimeout(context.Background())
 	defer cancelTask()

@@ -18,7 +18,10 @@ import (
 )
 
 // Store is a GORM-backed repo.Repository. List order is deterministic: pages
-// always sort by the order column fixed at construction. The zero value is
+// always sort by the order column fixed at construction. The order column
+// should hold unique values (for example the primary key): rows tied on the
+// order column have no defined relative order, so pages over ties may shift
+// between calls. The zero value is
 // not usable: construct with NewStore. Store is safe for concurrent use
 // through the shared *gorm.DB handle.
 type Store[Record any, Identity comparable] struct {

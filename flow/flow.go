@@ -58,7 +58,13 @@ func normalizeWorkerCount(workerCount int, inputCount int) int {
 // The first transform failure cancels its siblings via context cancellation
 // and Map returns that failure (errgroup parity); sibling transforms must
 // honor the context, as shown in the package example, for prompt shutdown.
-// Every spawned runner joins through a WaitGroup on all paths, and no lock
+// Cancelled siblings stop starting new work: runners that observe the
+// cancellation drain their remaining positions without invoking transform,
+// so unstarted inputs never run after the first failure. A transform already
+// in flight still runs to completion (Go cannot preempt it), and a transform
+// that ignores the context runs to completion too — extra work stays bounded
+// by the runner count, never by the input length. Every spawned runner joins
+// through a WaitGroup on all paths, and no lock
 // is held while transform runs.
 func Map[Input any, Output any](active context.Context, inputs []Input, workerCount int, transform func(context.Context, Input) (Output, error)) ([]Output, error) {
 	if active.Err() != nil {

@@ -88,10 +88,18 @@ func Provide[Service any](injector *Injector, serviceName string, constructor fu
 
 // Invoke resolves the singleton for serviceName, running its constructor once
 // on first use and returning the cached value afterwards. A missing name
-// reports ErrServiceNotFound. A failing build propagates the constructor
+// reports ErrServiceNotFound. Invoking on a nil Injector reports the same
+// ErrServiceNotFound sentinel (no container holds no service): distinguish
+// the two cases with errors.Is plus the message text ("nil Injector" versus
+// "unknown service"). A failing build propagates the constructor
 // failure without caching, so the next Invoke retries. Concurrent Invokes for
 // one service share a single build: the table lock guards only the lookup and
 // the publish, never the constructor run.
+//
+// A panicking build resets the entry so the next Invoke retries, and every
+// concurrent waiter retries and re-runs the constructor instead of receiving
+// the panic payload directly: each caller still panics with the same payload,
+// but the constructor may execute once per caller under concurrency.
 func Invoke[Service any](injector *Injector, serviceName string) (Service, error) {
 	var empty Service
 	if injector == nil {
@@ -150,7 +158,10 @@ func abandonBuild(injector *Injector, entry *serviceEntry, settled chan struct{}
 // invokeBuild runs build outside the table lock, resetting the entry and
 // waking waiters before re-panicking when build panics. Without the reset,
 // waiters would block forever on a channel that never closes: every caller
-// panics with the same payload instead of hanging.
+// panics with the same payload instead of hanging. Waiters wake, retry, and
+// re-run the constructor (retry-then-panic contract), so under concurrency
+// the constructor may execute once per caller; the entry stays reusable and
+// the next Invoke after the storm retries instead of sticking.
 func invokeBuild(injector *Injector, entry *serviceEntry, settled chan struct{}, build func(*Injector) (any, error)) (built any, constructionFailure error) {
 	defer func() {
 		if payload := recover(); payload != nil {

@@ -143,3 +143,39 @@ func TestListResponseCarriesItemsPageTotal(t *testing.T) {
 		t.Fatalf("ListResponse Total = %d, want 5", decoded.Total)
 	}
 }
+
+// TestResponseStructZeroDataIsRetained pins the envelope contract: a zero
+// struct Body still emits the data key, so struct Bodies never collapse.
+func TestResponseStructZeroDataIsRetained(t *testing.T) {
+	encoded, encodeFailure := json.Marshal(httpx.Response[personPayload]{Data: personPayload{}})
+	if encodeFailure != nil {
+		t.Fatalf("marshal struct-zero envelope: unexpected failure: %v", encodeFailure)
+	}
+	if !strings.Contains(string(encoded), `"data"`) {
+		t.Fatalf("struct-zero envelope = %s, want a data key", string(encoded))
+	}
+}
+
+// TestResponseScalarZeroDataOmitsKey pins the envelope contract: a scalar
+// zero Body (0, "", false) encodes with no data key under omitempty.
+func TestResponseScalarZeroDataOmitsKey(t *testing.T) {
+	encoded, encodeFailure := json.Marshal(httpx.Response[int]{Data: 0})
+	if encodeFailure != nil {
+		t.Fatalf("marshal int-zero envelope: unexpected failure: %v", encodeFailure)
+	}
+	if string(encoded) != "{}" {
+		t.Fatalf("int-zero envelope = %s, want {} (keyless zero value)", string(encoded))
+	}
+}
+
+// TestFailEnvelopeOmitsDataKey pins that failure envelopes carry no data
+// key: a nil any Data is omitted, never encoded as null.
+func TestFailEnvelopeOmitsDataKey(t *testing.T) {
+	encoded, encodeFailure := json.Marshal(httpx.Response[any]{Error: "bad input"})
+	if encodeFailure != nil {
+		t.Fatalf("marshal fail envelope: unexpected failure: %v", encodeFailure)
+	}
+	if string(encoded) != `{"error":"bad input"}` {
+		t.Fatalf("fail envelope = %s, want exactly an error key", string(encoded))
+	}
+}

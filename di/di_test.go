@@ -2,6 +2,7 @@ package di_test
 
 import (
 	"errors"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -94,6 +95,31 @@ func TestMissingNameReportsNotFound(t *testing.T) {
 	}
 	if !errors.Is(invokeFailure, di.ErrServiceNotFound) {
 		t.Fatalf("Invoke failure = %v, want ErrServiceNotFound", invokeFailure)
+	}
+}
+
+func TestInvokeOnNilInjectorReportsNotFound(t *testing.T) {
+	// Contract: no container holds no service, so a nil Injector reports the
+	// same ErrServiceNotFound sentinel as an unknown name. The message text
+	// ("nil Injector" versus "unknown service") tells the two apart.
+	var nilInjector *di.Injector
+	_, invokeFailure := di.Invoke[ledgerService](nilInjector, "ledger")
+	if invokeFailure == nil {
+		t.Fatal("Invoke on nil failure = nil, want ErrServiceNotFound")
+	}
+	if !errors.Is(invokeFailure, di.ErrServiceNotFound) {
+		t.Fatalf("Invoke on nil failure = %v, want ErrServiceNotFound", invokeFailure)
+	}
+	if got := invokeFailure.Error(); !strings.Contains(got, "nil Injector") {
+		t.Fatalf("Invoke on nil failure = %q, want message to name nil Injector", got)
+	}
+	missingInjector := di.New()
+	_, missingFailure := di.Invoke[ledgerService](missingInjector, "ledger")
+	if !errors.Is(missingFailure, di.ErrServiceNotFound) {
+		t.Fatalf("Invoke missing failure = %v, want ErrServiceNotFound", missingFailure)
+	}
+	if got := missingFailure.Error(); !strings.Contains(got, "unknown service") {
+		t.Fatalf("Invoke missing failure = %q, want message to name unknown service", got)
 	}
 }
 
@@ -254,5 +280,82 @@ func TestPanickingConstructorPanicsAllWaiters(t *testing.T) {
 		if payload != "boom" {
 			t.Fatalf("caller %d panic payload = %v, want boom", position, payload)
 		}
+	}
+}
+
+func TestPanickingConstructorRunsOncePerCaller(t *testing.T) {
+	// Retry-then-panic contract: waiters woken by the panic reset retry and
+	// re-run the constructor instead of receiving the payload directly, so
+	// with callerTotal concurrent callers the constructor runs callerTotal
+	// times and every caller still panics with the same payload.
+	const callerTotal = 8
+	boomInjector := di.New()
+	var builds atomic.Int64
+	provideFailure := di.Provide(boomInjector, "boom", func(active *di.Injector) (auditService, error) {
+		builds.Add(1)
+		panic("boom")
+	})
+	if provideFailure != nil {
+		t.Fatalf("Provide boom failure = %v, want nil", provideFailure)
+	}
+	var waiterGroup sync.WaitGroup
+	startSignal := make(chan struct{})
+	panics := make([]any, callerTotal)
+	for position := range callerTotal {
+		waiterGroup.Add(1)
+		go func() {
+			defer waiterGroup.Done()
+			defer func() {
+				panics[position] = recover()
+			}()
+			<-startSignal
+			_ = di.MustInvoke[auditService](boomInjector, "boom")
+		}()
+	}
+	close(startSignal)
+	waiterGroup.Wait()
+	for position, payload := range panics {
+		if payload != "boom" {
+			t.Fatalf("caller %d panic payload = %v, want boom", position, payload)
+		}
+	}
+	if builds.Load() != callerTotal {
+		t.Fatalf("constructor calls = %d, want %d (once per caller)", builds.Load(), callerTotal)
+	}
+}
+
+func TestPanickingConstructorRetriesUntilSuccess(t *testing.T) {
+	// The panic reset leaves the entry reusable: after panics stop, the next
+	// Invoke builds and caches normally instead of sticking.
+	flakyInjector := di.New()
+	var builds atomic.Int64
+	provideFailure := di.Provide(flakyInjector, "flaky", func(active *di.Injector) (ledgerService, error) {
+		if builds.Add(1) <= 2 {
+			panic("boom")
+		}
+		return ledgerService{Balance: 99}, nil
+	})
+	if provideFailure != nil {
+		t.Fatalf("Provide flaky failure = %v, want nil", provideFailure)
+	}
+	for attempt := 1; attempt <= 2; attempt++ {
+		panicked := func() (didPanic any) {
+			defer func() { didPanic = recover() }()
+			_, _ = di.Invoke[ledgerService](flakyInjector, "flaky")
+			return nil
+		}()
+		if panicked != "boom" {
+			t.Fatalf("attempt %d panic payload = %v, want boom", attempt, panicked)
+		}
+	}
+	fetched, invokeFailure := di.Invoke[ledgerService](flakyInjector, "flaky")
+	if invokeFailure != nil {
+		t.Fatalf("third Invoke failure = %v, want nil", invokeFailure)
+	}
+	if fetched.Balance != 99 {
+		t.Fatalf("third Invoke Balance = %d, want 99", fetched.Balance)
+	}
+	if builds.Load() != 3 {
+		t.Fatalf("constructor calls = %d, want 3 (two panics then cached success)", builds.Load())
 	}
 }

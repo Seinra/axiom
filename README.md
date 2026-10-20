@@ -28,7 +28,7 @@ One small, dependable generics library at Echo-level quality: typed helpers for 
 | Topic | Decision |
 | --- | --- |
 | Module / toolchain | `github.com/seinra/axiom`, `go 1.27` (generic methods on concrete types; no generic interface methods) |
-| Ships now | `result` (Result[T], Ok/Fail/Unwrap/Must/Map), `opt` (Option[T], Some/None/ValueOr/MapOption), `slice` (Map/Filter/Reduce/Find/GroupBy) |
+| Ships now (14 pkgs) | `result`, `opt`, `slice`, `set`, `mapx`, `iterx`, `valid`, `singleflight`, `pool`, `di`, `repo` (+GORM adapter `repogorm`), `httpx` (Echo v5), `flow` — see `.loop-modules/ARCHITECTURE.md` for the map; every package ships godoc + tests green |
 | Rules | stdlib-first (`slices`/`maps`/`cmp`/`iter` before hand-rolled); typed API, `any` only at codec edges; grep-able names (no `data`/`item`/`req`/`res`); godoc + example on every export |
 | Loop | `AXIOM_LOOP.md` + `.loop-modules/` + `VISION.md` + `loop-config.yaml`; ODD-tracked in `odd/tasks/` |
 | Declared future | `mapx`, `set`, `iterx`, concurrency (fan-in/out, pipeline, worker pool), `pool`, `singleflight`, `di`, `repo` (GORM), `httpx` (Echo), `valid` — see `.loop-modules/ARCHITECTURE.md` |

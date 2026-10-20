@@ -37,6 +37,12 @@ Owner principles 2026-10-20: (1) human readability first, students, pre-v0 windo
 | `result.Must` | KEEP + contrast table | Go `Must*` convention; table Must/MustResolve/Try | docs only |
 | `New`×9 | KEEP + constructor guide | Go convention, qualified reads fine | docs only |
 | Package names (`di/opt/httpx/…`) | KEEP | ecosystem precedent (`lo/mo/do`); import churn too big | — |
+
+## Bounds sign-off (owner, R3 — cierra R4-001/R4-002)
+
+| Decision | Sign-off |
+|---|---|
+| `slice.Chunked/Windows` y `iterx.ChunkedSeq/WindowsSeq` panic en `size <= 0` (paridad stdlib `slices.Chunk`); oversize/empty siguen empty | owner 2026-10-20 L7: "Panic como stdlib, rompo tests" |
 | Other type params | KEEP | `T` universal; rest positional-but-harmless; document | docs only |
 | bare-`any` publics | KEEP + document | GORM-forced + envelope; revisit at v0 | docs only |
 | Seeding verbs | KEEP + mapping table | five verbs, one table | docs only |
@@ -79,3 +85,5 @@ Opinion: adopt the consensus in `flow.Map/Race` — recover per runner, latch th
 - L4 (2026-10-20, R2 DONE inline): writers rechazados por gateway (exige Spec T<n>, ordenó inline sin reintento); fallback inline con skills leídos (foundry+craft-floor, foundry-testing, cognitive-doc-design); 16 files +340/-332 commit 70955f4 en feat/axiom-rename-readability; evidencia suite 15 pkgs ok, vet 0, gofmt clean, cero refs viejas; slice 672 líneas >400 heuristic — R3 abre slice nuevo.
 - L4b (2026-10-20, corrección L4): el slice real es 675 líneas (medición nativa frozen: original_changed_lines 675), no 672.
 - L5 (2026-10-20, R4 review quemado): native review-3adf1ae846c2a550 APPROVED + burned (readability, 18 files/675 líneas, 3 advisories informativas R2-001/002/003); verifier Go con 8 SUGGESTIONs aplicadas en 7c4de71 (39+/39-, strings/tests/docs, verificado httpx/either/result/di ok); ValidationFail→ValidationWriteError fue follow-through consistente no listado en R0 — pendiente confirmación explícita del owner; push/PR owner-gated.
+- L6 (2026-10-20, owner verbatim): ante "¿Lo confirmo retroactivamente?" eligió "Sí, confirmar fila" — ValidationWriteError queda en tabla R0.
+- L7 (2026-10-20, owner verbatim, cierra R4-001/R4-002): ante "¿Qué hago?" eligió "Panic como stdlib, rompo tests" — panic en size<=0 es conducta pedida y firmada (ventana pre-v0), no regresión.

@@ -46,6 +46,11 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-20 | P0 complete (5 workers) | IMPLEMENT | slice 17 ops + iterx 9 adapters + set/mapx extras + opt/result FP; parent spot-checked all (TakeWhile honesty, ZipSeq pairing, OrElse rename, set swap, Chunked copies), suites/vet/gofmt green |
 | 2026-10-20 | P0 opt/result/set/mapx (2 workers) | IMPLEMENT | 9 FP combinators + set/mapx extras with ran-flag proofs; parent renamed OrElse recover→handleFailure (builtin shadow), spot-checked set ops, re-ran suites/vet/gofmt green |
 | 2026-10-20 | P2 gate re-gated stdlib-gap + teachable | PLAN | owner decision gate-stdlib-ensenable (Engram axiom/p2/gate-stdlib-ensenable): P2 enters on stdlib gap + DLC-teachable, no Catalyst production use required; supersedes Catalyst-use-case gate |
+| 2026-10-20 | T1 guides + OrNull baseline (worker mvgxzoez-1-iez5) | IMPLEMENT | parent-verified docs-only (118 insertions, 7 surfaces, build/doc/gofmt OK); committed 33f40bb; no native review per docs rule |
+| 2026-10-20 | T2 slice SortBy+Scan (worker mvgy2wu3-2-spdf) | IMPLEMENT | parent fix SortBy to SortedStableFunc (stdlib-first); suite+lint green; committed 725c493 |
+| 2026-10-20 | T3 result/mapx/set (worker mvgy2wu4-3-ttiu) | IMPLEMENT | parent fix IsDisjoint to method shape; UnwrapOrElse zero-routing accepted; suite+lint green; committed db20ebc |
+| 2026-10-20 | T4 iterx lazy block (worker mvgy2wu4-4-0b2v) | IMPLEMENT | parent-verified (laziness pins, mirrors); -race+lint green; committed 607acb1 |
+| 2026-10-20 | T5a either + T5b Race (workers mvgy2wu4-5-fvxk, mvgy2wu5-6-gbxh) | IMPLEMENT | parent-verified; Race refactored to raceRunner (gocyclo); -race+lint green; committed c1264b3, 8d7ee0d |
 
 ## Debt ledger
 

@@ -30,3 +30,8 @@ Thumbs.db
 # Harness state: keys are secrets (ban 2), caches are local
 .crystallize/keys/
 .atl/.skill-registry.cache.json
+
+# Local search/code indexes (regenerable, never commit)
+.zvec-grep/
+.codegraph/
+.crystallize/raw/

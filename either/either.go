@@ -37,38 +37,38 @@ import (
 	"github.com/seinra/axiom/result"
 )
 
-// Either holds exactly one of two typed sides: a Left of type Left or a
-// Right of type Right. The zero value is a Left holding the zero Left value,
+// Either holds exactly one of two typed sides: a Left of type L or a
+// Right of type R. The zero value is a Left holding the zero L value,
 // so a declared Either without a constructor still reads as Left.
-type Either[Left, Right any] struct {
-	leftSide  Left
-	rightSide Right
+type Either[L, R any] struct {
+	leftSide  L
+	rightSide R
 	isRight   bool
 }
 
 // Left holds leftSide as the Left side.
-func Left[Left, Right any](leftSide Left) Either[Left, Right] {
-	return Either[Left, Right]{leftSide: leftSide}
+func Left[L, R any](leftSide L) Either[L, R] {
+	return Either[L, R]{leftSide: leftSide}
 }
 
 // Right holds rightSide as the Right side.
-func Right[Left, Right any](rightSide Right) Either[Left, Right] {
-	return Either[Left, Right]{rightSide: rightSide, isRight: true}
+func Right[L, R any](rightSide R) Either[L, R] {
+	return Either[L, R]{rightSide: rightSide, isRight: true}
 }
 
 // IsLeft reports whether current holds the Left side.
-func (current Either[Left, Right]) IsLeft() bool {
+func (current Either[L, R]) IsLeft() bool {
 	return !current.isRight
 }
 
 // IsRight reports whether current holds the Right side.
-func (current Either[Left, Right]) IsRight() bool {
+func (current Either[L, R]) IsRight() bool {
 	return current.isRight
 }
 
 // Bifold splits current into one outcome: onLeft runs for a Left,
 // onRight runs for a Right. Exactly one branch runs.
-func Bifold[Left, Right any, Outcome any](current Either[Left, Right], onLeft func(Left) Outcome, onRight func(Right) Outcome) Outcome {
+func Bifold[L, R any, Outcome any](current Either[L, R], onLeft func(L) Outcome, onRight func(R) Outcome) Outcome {
 	if current.isRight {
 		return onRight(current.rightSide)
 	}
@@ -77,36 +77,36 @@ func Bifold[Left, Right any, Outcome any](current Either[Left, Right], onLeft fu
 
 // Map transforms the Right side with transform, carrying a Left through untouched.
 // The Rust map precedent for the favoured side, without favouring either side here.
-func Map[Left, Right any, Transformed any](current Either[Left, Right], transform func(Right) Transformed) Either[Left, Transformed] {
+func Map[L, R any, Transformed any](current Either[L, R], transform func(R) Transformed) Either[L, Transformed] {
 	if current.isRight {
-		return Either[Left, Transformed]{rightSide: transform(current.rightSide), isRight: true}
+		return Right[L, Transformed](transform(current.rightSide))
 	}
-	return Either[Left, Transformed]{leftSide: current.leftSide}
+	return Left[L, Transformed](current.leftSide)
 }
 
 // MapLeft transforms the Left side with transform, carrying a Right through untouched.
 // Mirrors Map for the other side: a Right never runs transform.
-func MapLeft[Left, Right any, Transformed any](current Either[Left, Right], transform func(Left) Transformed) Either[Transformed, Right] {
+func MapLeft[L, R any, Transformed any](current Either[L, R], transform func(L) Transformed) Either[Transformed, R] {
 	if current.isRight {
-		return Either[Transformed, Right]{rightSide: current.rightSide, isRight: true}
+		return Right[Transformed, R](current.rightSide)
 	}
-	return Either[Transformed, Right]{leftSide: transform(current.leftSide)}
+	return Left[Transformed, R](transform(current.leftSide))
 }
 
 // Swap exchanges the two sides: a Left becomes a Right holding the same
 // payload and a Right becomes a Left holding the same payload.
-func (current Either[Left, Right]) Swap() Either[Right, Left] {
+func (current Either[L, R]) Swap() Either[R, L] {
 	if current.isRight {
-		return Either[Right, Left]{leftSide: current.rightSide}
+		return Left[R, L](current.rightSide)
 	}
-	return Either[Right, Left]{rightSide: current.leftSide, isRight: true}
+	return Right[R, L](current.leftSide)
 }
 
 // ToResult bridges current into a result.Result: a Right becomes Ok, a Left
 // becomes Fail with failureOf applied to the held Left side.
-func ToResult[Left, Right any](current Either[Left, Right], failureOf func(Left) error) result.Result[Right] {
+func ToResult[L, R any](current Either[L, R], failureOf func(L) error) result.Result[R] {
 	if current.isRight {
 		return result.Ok(current.rightSide)
 	}
-	return result.Fail[Right](failureOf(current.leftSide))
+	return result.Fail[R](failureOf(current.leftSide))
 }

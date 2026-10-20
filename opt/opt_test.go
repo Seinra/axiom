@@ -250,3 +250,31 @@ func TestFlattenTable(t *testing.T) {
 		})
 	}
 }
+
+func TestFlattenZeroNestingTable(t *testing.T) {
+	const fallbackValue = 99
+	testCases := []struct {
+		name    string
+		current opt.Option[opt.Option[int]]
+	}{
+		{
+			name:    "zero outer yields none",
+			current: opt.Option[opt.Option[int]]{},
+		},
+		{
+			name:    "some of zero inner yields none",
+			current: opt.Some(opt.Option[int]{}),
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			flattened := opt.Flatten(testCase.current)
+			if flattened.IsSome() {
+				t.Fatal("Flatten IsSome = true, want false")
+			}
+			if outcome := flattened.ValueOr(fallbackValue); outcome != fallbackValue {
+				t.Fatalf("Flatten ValueOr = %d, want fallback %d", outcome, fallbackValue)
+			}
+		})
+	}
+}

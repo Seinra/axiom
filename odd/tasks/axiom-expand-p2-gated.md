@@ -38,3 +38,6 @@ Stdlib-gap + teachable expansion of done packages plus either/Race, in owner-app
 - L13 (2026-10-20): delivery — non-goals persistidos, rama pusheada, issues #14 (feature) + #15 (docs polish) + #16 (flatten) + #17 (race) + #18 (either) creados con read-back confirmado; pendiente aprobación de #14 para PR.
 - L14 (2026-10-20): PR #19 abierto (Closes #14 aprobado por owner, label type:feature) — CI validate+verify en verde; merge a decisión del owner.
 - L15 (2026-10-20): PR #19 mergeado por orden del owner (merge commit); #14 autocerrado por Closes; #15-18 quedan abiertos como follow-ups.
+- L16 (2026-10-20): followups #16/#17/#18/#15 implementados en feat/axiom-followups (5 commits) y quemados en un review (lineage review-f031ddd0033b51d4, readability+reliability, APPROVED + burned; reliability con 1 reintento por timeout del relay; 3 informativas parkeadas sobre flow_test). Issues #15-18 cerrados.
+- L17 (2026-10-20): nit de readability en flow_test quemado en segundo review (lineage review-8dad1ade0ec45460, APPROVED + burned sin reintentos; 2 informativas nuevas parkeadas: R2-hidden-coupling WARNING y R3-flow-test-timing SUGGESTION).
+- L18 (2026-10-20): delivery followups — rama pusheada, PR #21 (Closes #15 aprobada, type:feature), CI validate+verify en verde; merge a decisión del owner.

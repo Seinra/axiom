@@ -11,19 +11,19 @@
 // Which function?
 //
 // | When you want to ...           | Reach for ... |
-// |-------------------------------|-----------------|
-// | Index a slice by key          | KeyBy           |
-// | Group values by key           | GroupByMapped   |
-// | Keep only matching entries    | Filter          |
-// | Keep only matching keys       | FilterKeys      |
-// | Keep only matching values     | FilterValues    |
-// | Transform every value         | MapValues       |
-// | Remap every key               | MapKeys         |
-// | Combine two maps              | Merge           |
-// | Keep only listed keys         | Pick            |
-// | Drop listed keys              | Omit            |
-// | Flip values into key groups   | Invert          |
-// | Read with an explicit fallback| ValueOr         |
+// |--------------------------------|---------------|
+// | Index a slice by key           | KeyBy         |
+// | Group values by key            | GroupByMapped |
+// | Keep only matching entries     | Filter        |
+// | Keep only matching keys        | FilterKeys    |
+// | Keep only matching values      | FilterValues  |
+// | Transform every value          | MapValues     |
+// | Remap every key                | MapKeys       |
+// | Combine two maps               | Merge         |
+// | Keep only listed keys          | Pick          |
+// | Drop listed keys               | Omit          |
+// | Flip values into key groups    | Invert        |
+// | Read with an explicit fallback | ValueOr       |
 package mapx
 
 // KeyBy indexes elements by keyOf. On key collision the last element wins.

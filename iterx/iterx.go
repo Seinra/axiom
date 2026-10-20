@@ -10,24 +10,24 @@
 //
 // Which function?
 //
-// | When you want to ...                          | Reach for ...           |
-// |------------------------------------------------|-------------------------|
-// | Transform elements lazily                      | MapSeq                  |
-// | Keep matching elements lazily                  | FilterSeq               |
-// | Map and flatten in one lazy pass               | FlatMapSeq / FlattenSeq |
-// | Keep / skip the first count                    | Take / Drop             |
-// | Keep / skip while a condition holds            | TakeWhile / DropWhile   |
-// | Pair positions / pair two sequences            | Enumerate / ZipSeq      |
-// | Observe elements without changing flow         | TapSeq                  |
-// | Repeat one value / cycle a slice (bound with Take) | Repeat / Cycle       |
-// | Collapse adjacent duplicates                   | DedupSeq                |
-// | Unfold evolving state into values              | Unfold                  |
-// | Generate values until a stop                   | Generate                |
-// | Map and keep only some results                 | FilterMapSeq            |
-// | Fixed chunks, last short (slice.Chunked)       | ChunkedSeq              |
-// | Sliding windows (slice.Windows)                | WindowsSeq              |
-// | Slot a separator between elements              | IntersperseSeq          |
-// | Concatenate sequences in order                 | Chain                   |
+// | When you want to ...                               | Reach for ...           |
+// |----------------------------------------------------|-------------------------|
+// | Transform elements lazily                          | MapSeq                  |
+// | Keep matching elements lazily                      | FilterSeq               |
+// | Map and flatten in one lazy pass                   | FlatMapSeq / FlattenSeq |
+// | Keep / skip the first count                        | Take / Drop             |
+// | Keep / skip while a condition holds                | TakeWhile / DropWhile   |
+// | Pair positions / pair two sequences                | Enumerate / ZipSeq      |
+// | Observe elements without changing flow             | TapSeq                  |
+// | Repeat one value / cycle a slice (bound with Take) | Repeat / Cycle          |
+// | Collapse adjacent duplicates                       | DedupSeq                |
+// | Unfold evolving state into values                  | Unfold                  |
+// | Generate values until a stop                       | Generate                |
+// | Map and keep only some results                     | FilterMapSeq            |
+// | Fixed chunks, last short (slice.Chunked)           | ChunkedSeq              |
+// | Sliding windows (slice.Windows)                    | WindowsSeq              |
+// | Slot a separator between elements                  | IntersperseSeq          |
+// | Concatenate sequences in order                     | Chain                   |
 package iterx
 
 import "iter"
@@ -270,17 +270,10 @@ func DedupSeq[Element comparable](sequence iter.Seq[Element]) iter.Seq[Element] 
 // Unfold builds a sequence from evolving state: following maps the current
 // state to an element plus the next state, stopping when ok is false.
 //
-// Example: Unfold(1, func(current int) (int, int, bool) {
-//
-//	if current > 3 {
-//
-//		return 0, 0, false
-//
-//	}
-//
-//	return current, current+1, true
-//
-// }) yields 1, 2, 3.
+//	Example: Unfold(1, func(current int) (int, int, bool) {
+//	  if current > 3 { return 0, 0, false }
+//	  return current, current+1, true
+//	}) yields 1, 2, 3.
 //
 // Nothing runs until ranged; breaking early stops calling following, and
 // re-ranging restarts from initial.
@@ -303,19 +296,11 @@ func Unfold[State any, Element any](initial State, following func(State) (elemen
 // Generate builds a sequence by calling produce for each element, stopping
 // when ok is false.
 //
-// Example: with candidate starting at 0, Generate(func() (int, bool) {
-//
-//	candidate++
-//
-//	if candidate > 2 {
-//
-//		return 0, false
-//
-//	}
-//
-//	return candidate, true
-//
-// }) yields 1, 2.
+//	Example: with candidate starting at 0, Generate(func() (int, bool) {
+//	  candidate++
+//	  if candidate > 2 { return 0, false }
+//	  return candidate, true
+//	}) yields 1, 2.
 //
 // Nothing runs until ranged: Take(Generate(produce), count) calls produce
 // exactly count times, and re-ranging restarts the calls.
@@ -336,17 +321,10 @@ func Generate[Element any](produce func() (element Element, ok bool)) iter.Seq[E
 // FilterMapSeq maps each element of sequence and keeps only the mappings
 // where keep is true, preserving order.
 //
-// Example: FilterMapSeq(values, func(candidate int) (int, bool) {
-//
-//	if candidate%2 != 0 {
-//
-//		return 0, false
-//
-//	}
-//
-//	return candidate * 10, true
-//
-// }) keeps the doubled even inputs.
+//	Example: FilterMapSeq(values, func(candidate int) (int, bool) {
+//	  if candidate%2 != 0 { return 0, false }
+//	  return candidate*10, true
+//	}) keeps the doubled even inputs.
 //
 // Transform runs lazily as the caller pulls; breaking early stops pulling
 // the source, and re-ranging re-runs from the source.

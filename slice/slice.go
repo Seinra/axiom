@@ -7,23 +7,23 @@
 //
 // Which function?
 //
-// | When you want to ...                  | Reach for ...               |
-// |----------------------------------------|-----------------------------|
-// | Transform every element                | MapSlice / MapIndexed       |
-// | Keep only matching elements            | FilterSlice / FilterIndexed |
-// | Fold to one value                      | ReduceSlice / Sum           |
-// | Find the first match                   | FindSlice                 |
-// | Smallest / largest, plain or by key    | Min / Max / MinBy / MaxBy   |
-// | Mean of numbers                        | Average                   |
-// | Bucket elements by key                 | GroupBySlice / Counts       |
-// | Map each element to a slice, then join | FlatMap / Flatten           |
-// | Fixed chunks / sliding windows         | Chunked / Windows           |
-// | Pair two slices / split pairs back     | Zip / Unzip (see Pair)      |
-// | Drop later duplicates                  | Distinct                  |
-// | Split into matching plus rest          | Partition                 |
-// | Slot a separator between elements      | Intersperse               |
-// | Sort a copy by key, ties keep order    | SortBy                      |
-// | Running folds element by element       | Scan                        |
+// | When you want to ...                      | Reach for ...               |
+// |-------------------------------------------|-----------------------------|
+// | Transform every element                   | MapSlice / MapIndexed       |
+// | Keep only matching elements               | FilterSlice / FilterIndexed |
+// | Fold to one value                         | ReduceSlice / Sum           |
+// | Find the first match                      | FindSlice                   |
+// | Smallest / largest, plain or by key       | Min / Max / MinBy / MaxBy   |
+// | Mean of numbers                           | Average                     |
+// | Bucket elements by key                    | GroupBySlice / Counts       |
+// | Map each element to a slice, then join    | FlatMap / Flatten           |
+// | Fixed chunks / sliding windows            | Chunked / Windows           |
+// | Pair two slices / split pairs back        | Zip / Unzip (see Pair)      |
+// | Drop later duplicates                     | Distinct                    |
+// | Split into matching plus rest             | Partition                   |
+// | Insert a separator between elements       | Intersperse                 |
+// | Sort a copy by key, ties keep input order | SortBy                      |
+// | Running folds element by element          | Scan                        |
 //
 // The (value, bool) return on FindSlice, Min, Max, MinBy, MaxBy, and
 // Average is this package's OrNull: the bool reports presence and the

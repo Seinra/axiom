@@ -8,15 +8,15 @@
 //
 // Which function?
 //
-// | When you want to ...           | Reach for ...                                  |
-// |-------------------------------|----------------------------------------------|
-// | Start empty / start with values | New / Of                                   |
-// | Add / drop / reset members    | Add / Remove / Clear                       |
-// | Ask membership or size        | Has / Len / IsEmpty                        |
-// | Merge holdings                | Union / Intersection / Difference / SymmetricDifference |
-// | Compare holdings              | Equal / IsSubsetOf / IsSupersetOf / Overlaps |
-// | Ask whether holdings share nothing | IsDisjoint                         |
-// | Snapshot or transform members | Members / MapValue                         |
+// | When you want to ...               | Reach for ...                                           |
+// |------------------------------------|---------------------------------------------------------|
+// | Start empty / start with values    | New / Of                                                |
+// | Add / drop / reset members         | Add / Remove / Clear                                    |
+// | Ask membership or size             | Has / Len / IsEmpty                                     |
+// | Merge holdings                     | Union / Intersection / Difference / SymmetricDifference |
+// | Compare holdings                   | Equal / IsSubsetOf / IsSupersetOf / Overlaps            |
+// | Ask whether holdings share nothing | IsDisjoint                                              |
+// | Snapshot or transform members      | Members / MapValue                                      |
 package set
 
 // Set holds distinct members of type Member.

@@ -682,7 +682,7 @@ func TestSortByOrdersByKey(t *testing.T) {
 		{scenario: "unsorted orders ascending", input: []int{3, 1, 2}, expected: []int{1, 2, 3}},
 		{scenario: "already sorted stays ordered", input: []int{1, 2, 3}, expected: []int{1, 2, 3}},
 		{scenario: "reversed orders ascending", input: []int{5, 4, 3, 2, 1}, expected: []int{1, 2, 3, 4, 5}},
-		{scenario: "duplicates collapse in order", input: []int{2, 1, 2, 1}, expected: []int{1, 1, 2, 2}},
+		{scenario: "duplicates sort in order", input: []int{2, 1, 2, 1}, expected: []int{1, 1, 2, 2}},
 		{scenario: "singleton stays singleton", input: []int{7}, expected: []int{7}},
 	}
 	for _, testCase := range testCases {

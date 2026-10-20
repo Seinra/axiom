@@ -480,3 +480,58 @@ func TestRace(t *testing.T) {
 		})
 	}
 }
+
+func TestRaceFirstWinSticksWithContextIgnoringSiblings(t *testing.T) {
+	// Champion-latch contract: the fast champion claims the win once, and
+	// slower context-ignoring siblings that finish afterward must not
+	// overwrite it. Runners exit after their first success, so starts stay
+	// bounded by the runner count while in-flight context-ignoring work
+	// still runs to completion and unstarted work is skipped via the drain.
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	workerTotal := 4
+	inputTotal := 20
+	championCandidate := 0
+	// championDelay lets every runner start yet stays strictly below
+	// siblingDelay, so the champion always wins first and siblings arrive
+	// late enough to exercise the latch.
+	championDelay := 2 * staggerStep
+	siblingDelay := slowDelay
+	inputs := make([]int, inputTotal)
+	for position := range inputs {
+		inputs[position] = position
+	}
+	var started atomic.Int64
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		started.Add(1)
+		if candidate == championCandidate {
+			// Brief head start for the remaining runners; still strictly
+			// first, so sibling completions below become late latch claims.
+			time.Sleep(championDelay)
+			return championCandidate, nil
+		}
+		// Ignores taskContext on purpose: proves the champion latch holds
+		// and unstarted work is still skipped (via the drain) while
+		// in-flight work completes.
+		time.Sleep(siblingDelay)
+		return candidate * outputFactor, nil
+	}
+	began := time.Now()
+	winner, raceFailure := flow.Race(active, inputs, workerTotal, transform)
+	raceLatency := time.Since(began)
+	if raceFailure != nil {
+		t.Fatalf("Race failure = %v, want nil", raceFailure)
+	}
+	if winner != championCandidate {
+		t.Fatalf("Race winner = %v, want %v", winner, championCandidate)
+	}
+	if observed := started.Load(); observed > int64(workerTotal) {
+		t.Fatalf("Race started = %d, want <= %d", observed, workerTotal)
+	}
+	// Prompt return: well above siblingDelay so in-flight work can finish,
+	// well below the test timeout so hanging on siblings would fail.
+	winLatencyCeiling := 2 * time.Second
+	if raceLatency >= winLatencyCeiling {
+		t.Fatalf("Race latency = %v, want < %v", raceLatency, winLatencyCeiling)
+	}
+}

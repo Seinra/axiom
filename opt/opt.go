@@ -7,19 +7,19 @@
 //
 // Which function?
 //
-// | When you want to ...             | Reach for ...        |
-// |-------------------------------|----------------------|
-// | Hold a present value          | Some                 |
-// | Express absence               | None                 |
-// | Ask whether a value is held   | IsSome               |
-// | Read with an explicit fallback| ValueOr              |
-// | Read with a lazy fallback     | ValueOrElse          |
-// | Transform the held value      | MapOption / MapValue |
-// | Chain to the next Option      | AndThen              |
-// | Collapse one nesting level      | Flatten              |
-// | Fall back to another Option   | OrElse               |
-// | Keep the value only when it fits | Filter            |
-// | Convert absence into a failure| ToResult (see result)|
+// | When you want to ...             | Reach for ...         |
+// |----------------------------------|-----------------------|
+// | Hold a present value             | Some                  |
+// | Express absence                  | None                  |
+// | Ask whether a value is held      | IsSome                |
+// | Read with an explicit fallback   | ValueOr               |
+// | Read with a lazy fallback        | ValueOrElse           |
+// | Transform the held value         | MapOption / MapValue  |
+// | Chain to the next Option         | AndThen               |
+// | Collapse one nesting level       | Flatten               |
+// | Fall back to another Option      | OrElse                |
+// | Keep the value only when it fits | Filter                |
+// | Convert absence into a failure   | ToResult (see result) |
 package opt
 
 import (

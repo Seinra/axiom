@@ -63,9 +63,9 @@ func TestBifoldSplitsBothSides(t *testing.T) {
 		current  either.Either[string, int]
 		expected string
 	}{
-		{scenario: "Left runs onLeft", current: either.Left[string, int]("season pass missing"), expected: "locked: season pass missing"},
-		{scenario: "Right runs onRight", current: either.Right[string, int](7), expected: "ready: 7 slots"},
-		{scenario: "zero value runs onLeft with empty reason", current: either.Either[string, int]{}, expected: "locked: "},
+		{scenario: "Left calls onLeft", current: either.Left[string, int]("season pass missing"), expected: "locked: season pass missing"},
+		{scenario: "Right calls onRight", current: either.Right[string, int](7), expected: "ready: 7 slots"},
+		{scenario: "zero value calls onLeft with empty reason", current: either.Either[string, int]{}, expected: "locked: "},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.scenario, func(t *testing.T) {

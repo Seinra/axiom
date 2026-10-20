@@ -15,7 +15,7 @@
 // | Find the first match                      | FindSlice                   |
 // | Smallest / largest, plain or by key       | Min / Max / MinBy / MaxBy   |
 // | Mean of numbers                           | Average                     |
-// | Bucket elements by key                    | GroupBySlice / Counts       |
+// | Bucket elements by key                    | GroupBySlice / Tally       |
 // | Map each element to a slice, then join    | FlatMap / Flatten           |
 // | Fixed chunks / sliding windows            | Chunked / Windows           |
 // | Pair two slices / split pairs back        | Zip / Unzip (see Pair)      |
@@ -23,7 +23,7 @@
 // | Split into matching plus rest             | Partition                   |
 // | Insert a separator between elements       | Intersperse                 |
 // | Sort a copy by key, ties keep input order | SortBy                      |
-// | Running folds element by element          | Scan                        |
+// | Running folds element by element          | RunningFold                        |
 //
 // The (value, bool) return on FindSlice, Min, Max, MinBy, MaxBy, and
 // Average is this package's OrNull: the bool reports presence and the
@@ -356,9 +356,9 @@ func Intersperse[Element any](elements []Element, separator Element) []Element {
 	return spaced
 }
 
-// Counts tallies occurrences by element.
+// Tally counts occurrences of each element.
 // Nil or empty input yields an empty non-nil map.
-func Counts[Element comparable](elements []Element) map[Element]int {
+func Tally[Element comparable](elements []Element) map[Element]int {
 	counts := make(map[Element]int, len(elements))
 	for _, element := range elements {
 		counts[element]++
@@ -383,17 +383,17 @@ func SortBy[Element any, Key cmp.Ordered](elements []Element, keyOf func(Element
 	})
 }
 
-// Scan returns the running accumulations of combining elements from initial.
+// RunningFold returns the running accumulations of combining elements from initial.
 // The result length equals the input length: the first slot holds initial
 // combined with the first element, and each later slot folds the next element in.
 // The input is never mutated.
 //
 // For example, prefix sums read directly:
 //
-//	totals := Scan(numbers, 0, func(total int, element int) int { return total + element })
+//	totals := RunningFold(numbers, 0, func(total int, element int) int { return total + element })
 //
 // Nil or empty input yields an empty non-nil slice.
-func Scan[Element any, Accumulation any](elements []Element, initial Accumulation, combine func(Accumulation, Element) Accumulation) []Accumulation {
+func RunningFold[Element any, Accumulation any](elements []Element, initial Accumulation, combine func(Accumulation, Element) Accumulation) []Accumulation {
 	if len(elements) == 0 {
 		return make([]Accumulation, 0)
 	}

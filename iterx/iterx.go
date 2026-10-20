@@ -18,16 +18,16 @@
 // | Keep / skip the first count                        | Take / Drop             |
 // | Keep / skip while a condition holds                | TakeWhile / DropWhile   |
 // | Pair positions / pair two sequences                | Enumerate / ZipSeq      |
-// | Observe elements without changing flow             | TapSeq                  |
+// | Observe elements without changing flow             | OnEachSeq                  |
 // | Repeat one value / cycle a slice (bound with Take) | Repeat / Cycle          |
-// | Collapse adjacent duplicates                       | DedupSeq                |
+// | Collapse adjacent duplicates                       | DeduplicateSeq                |
 // | Unfold evolving state into values                  | Unfold                  |
 // | Generate values until a stop                       | Generate                |
 // | Map and keep only some results                     | FilterMapSeq            |
 // | Fixed chunks, last short (slice.Chunked)           | ChunkedSeq              |
 // | Sliding windows (slice.Windows)                    | WindowsSeq              |
 // | Slot a separator between elements                  | IntersperseSeq          |
-// | Concatenate sequences in order                     | Chain                   |
+// | Concatenate sequences in order                     | ConcatSeq                   |
 package iterx
 
 import "iter"
@@ -203,10 +203,10 @@ func ZipSeq[First, Second any](first iter.Seq[First], second iter.Seq[Second]) i
 	}
 }
 
-// TapSeq runs effect once per element during iteration and yields the
+// OnEachSeq runs effect once per element during iteration and yields the
 // element unchanged. Use it to observe a pipeline while debugging; it adds
 // no buffering and propagates early termination upstream.
-func TapSeq[Element any](sequence iter.Seq[Element], effect func(Element)) iter.Seq[Element] {
+func OnEachSeq[Element any](sequence iter.Seq[Element], effect func(Element)) iter.Seq[Element] {
 	return func(yield func(Element) bool) {
 		for element := range sequence {
 			effect(element)
@@ -247,10 +247,10 @@ func Cycle[Element any](elements []Element) iter.Seq[Element] {
 	}
 }
 
-// DedupSeq drops adjacent duplicates, keeping the first of each run.
+// DeduplicateSeq drops adjacent duplicates, keeping the first of each run.
 // This matches itertools.groupby semantics: only consecutive equals collapse,
 // so [1 2 1] keeps all three. For all-seen uniqueness use a set instead.
-func DedupSeq[Element comparable](sequence iter.Seq[Element]) iter.Seq[Element] {
+func DeduplicateSeq[Element comparable](sequence iter.Seq[Element]) iter.Seq[Element] {
 	return func(yield func(Element) bool) {
 		started := false
 		var previous Element
@@ -431,15 +431,15 @@ func IntersperseSeq[Element any](sequence iter.Seq[Element], separator Element) 
 	}
 }
 
-// Chain concatenates first with each sequence in rest, in order.
+// ConcatSeq concatenates first with each sequence in rest, in order.
 //
-// Example: Chain(slices.Values([]int{1}), slices.Values([]int{2, 3}))
+// Example: ConcatSeq(slices.Values([]int{1}), slices.Values([]int{2, 3}))
 // yields 1, 2, 3.
 //
 // Inputs range lazily in order: later inputs never start while the caller
 // still pulls earlier ones, breaking early stops the current input, and
 // re-ranging re-runs from the first input.
-func Chain[Element any](first iter.Seq[Element], rest ...iter.Seq[Element]) iter.Seq[Element] {
+func ConcatSeq[Element any](first iter.Seq[Element], rest ...iter.Seq[Element]) iter.Seq[Element] {
 	return func(yield func(Element) bool) {
 		for element := range first {
 			if !yield(element) {

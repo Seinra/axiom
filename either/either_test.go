@@ -42,7 +42,7 @@ func TestZeroValueIsLeftHoldingZero(t *testing.T) {
 		}},
 		{scenario: "zero Left carries zero payload", check: func() bool {
 			var current either.Either[string, int]
-			rendered := either.Bifold(current,
+			rendered := either.Match(current,
 				func(lockReason string) string { return "left:" + lockReason },
 				func(granted int) string { return "right" })
 			return rendered == "left:"
@@ -57,7 +57,7 @@ func TestZeroValueIsLeftHoldingZero(t *testing.T) {
 	}
 }
 
-func TestBifoldSplitsBothSides(t *testing.T) {
+func TestMatchSplitsBothSides(t *testing.T) {
 	testCases := []struct {
 		scenario string
 		current  either.Either[string, int]
@@ -69,7 +69,7 @@ func TestBifoldSplitsBothSides(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.scenario, func(t *testing.T) {
-			rendered := either.Bifold(testCase.current,
+			rendered := either.Match(testCase.current,
 				func(lockReason string) string { return "locked: " + lockReason },
 				func(slotCount int) string {
 					if slotCount == 7 {
@@ -78,7 +78,7 @@ func TestBifoldSplitsBothSides(t *testing.T) {
 					return "ready: other"
 				})
 			if rendered != testCase.expected {
-				t.Fatalf("Bifold = %q, want %q", rendered, testCase.expected)
+				t.Fatalf("Match = %q, want %q", rendered, testCase.expected)
 			}
 		})
 	}
@@ -97,20 +97,20 @@ func TestMapTransformsRightCarriesLeft(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.scenario, func(t *testing.T) {
-			mapped := either.Map(testCase.current, func(slotCount int) string {
+			mapped := either.MapRight(testCase.current, func(slotCount int) string {
 				if slotCount == 21 {
 					return "slots:42"
 				}
 				return "slots:other"
 			})
-			rendered := either.Bifold(mapped,
+			rendered := either.Match(mapped,
 				func(lockReason string) string { return lockReason },
 				func(label string) string { return label })
 			if rendered != testCase.expectedLabel {
-				t.Fatalf("Map Bifold = %q, want %q", rendered, testCase.expectedLabel)
+				t.Fatalf("MapRight Match = %q, want %q", rendered, testCase.expectedLabel)
 			}
 			if mapped.IsLeft() != testCase.expectLeft {
-				t.Fatalf("Map IsLeft = %v, want %v", mapped.IsLeft(), testCase.expectLeft)
+				t.Fatalf("MapRight IsLeft = %v, want %v", mapped.IsLeft(), testCase.expectLeft)
 			}
 		})
 	}
@@ -129,7 +129,7 @@ func TestMapLeftTransformsLeftCarriesRight(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.scenario, func(t *testing.T) {
 			mapped := either.MapLeft(testCase.current, func(lockReason string) string { return "LEFT:" + lockReason })
-			rendered := either.Bifold(mapped,
+			rendered := either.Match(mapped,
 				func(label string) string { return label },
 				func(slotCount int) string {
 					if slotCount == 9 {
@@ -138,7 +138,7 @@ func TestMapLeftTransformsLeftCarriesRight(t *testing.T) {
 					return "other"
 				})
 			if rendered != testCase.expectedLabel {
-				t.Fatalf("MapLeft Bifold = %q, want %q", rendered, testCase.expectedLabel)
+				t.Fatalf("MapLeft Match = %q, want %q", rendered, testCase.expectedLabel)
 			}
 			if mapped.IsRight() != testCase.expectRight {
 				t.Fatalf("MapLeft IsRight = %v, want %v", mapped.IsRight(), testCase.expectRight)
@@ -150,15 +150,15 @@ func TestMapLeftTransformsLeftCarriesRight(t *testing.T) {
 func TestMapSkipsTransformOnCarriedSide(t *testing.T) {
 	ranTransform := false
 	current := either.Left[string, int]("locked")
-	mapped := either.Map(current, func(slotCount int) string {
+	mapped := either.MapRight(current, func(slotCount int) string {
 		ranTransform = true
 		return "unreachable"
 	})
 	if !mapped.IsLeft() {
-		t.Fatal("Map on Left IsLeft = false, want true")
+		t.Fatal("MapRight on Left IsLeft = false, want true")
 	}
 	if ranTransform {
-		t.Fatal("Map ran transform on Left, want skip")
+		t.Fatal("MapRight ran transform on Left, want skip")
 	}
 }
 
@@ -182,7 +182,7 @@ func TestSwapExchangesSides(t *testing.T) {
 	if !swapped.IsRight() {
 		t.Fatal("Swap(Left) IsRight = false, want true")
 	}
-	rendered := either.Bifold(swapped,
+	rendered := either.Match(swapped,
 		func(packTitle int) string { return "unexpected left" },
 		func(lockReason string) string { return lockReason })
 	if rendered != "locked" {
@@ -206,7 +206,7 @@ func TestSwapRoundTrip(t *testing.T) {
 			if !roundTripped.IsLeft() {
 				return false
 			}
-			return either.Bifold(roundTripped,
+			return either.Match(roundTripped,
 				func(lockReason string) string { return lockReason },
 				func(slotCount int) string { return "unexpected right" }) == "locked"
 		}},
@@ -216,7 +216,7 @@ func TestSwapRoundTrip(t *testing.T) {
 			if !roundTripped.IsRight() {
 				return false
 			}
-			return either.Bifold(roundTripped,
+			return either.Match(roundTripped,
 				func(lockReason string) string { return "unexpected left" },
 				func(slotCount int) string {
 					if slotCount == 11 {

@@ -28,28 +28,28 @@ type Response[Body any] struct {
 	Error string `json:"error,omitempty"`
 }
 
-// Bind parses the current request into a fresh payload of type Body.
+// Decode parses the current request into a fresh payload of type Body.
 // Binding failures return the Echo failure wrapped with the target type name
 // for teachable messages.
-func Bind[Body any](httpContext *echo.Context) (Body, error) {
+func Decode[Body any](httpContext *echo.Context) (Body, error) {
 	var payload Body
-	if bindFailure := httpContext.Bind(&payload); bindFailure != nil {
+	if decodeFailure := httpContext.Bind(&payload); decodeFailure != nil {
 		var empty Body
-		return empty, fmt.Errorf("axiom httpx: bind %T: %w", payload, bindFailure)
+		return empty, fmt.Errorf("axiom httpx: decode %T: %w", payload, decodeFailure)
 	}
 	return payload, nil
 }
 
-// JSON writes envelope holding body with status via context JSON encoding.
-func JSON[Body any](httpContext *echo.Context, status int, body Body) error {
+// WriteJSON writes envelope holding body with status via context JSON encoding.
+func WriteJSON[Body any](httpContext *echo.Context, status int, body Body) error {
 	return httpContext.JSON(status, Response[Body]{Data: body})
 }
 
-// Fail writes an envelope holding failure text with status.
+// WriteError writes an envelope holding failure text with status.
 // A nil failure becomes a descriptive message, never an empty envelope.
-func Fail(httpContext *echo.Context, status int, failure error) error {
+func WriteError(httpContext *echo.Context, status int, failure error) error {
 	if failure == nil {
-		failure = errors.New("axiom httpx: Fail needs a non-nil failure")
+		failure = errors.New("axiom httpx: WriteError needs a non-nil failure")
 	}
 	return httpContext.JSON(status, Response[any]{Error: failure.Error()})
 }
@@ -58,7 +58,7 @@ func Fail(httpContext *echo.Context, status int, failure error) error {
 // failure messages joined by "; ". Nil entries inside failures are
 // skipped. Empty or all-nil failures write a descriptive guard message,
 // never an empty envelope.
-func ValidationFail(httpContext *echo.Context, failures []error) error {
+func ValidationWriteError(httpContext *echo.Context, failures []error) error {
 	messages := make([]string, 0, len(failures))
 	for _, failure := range failures {
 		if failure == nil {
@@ -67,9 +67,9 @@ func ValidationFail(httpContext *echo.Context, failures []error) error {
 		messages = append(messages, failure.Error())
 	}
 	if len(messages) == 0 {
-		return Fail(httpContext, http.StatusUnprocessableEntity, errors.New("axiom httpx: ValidationFail needs at least one failure"))
+		return WriteError(httpContext, http.StatusUnprocessableEntity, errors.New("axiom httpx: ValidationFail needs at least one failure"))
 	}
-	return Fail(httpContext, http.StatusUnprocessableEntity, errors.New(strings.Join(messages, "; ")))
+	return WriteError(httpContext, http.StatusUnprocessableEntity, errors.New(strings.Join(messages, "; ")))
 }
 
 // ListResponse carries a page of records with its page cursor and total count.

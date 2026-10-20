@@ -92,7 +92,7 @@ func TestMapFirstFailureCancelsSiblings(t *testing.T) {
 	}
 }
 
-func TestEachCollectsEverySideEffect(t *testing.T) {
+func TestForEachCollectsEverySideEffect(t *testing.T) {
 	active, cancelTask := contextWithTestTimeout(context.Background())
 	defer cancelTask()
 	inputs := []int{1, 2, 3, 4, 5, 6, 7, 8}
@@ -109,13 +109,13 @@ func TestEachCollectsEverySideEffect(t *testing.T) {
 		consumeMutex.Unlock()
 		return nil
 	}
-	if eachFailure := flow.Each(active, inputs, 3, consume); eachFailure != nil {
-		t.Fatalf("Each failure = %v, want nil", eachFailure)
+	if forEachFailure := flow.ForEach(active, inputs, 3, consume); forEachFailure != nil {
+		t.Fatalf("ForEach failure = %v, want nil", forEachFailure)
 	}
 	consumeMutex.Lock()
 	defer consumeMutex.Unlock()
 	if len(consumed) != len(inputs) {
-		t.Fatalf("Each consumed count = %d, want %d", len(consumed), len(inputs))
+		t.Fatalf("ForEach consumed count = %d, want %d", len(consumed), len(inputs))
 	}
 	seen := make(map[int]bool, len(inputs))
 	for _, observed := range consumed {
@@ -123,12 +123,12 @@ func TestEachCollectsEverySideEffect(t *testing.T) {
 	}
 	for _, candidate := range inputs {
 		if !seen[candidate*outputFactor] {
-			t.Fatalf("Each missing input %d in %v", candidate, consumed)
+			t.Fatalf("ForEach missing input %d in %v", candidate, consumed)
 		}
 	}
 }
 
-func TestEachFirstFailureCancelsSiblings(t *testing.T) {
+func TestForEachFirstFailureCancelsSiblings(t *testing.T) {
 	active, cancelTask := contextWithTestTimeout(context.Background())
 	defer cancelTask()
 	workerTotal := 4
@@ -152,11 +152,11 @@ func TestEachFirstFailureCancelsSiblings(t *testing.T) {
 			return nil
 		}
 	}
-	if eachFailure := flow.Each(active, inputs, workerTotal, consume); !errors.Is(eachFailure, errFastFailure) {
-		t.Fatalf("Each failure = %v, want %v", eachFailure, errFastFailure)
+	if forEachFailure := flow.ForEach(active, inputs, workerTotal, consume); !errors.Is(forEachFailure, errFastFailure) {
+		t.Fatalf("ForEach failure = %v, want %v", forEachFailure, errFastFailure)
 	}
 	if observed := started.Load(); observed > int64(workerTotal) {
-		t.Fatalf("Each started = %d, want <= %d", observed, workerTotal)
+		t.Fatalf("ForEach started = %d, want <= %d", observed, workerTotal)
 	}
 }
 
@@ -230,11 +230,11 @@ func TestWorkerCountDefaultsWhenNotPositive(t *testing.T) {
 				return nil
 			}
 		}
-		if eachFailure := flow.Each(active, inputs, workerCount, consume); eachFailure != nil {
-			t.Fatalf("Each(%d) failure = %v, want nil", workerCount, eachFailure)
+		if forEachFailure := flow.ForEach(active, inputs, workerCount, consume); forEachFailure != nil {
+			t.Fatalf("ForEach(%d) failure = %v, want nil", workerCount, forEachFailure)
 		}
 		if observed := consumed.Load(); observed != int64(len(inputs)) {
-			t.Fatalf("Each(%d) consumed = %d, want %d", workerCount, observed, len(inputs))
+			t.Fatalf("ForEach(%d) consumed = %d, want %d", workerCount, observed, len(inputs))
 		}
 	}
 }
@@ -258,8 +258,8 @@ func TestPreCanceledContextReturnsCanceled(t *testing.T) {
 	neverConsumes := func(taskContext context.Context, candidate int) error {
 		return nil
 	}
-	if eachFailure := flow.Each(active, []int{1, 2, 3}, 2, neverConsumes); !errors.Is(eachFailure, context.Canceled) {
-		t.Fatalf("Each failure = %v, want %v", eachFailure, context.Canceled)
+	if forEachFailure := flow.ForEach(active, []int{1, 2, 3}, 2, neverConsumes); !errors.Is(forEachFailure, context.Canceled) {
+		t.Fatalf("ForEach failure = %v, want %v", forEachFailure, context.Canceled)
 	}
 }
 
@@ -297,11 +297,11 @@ func TestEmptyInputs(t *testing.T) {
 		t.Fatalf("Map ordered len = %d, want 0", len(ordered))
 	}
 	neverConsumes := func(taskContext context.Context, candidate int) error {
-		t.Error("Each consume ran on empty inputs")
+		t.Error("ForEach consume ran on empty inputs")
 		return nil
 	}
-	if eachFailure := flow.Each(active, []int{}, 2, neverConsumes); eachFailure != nil {
-		t.Fatalf("Each failure = %v, want nil", eachFailure)
+	if forEachFailure := flow.ForEach(active, []int{}, 2, neverConsumes); forEachFailure != nil {
+		t.Fatalf("ForEach failure = %v, want nil", forEachFailure)
 	}
 }
 

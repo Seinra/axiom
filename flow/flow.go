@@ -1,11 +1,11 @@
 // Package flow provides bounded parallel combinators with errgroup semantics.
 //
 // Map runs a transform over inputs with at most workerCount concurrent
-// runners and reports results in input order. Each applies a consume step
+// runners and reports results in input order. ForEach applies a consume step
 // for side effects without collecting results. Race runs the same transform
 // and returns the first success, canceling its siblings; reach for Race when
 // any single success is enough and input order does not matter. The first
-// transform failure cancels its Map and Each siblings through context
+// transform failure cancels its Map and ForEach siblings through context
 // cancellation and wins as the returned failure, matching errgroup parity:
 // one failure in, that failure out, siblings stopped. A Race with every
 // transform failed instead reports the zero Output plus the first failure.
@@ -119,13 +119,13 @@ func Map[Input any, Output any](active context.Context, inputs []Input, workerCo
 	return ordered, nil
 }
 
-// Each applies consume to every input with at most workerCount concurrent
+// ForEach applies consume to every input with at most workerCount concurrent
 // runners, unordered and without results; the first consume failure cancels
 // the rest and wins as the returned failure, nil when all succeed. A
 // workerCount of zero or less falls back to runtime.NumCPU. Empty inputs
 // return nil without running consume. An already-canceled active context
 // returns promptly with active.Err() and starts no consume step.
-func Each[Input any](active context.Context, inputs []Input, workerCount int, consume func(context.Context, Input) error) error {
+func ForEach[Input any](active context.Context, inputs []Input, workerCount int, consume func(context.Context, Input) error) error {
 	_, mapFailure := Map(active, inputs, workerCount, func(taskContext context.Context, candidate Input) (struct{}, error) {
 		consumeFailure := consume(taskContext, candidate)
 		return struct{}{}, consumeFailure

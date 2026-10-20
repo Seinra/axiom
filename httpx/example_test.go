@@ -10,13 +10,13 @@ import (
 	"github.com/seinra/axiom/httpx"
 )
 
-// ExampleJSON shows the single-envelope success reply.
-func ExampleJSON() {
+// ExampleWriteJSON shows the single-envelope success reply.
+func ExampleWriteJSON() {
 	engine := echo.New()
 	httpRequest := httptest.NewRequest(http.MethodGet, "/", nil)
 	recorder := httptest.NewRecorder()
 	httpContext := engine.NewContext(httpRequest, recorder)
-	_ = httpx.JSON(httpContext, http.StatusOK, "ready")
+	_ = httpx.WriteJSON(httpContext, http.StatusOK, "ready")
 	fmt.Println(recorder.Body.String())
 	// Output: {"data":"ready"}
 }

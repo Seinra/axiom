@@ -45,7 +45,22 @@ Owner principles 2026-10-20: (1) human readability first, students, pre-v0 windo
 - R-bounds: web_search responseId `mvh4ffk6jftiar` queryIndex 0 (Kotlin eager chunked/windowed vs C++ lazy views + others); fetched `mvh4fmz94ye2mq` urlIndex 2 (KEEP window-sliding). Open: synctest details, Rayon panic docs depth, PLINQ article.
 - R-panic: same responseId queryIndex 1 (Rayon catch-panic thread, issues #638/#1270, PLINQ AggregateException SO). Fetched urlIndex 1 (rayon #638). Open: rayon join-panics doc, PLINQ article, Java Streams/LINQ behavior.
 - R-timing: same responseId queryIndex 0? No — queryIndex 2 (Go synctest #67434, jMock scheduler, OpenDST, unflake, FakeClock). Fetched urlIndex 0 (synctest issue, 150k chars — get_search_content findText failed, retry with plain offset paging). Open: synctest availability in go1.27, clockwork-style options for plain `go test -race`.
-- SDD researcher agents are RETIRED (`retired SDD delegation is not supported`) — research runs parent-inline with web_search/fetch_content next session.
+## Research conclusions (parent, 2026-10-20 — web_search mvh4ffk6jftiar + fetches mvh4fmz94ye2mq/mvh4iqcfsaq2bp, SDD agents retired so parent-inline)
+
+### R-bounds: dynamic/adaptive answer
+- Kotlin ships BOTH models: eager `Iterable.chunked/windowed` (materialized) + lazy `Sequence` variants, switchable; plus overloads WITH transform (ephemeral window, never materialized). C++ views are lazy non-owning. Our slice(eager)+iterx(lazy) split mirrors this — validated, keep.
+- New gap: chunked/windowed WITH transform (compute-without-storing) — allocation saver, teachable, fits S2.
+- Package: (a) lazy-allocate ChunkedSeq/WindowsSeq backing on first element (kills one-int OOM); (b) validate positive sizes with sentinel, never silent clamp (Kotlin validates; clamp hides caller bugs); (c) O() cost model in every godoc; (d) page caps are application policy — document guidance + sentinel, never silent clamp.
+
+## Engineer opinion: panic policy (S5 — precedents + judgment)
+
+Precedents: Rayon `join` always runs both closures and propagates the panic to the joiner (`panic_fuse` only stops NEW items — in-flight never preempted); PLINQ/`Parallel` stop issuing new work after first exception and rethrow wrapped in `AggregateException` (in-flight completes); Java ForkJoin may process items past the exception. Consensus: nobody preempts in-flight; everybody stops scheduling new work; everybody propagates, never silent.
+
+Opinion: adopt the consensus in `flow.Map/Race` — recover per runner, latch the FIRST panic payload, cancel siblings (same path as failure today), let in-flight complete, re-panic the original payload in the caller. Matches Rayon + our singleflight/di precedent; keeps no-silent-failure. Do NOT convert panics to errors: signatures stay, programmer bugs stay loud.
+
+## Timing answer (S7)
+
+`testing/synctest` EXISTS in go1.27.0 (`synctest.Test` bubbles, synthetic time — verified via `go doc`). Recommendation: synctest-first for new timing tests (migrate flow/singleflight/di wall-clock suites opportunistically); keep 1-2 real-clock smokes; document margins where wall clock remains; quarantine stays. DST frameworks are heavy artillery — overkill here.
 
 ## Tasks (next session, in order)
 

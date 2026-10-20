@@ -27,6 +27,7 @@ Every design decision cites a stable ID below. A rename/replacement updates the 
 | ECO-MO | external-docs | `https://github.com/samber/mo` | Option / Result / Either / Future / Task (target coverage) |
 | ECO-DO | external-docs | `https://github.com/samber/do` | type-safe DI incl. Echo/Gin/Fiber/Chi (target coverage) |
 | ECO-SFLIGHT | external-docs | `https://github.com/samber/go-singleflightx` | generic singleflight + batching + sharding (target coverage) |
+| ECO-ECHO-V5 | library | `github.com/labstack/echo/v5 v5.4.0` (go.mod direct require) | Echo adapter surface for httpx (Response/Bind/JSON/Fail/ListResponse); justified: Catalyst serves HTTP via Echo, envelope replaces ad-hoc maps |
 
 ## Gaps (investigation only)
 

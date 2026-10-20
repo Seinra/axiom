@@ -33,4 +33,5 @@ Per-layer command tables + evidence rules. Run the narrowest scope first, then t
 - The independent verifier always runs before any native review of the same candidate.
 - Native review never runs on docs-only candidates (not designed for prose).
 - Commits proceed autonomously; pushes stay owner-gated (permission prompt).
+- Findings never overwrite each other (owner 2026-10-20, Engram has no dedup rule): every verifier/review batch is a NEW observation with a source- and commit-scoped topic_key (e.g. axiom/findings/<source>-<short-hash>); cross-reference prior batches, never update-in-place.
 - Implementations go to bounded workers (owner 2026-10-20, context hygiene): one package per worker, disjoint Allowed edit surfaces, skills injected per unit; the orchestrator scopes, verifies, commits.

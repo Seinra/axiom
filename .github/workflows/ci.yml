@@ -16,7 +16,9 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.27"
+          # Exact patch: 1.27.2 stdlib exports (v5) break
+          # golangci-lint 2.13.2; 1.27.0 is verified locally.
+          go-version: "1.27.0"
 
       - name: Test
         run: go test -count=1 ./...

@@ -18,6 +18,7 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-20 | valid package (worker mvglag30-3-3blt) | IMPLEMENT | delegated per worker standing order with 9 injected skills; Predicate/Rule/Validator, exam-score scenarios; worker RED→GREEN 4 tests/18 subtests, parent re-verified suite 7 pkgs ok; uncommitted (small path) |
 | 2026-10-20 | verifier hardening (mvgl8hp6-2-denu) | VALIDATE | verifier PASS, 0 blockers; fixed inline: Result zero-value guard (Unwrap reports errZeroResult, Must via Unwrap), slice success→element rename, Members nil-doc; pinned 13 tests across 6 pkgs (nil/purity/no-mutate/re-range); uncommitted |
 | 2026-10-20 | native review review-31536f54 (valid+fix range) | VALIDATE | group capture readability+reliability → approved; authority burned via acknowledge-approved; 4 advisory findings parked as later work; delivery per ordinary policy, pushes deferred |
+| 2026-10-20 | singleflight package (worker mvglnefp-4-8bh1) | IMPLEMENT | Group.Do/Forget, leader-runs/waiters-share, panic broadcast, no cache; parent spot-checked settle/publish ordering + Forget pointer-compare, re-ran -race ok/vet 0/gofmt clean; 50ms-sleep test noted as future harden; uncommitted |
 
 ## Debt ledger
 

@@ -59,3 +59,18 @@ Core packages MUST NOT import Echo, Gin, or GORM. Adapter packages (`httpx`, `re
 | FP | `result`, `opt` | Either/Future/Task, Pipe/Compose/Memoize |
 | Concurrency | — | fan-in/out, pipeline, worker pool, channels over `iter.Seq` |
 | Infra | — | `pool`, `singleflight`, `di`, `repo`, `httpx`, `valid` |
+
+## Coverage gaps (cross-language survey 2026-10-20)
+
+Compared against Rust itertools, Kotlin stdlib, C# LINQ, Java Streams, Swift
+Algorithms, and C++ ranges. P0 = unanimous across libs, small. P1 =
+valuable, medium. P2 = parked candidates needing a Catalyst use case first.
+
+| Area | P0 (next slices) | P1 | P2 (parked) |
+| --- | --- | --- | --- |
+| `slice` | Min/Max/Sum(+By), FlatMap/Flatten, Chunked/Windows, Zip/Unzip, Distinct, Partition, MapIndexed/FilterIndexed, Intersperse, Counts | Average, SortBy convenience | — |
+| `iterx` | TakeWhile/DropWhile, FlatMap/FlattenSeq, ZipSeq, TapSeq, Repeat/Cycle, DedupSeq | — | — |
+| `set`/`mapx` | SymmetricDifference/IsSubsetOf/Overlaps, Omit/Invert/ValueOr, GroupByMapped | — | — |
+| `opt`/`result` | OrElse/AndThen/Filter/ValueOrElse/ToResult, MapFailure/UnwrapOr | Try (panic→Result) | `either` package |
+| `valid`/`repo`/`httpx`/`di` | And/Or/Not predicates | TotalPages/HasNext, ValidationFail envelope, di test Replace | — |
+| combos | — | — | combinations/permutations, Join, Race, singleflight stats |

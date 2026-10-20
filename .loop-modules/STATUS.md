@@ -37,11 +37,11 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-20 | pool package (worker mvglwven-6-z62v) | IMPLEMENT | typed sync.Pool: pointer New, nil-maker guard, zero-value safe, validity-not-identity tests +32-goroutine race hammer; parent spot-checked code + re-ran -race/vet/gofmt green; committed 6e60482+a8d1a22 |
 | 2026-10-20 | di package (worker mvglzu92-7-if1c) + panic fix | IMPLEMENT | lazy singletons, sentinels, retry-on-failure; parent spot-check found waiter-hang on panicking constructor → invokeBuild reset+re-panic + broadcast test, -race green 9 tests; committed f71bc74+00b5cbc |
 | 2026-10-20 | repo package (worker mvgm5kvc-8-ly3y) | IMPLEMENT | pure core (no deps): Repository iface, Page/Offset convention, MemoryRepository + slicePage helper; worker -race caught page-stability assumption in test, narrowed to deterministic claims; parent spot-checked + re-ran -race/vet/gofmt green; committed dbace89+ca42090 |
+| 2026-10-20 | cross-language gap survey + issues #8-13 | VALIDATE | Rust itertools / Kotlin / LINQ / Streams / Swift Algorithms / ranges vs Axiom: P0/P1/P2 table in ARCHITECTURE, 6 approved issues (slice, iterx, set/mapx, opt/result, bridges, parked) |
 
 ## Debt ledger
 
 | Item | Phase | Ceiling | Upgrade Path |
 | --- | --- | --- | --- |
-| `pool`/`singleflight`/`di`/concurrency/`repo`/`httpx`/`valid` | future slices | declared in ARCHITECTURE, not built | one ODD feature per package, stdlib-first justification each |
-| golangci config file | VALIDATE | minimal set documented, no `.golangci.yaml` yet | add file when first lint run needs repo-pinned config |
+| gap slices P0/P1 (issues #8-12) + parked candidates (#13) | future slices | coverage-gap survey in ARCHITECTURE | one worker slice per group, verifier before review |
 | Catalyst replace-directive pilot | T5 | scratch only | versioned release + pin before any Catalyst commit |

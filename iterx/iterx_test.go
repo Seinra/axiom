@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/seinra/axiom/iterx"
+	"github.com/seinra/axiom/slice"
 )
 
 func naturals(start int, stop int) func(func(int) bool) {
@@ -670,6 +671,509 @@ func TestDedupSeqRerangeReruns(t *testing.T) {
 	}
 	if !reflect.DeepEqual(first, []int{4, 5}) {
 		t.Fatalf("collect = %v, want [4 5]", first)
+	}
+}
+
+func TestUnfoldCountsUp(t *testing.T) {
+	pipeline := iterx.Unfold(1, func(current int) (int, int, bool) {
+		if current > 3 {
+			return 0, 0, false
+		}
+		return current * 10, current + 1, true
+	})
+	got := slices.Collect(pipeline)
+	want := []int{10, 20, 30}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Unfold = %v, want %v", got, want)
+	}
+}
+
+func TestUnfoldImmediateStopYieldsEmpty(t *testing.T) {
+	pipeline := iterx.Unfold(41, func(current int) (int, int, bool) {
+		return 0, current, false
+	})
+	if got := slices.Collect(pipeline); len(got) != 0 {
+		t.Fatalf("Unfold immediate stop = %v, want empty", got)
+	}
+}
+
+func TestUnfoldLazy(t *testing.T) {
+	calls := 0
+	pipeline := iterx.Unfold(1, func(current int) (int, int, bool) {
+		calls++
+		return current, current + 1, true
+	})
+	if calls != 0 {
+		t.Fatalf("calls before range = %d, want 0 (lazy)", calls)
+	}
+	got := slices.Collect(iterx.Take(pipeline, 3))
+	if !reflect.DeepEqual(got, []int{1, 2, 3}) {
+		t.Fatalf("Unfold+Take = %v, want [1 2 3]", got)
+	}
+	if calls != 3 {
+		t.Fatalf("calls = %d, want 3 (early termination propagates)", calls)
+	}
+}
+
+func TestUnfoldRerangeReruns(t *testing.T) {
+	pipeline := iterx.Unfold(1, func(current int) (int, int, bool) {
+		if current > 2 {
+			return 0, 0, false
+		}
+		return current, current + 1, true
+	})
+	first := slices.Collect(pipeline)
+	second := slices.Collect(pipeline)
+	if !reflect.DeepEqual(first, second) {
+		t.Fatalf("re-range = %v, want repeat of %v", second, first)
+	}
+	if !reflect.DeepEqual(first, []int{1, 2}) {
+		t.Fatalf("collect = %v, want [1 2]", first)
+	}
+}
+
+func TestGenerateYieldsUntilFalse(t *testing.T) {
+	candidate := 0
+	got := slices.Collect(iterx.Generate(func() (int, bool) {
+		candidate++
+		if candidate > 3 {
+			return 0, false
+		}
+		return candidate * 5, true
+	}))
+	if !reflect.DeepEqual(got, []int{5, 10, 15}) {
+		t.Fatalf("Generate = %v, want [5 10 15]", got)
+	}
+}
+
+func TestGenerateImmediateStopYieldsEmpty(t *testing.T) {
+	got := slices.Collect(iterx.Generate(func() (int, bool) {
+		return 0, false
+	}))
+	if len(got) != 0 {
+		t.Fatalf("Generate immediate stop = %v, want empty", got)
+	}
+}
+
+func TestGenerateTakePullsExactly(t *testing.T) {
+	produced := 0
+	counting := iterx.Generate(func() (int, bool) {
+		produced++
+		return produced, true
+	})
+	if produced != 0 {
+		t.Fatalf("produced before range = %d, want 0 (lazy)", produced)
+	}
+	got := slices.Collect(iterx.Take(counting, 4))
+	if !reflect.DeepEqual(got, []int{1, 2, 3, 4}) {
+		t.Fatalf("Generate+Take = %v, want [1 2 3 4]", got)
+	}
+	if produced != 4 {
+		t.Fatalf("produced = %d, want 4 (upstream stops on early break)", produced)
+	}
+}
+
+func TestGenerateRerangeReruns(t *testing.T) {
+	candidate := 0
+	pipeline := iterx.Generate(func() (int, bool) {
+		candidate++
+		if candidate > 2 {
+			return 0, false
+		}
+		return candidate, true
+	})
+	_ = slices.Collect(pipeline)
+	candidate = 0
+	second := slices.Collect(pipeline)
+	if !reflect.DeepEqual(second, []int{1, 2}) {
+		t.Fatalf("re-range = %v, want [1 2]", second)
+	}
+}
+
+func TestFilterMapSeqKeepsOnlyMapped(t *testing.T) {
+	got := slices.Collect(iterx.FilterMapSeq(naturals(1, 7), func(candidate int) (int, bool) {
+		if candidate%2 != 0 {
+			return 0, false
+		}
+		return candidate * 100, true
+	}))
+	want := []int{200, 400, 600}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("FilterMapSeq = %v, want %v", got, want)
+	}
+}
+
+func TestFilterMapSeqNoneKeptYieldsEmpty(t *testing.T) {
+	got := slices.Collect(iterx.FilterMapSeq(naturals(1, 4), func(candidate int) (string, bool) {
+		return "", false
+	}))
+	if len(got) != 0 {
+		t.Fatalf("FilterMapSeq none kept = %v, want empty", got)
+	}
+}
+
+func TestFilterMapSeqEmptyYieldsEmpty(t *testing.T) {
+	got := slices.Collect(iterx.FilterMapSeq(naturals(5, 5), func(candidate int) (int, bool) {
+		return candidate, true
+	}))
+	if len(got) != 0 {
+		t.Fatalf("FilterMapSeq empty = %v, want empty", got)
+	}
+}
+
+func TestFilterMapSeqLazy(t *testing.T) {
+	pulled := 0
+	mapped := 0
+	counting := func(yield func(int) bool) {
+		for candidate := 1; ; candidate++ {
+			pulled++
+			if !yield(candidate) {
+				return
+			}
+		}
+	}
+	pipeline := iterx.FilterMapSeq(counting, func(candidate int) (int, bool) {
+		mapped++
+		if candidate%2 != 0 {
+			return 0, false
+		}
+		return candidate * 10, true
+	})
+	if pulled != 0 || mapped != 0 {
+		t.Fatalf("before range pulled=%d mapped=%d, want 0 0 (lazy)", pulled, mapped)
+	}
+	got := slices.Collect(iterx.Take(pipeline, 2))
+	if !reflect.DeepEqual(got, []int{20, 40}) {
+		t.Fatalf("FilterMapSeq+Take = %v, want [20 40]", got)
+	}
+	if pulled != 4 || mapped != 4 {
+		t.Fatalf("pulled=%d mapped=%d, want 4 4 (early termination propagates)", pulled, mapped)
+	}
+}
+
+func TestFilterMapSeqRerangeReruns(t *testing.T) {
+	pipeline := iterx.FilterMapSeq(slices.Values([]int{1, 2, 3}), func(candidate int) (int, bool) {
+		return candidate * 2, candidate%2 == 1
+	})
+	first := slices.Collect(pipeline)
+	second := slices.Collect(pipeline)
+	if !reflect.DeepEqual(first, second) {
+		t.Fatalf("re-range = %v, want repeat of %v", second, first)
+	}
+	if !reflect.DeepEqual(first, []int{2, 6}) {
+		t.Fatalf("collect = %v, want [2 6]", first)
+	}
+}
+
+func TestChunkedSeqSplits(t *testing.T) {
+	got := slices.Collect(iterx.ChunkedSeq(slices.Values([]int{1, 2, 3, 4, 5}), 2))
+	want := [][]int{{1, 2}, {3, 4}, {5}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("ChunkedSeq = %v, want %v", got, want)
+	}
+}
+
+func TestChunkedSeqInvalidSizeYieldsEmpty(t *testing.T) {
+	for _, chunkSize := range []int{0, -3} {
+		if got := slices.Collect(iterx.ChunkedSeq(naturals(1, 4), chunkSize)); len(got) != 0 {
+			t.Fatalf("ChunkedSeq(%d) = %v, want empty", chunkSize, got)
+		}
+	}
+}
+
+func TestChunkedSeqEmptyYieldsEmpty(t *testing.T) {
+	if got := slices.Collect(iterx.ChunkedSeq(naturals(5, 5), 2)); len(got) != 0 {
+		t.Fatalf("ChunkedSeq empty = %v, want empty", got)
+	}
+}
+
+func TestChunkedSeqMirrorsSliceChunked(t *testing.T) {
+	inputs := [][]int{{}, {1}, {1, 2, 3, 4, 5}, {1, 2, 3, 4}}
+	for _, input := range inputs {
+		for _, chunkSize := range []int{1, 2, 3, 5} {
+			got := slices.Collect(iterx.ChunkedSeq(slices.Values(input), chunkSize))
+			want := slice.Chunked(input, chunkSize)
+			if len(got) == 0 && len(want) == 0 {
+				continue
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("ChunkedSeq(%v, %d) = %v, want %v", input, chunkSize, got, want)
+			}
+		}
+	}
+}
+
+func TestChunkedSeqFreshCopy(t *testing.T) {
+	got := slices.Collect(iterx.ChunkedSeq(slices.Values([]int{1, 2, 3}), 2))
+	if len(got) != 2 {
+		t.Fatalf("ChunkedSeq count = %d, want 2", len(got))
+	}
+	got[0][0] = 999
+	second := slices.Collect(iterx.ChunkedSeq(slices.Values([]int{1, 2, 3}), 2))
+	if !reflect.DeepEqual(second, [][]int{{1, 2}, {3}}) {
+		t.Fatalf("ChunkedSeq re-collect = %v, want [[1 2] [3]] (each chunk fresh)", second)
+	}
+	if got[0][0] != 999 || second[0][0] != 1 {
+		t.Fatalf("mutation leaked: got=%v second=%v", got, second)
+	}
+}
+
+func TestChunkedSeqStopsEarly(t *testing.T) {
+	pulled := 0
+	counting := func(yield func(int) bool) {
+		for candidate := 1; ; candidate++ {
+			pulled++
+			if !yield(candidate) {
+				return
+			}
+		}
+	}
+	pipeline := iterx.ChunkedSeq(counting, 3)
+	if pulled != 0 {
+		t.Fatalf("pulled before range = %d, want 0 (lazy)", pulled)
+	}
+	got := slices.Collect(iterx.Take(pipeline, 2))
+	if !reflect.DeepEqual(got, [][]int{{1, 2, 3}, {4, 5, 6}}) {
+		t.Fatalf("ChunkedSeq+Take = %v, want [[1 2 3] [4 5 6]]", got)
+	}
+	if pulled != 6 {
+		t.Fatalf("pulled = %d, want 6 (upstream stops on early break)", pulled)
+	}
+}
+
+func TestChunkedSeqRerangeReruns(t *testing.T) {
+	pipeline := iterx.ChunkedSeq(slices.Values([]int{1, 2, 3}), 2)
+	first := slices.Collect(pipeline)
+	second := slices.Collect(pipeline)
+	if !reflect.DeepEqual(first, second) {
+		t.Fatalf("re-range = %v, want repeat of %v", second, first)
+	}
+}
+
+func TestWindowsSeqSlides(t *testing.T) {
+	got := slices.Collect(iterx.WindowsSeq(slices.Values([]int{1, 2, 3, 4}), 2))
+	want := [][]int{{1, 2}, {2, 3}, {3, 4}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("WindowsSeq = %v, want %v", got, want)
+	}
+}
+
+func TestWindowsSeqInvalidSizeYieldsEmpty(t *testing.T) {
+	for _, windowSize := range []int{0, -2} {
+		if got := slices.Collect(iterx.WindowsSeq(naturals(1, 4), windowSize)); len(got) != 0 {
+			t.Fatalf("WindowsSeq(%d) = %v, want empty", windowSize, got)
+		}
+	}
+	if got := slices.Collect(iterx.WindowsSeq(slices.Values([]int{1, 2}), 5)); len(got) != 0 {
+		t.Fatalf("WindowsSeq oversize = %v, want empty", got)
+	}
+}
+
+func TestWindowsSeqEmptyYieldsEmpty(t *testing.T) {
+	if got := slices.Collect(iterx.WindowsSeq(naturals(5, 5), 2)); len(got) != 0 {
+		t.Fatalf("WindowsSeq empty = %v, want empty", got)
+	}
+}
+
+func TestWindowsSeqMirrorsSliceWindows(t *testing.T) {
+	inputs := [][]int{{}, {1}, {1, 2, 3, 4, 5}}
+	for _, input := range inputs {
+		for _, windowSize := range []int{1, 2, 3, 5, 6} {
+			got := slices.Collect(iterx.WindowsSeq(slices.Values(input), windowSize))
+			want := slice.Windows(input, windowSize)
+			if len(got) == 0 && len(want) == 0 {
+				continue
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("WindowsSeq(%v, %d) = %v, want %v", input, windowSize, got, want)
+			}
+		}
+	}
+}
+
+func TestWindowsSeqFreshCopy(t *testing.T) {
+	got := slices.Collect(iterx.WindowsSeq(slices.Values([]int{1, 2, 3}), 2))
+	if len(got) != 2 {
+		t.Fatalf("WindowsSeq count = %d, want 2", len(got))
+	}
+	got[0][0] = 999
+	if got[1][0] == 999 {
+		t.Fatalf("WindowsSeq windows alias: %v (each window fresh)", got)
+	}
+	second := slices.Collect(iterx.WindowsSeq(slices.Values([]int{1, 2, 3}), 2))
+	if !reflect.DeepEqual(second, [][]int{{1, 2}, {2, 3}}) {
+		t.Fatalf("WindowsSeq re-collect = %v, want [[1 2] [2 3]]", second)
+	}
+}
+
+func TestWindowsSeqStopsEarly(t *testing.T) {
+	pulled := 0
+	counting := func(yield func(int) bool) {
+		for candidate := 1; ; candidate++ {
+			pulled++
+			if !yield(candidate) {
+				return
+			}
+		}
+	}
+	pipeline := iterx.WindowsSeq(counting, 2)
+	if pulled != 0 {
+		t.Fatalf("pulled before range = %d, want 0 (lazy)", pulled)
+	}
+	got := slices.Collect(iterx.Take(pipeline, 2))
+	if !reflect.DeepEqual(got, [][]int{{1, 2}, {2, 3}}) {
+		t.Fatalf("WindowsSeq+Take = %v, want [[1 2] [2 3]]", got)
+	}
+	if pulled != 3 {
+		t.Fatalf("pulled = %d, want 3 (upstream stops on early break)", pulled)
+	}
+}
+
+func TestWindowsSeqRerangeReruns(t *testing.T) {
+	pipeline := iterx.WindowsSeq(slices.Values([]int{1, 2, 3}), 2)
+	first := slices.Collect(pipeline)
+	second := slices.Collect(pipeline)
+	if !reflect.DeepEqual(first, second) {
+		t.Fatalf("re-range = %v, want repeat of %v", second, first)
+	}
+}
+
+func TestIntersperseSeqSlotsSeparator(t *testing.T) {
+	got := slices.Collect(iterx.IntersperseSeq(slices.Values([]int{1, 2, 3}), 0))
+	want := []int{1, 0, 2, 0, 3}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("IntersperseSeq = %v, want %v", got, want)
+	}
+}
+
+func TestIntersperseSeqEmptyYieldsEmpty(t *testing.T) {
+	if got := slices.Collect(iterx.IntersperseSeq(naturals(5, 5), 0)); len(got) != 0 {
+		t.Fatalf("IntersperseSeq empty = %v, want empty", got)
+	}
+}
+
+func TestIntersperseSeqSingletonKeepsOne(t *testing.T) {
+	got := slices.Collect(iterx.IntersperseSeq(slices.Values([]int{7}), 0))
+	if !reflect.DeepEqual(got, []int{7}) {
+		t.Fatalf("IntersperseSeq singleton = %v, want [7]", got)
+	}
+}
+
+func TestIntersperseSeqMirrorsSliceIntersperse(t *testing.T) {
+	inputs := [][]int{{}, {1}, {1, 2, 3, 4}}
+	for _, input := range inputs {
+		got := slices.Collect(iterx.IntersperseSeq(slices.Values(input), 9))
+		want := slice.Intersperse(input, 9)
+		if len(got) == 0 && len(want) == 0 {
+			continue
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("IntersperseSeq(%v) = %v, want %v", input, got, want)
+		}
+	}
+}
+
+func TestIntersperseSeqStopsEarly(t *testing.T) {
+	pulled := 0
+	counting := func(yield func(int) bool) {
+		for candidate := 1; candidate < 100; candidate++ {
+			pulled++
+			if !yield(candidate) {
+				return
+			}
+		}
+	}
+	pipeline := iterx.IntersperseSeq(counting, 0)
+	if pulled != 0 {
+		t.Fatalf("pulled before range = %d, want 0 (lazy)", pulled)
+	}
+	got := slices.Collect(iterx.Take(pipeline, 3))
+	if !reflect.DeepEqual(got, []int{1, 0, 2}) {
+		t.Fatalf("IntersperseSeq+Take = %v, want [1 0 2]", got)
+	}
+	if pulled != 2 {
+		t.Fatalf("pulled = %d, want 2 (upstream stops on early break)", pulled)
+	}
+}
+
+func TestIntersperseSeqRerangeReruns(t *testing.T) {
+	pipeline := iterx.IntersperseSeq(slices.Values([]int{1, 2}), 0)
+	first := slices.Collect(pipeline)
+	second := slices.Collect(pipeline)
+	if !reflect.DeepEqual(first, second) {
+		t.Fatalf("re-range = %v, want repeat of %v", second, first)
+	}
+	if !reflect.DeepEqual(first, []int{1, 0, 2}) {
+		t.Fatalf("collect = %v, want [1 0 2]", first)
+	}
+}
+
+func TestChainConcatenates(t *testing.T) {
+	got := slices.Collect(iterx.Chain(naturals(1, 3), naturals(10, 12), naturals(20, 21)))
+	want := []int{1, 2, 10, 11, 20}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Chain = %v, want %v", got, want)
+	}
+}
+
+func TestChainSingleYieldsOnlyFirst(t *testing.T) {
+	got := slices.Collect(iterx.Chain(naturals(1, 4)))
+	if !reflect.DeepEqual(got, []int{1, 2, 3}) {
+		t.Fatalf("Chain single = %v, want [1 2 3]", got)
+	}
+}
+
+func TestChainEmptySidesYieldRemainder(t *testing.T) {
+	got := slices.Collect(iterx.Chain(naturals(5, 5), naturals(1, 3), naturals(5, 5)))
+	if !reflect.DeepEqual(got, []int{1, 2}) {
+		t.Fatalf("Chain empties = %v, want [1 2]", got)
+	}
+	if got := slices.Collect(iterx.Chain(naturals(5, 5))); len(got) != 0 {
+		t.Fatalf("Chain all empty = %v, want empty", got)
+	}
+}
+
+func TestChainStopsEarly(t *testing.T) {
+	firstPulled := 0
+	secondPulled := 0
+	firstCounting := func(yield func(int) bool) {
+		for candidate := 1; candidate < 100; candidate++ {
+			firstPulled++
+			if !yield(candidate) {
+				return
+			}
+		}
+	}
+	secondCounting := func(yield func(int) bool) {
+		for candidate := 100; candidate < 200; candidate++ {
+			secondPulled++
+			if !yield(candidate) {
+				return
+			}
+		}
+	}
+	pipeline := iterx.Chain(firstCounting, secondCounting)
+	if firstPulled != 0 || secondPulled != 0 {
+		t.Fatalf("before range first=%d second=%d, want 0 0 (lazy)", firstPulled, secondPulled)
+	}
+	got := slices.Collect(iterx.Take(pipeline, 2))
+	if !reflect.DeepEqual(got, []int{1, 2}) {
+		t.Fatalf("Chain+Take = %v, want [1 2]", got)
+	}
+	if firstPulled != 2 || secondPulled != 0 {
+		t.Fatalf("pulled first=%d second=%d, want 2 0 (never touches later input)", firstPulled, secondPulled)
+	}
+}
+
+func TestChainRerangeReruns(t *testing.T) {
+	pipeline := iterx.Chain(slices.Values([]int{1}), slices.Values([]int{2, 3}))
+	first := slices.Collect(pipeline)
+	second := slices.Collect(pipeline)
+	if !reflect.DeepEqual(first, second) {
+		t.Fatalf("re-range = %v, want repeat of %v", second, first)
+	}
+	if !reflect.DeepEqual(first, []int{1, 2, 3}) {
+		t.Fatalf("collect = %v, want [1 2 3]", first)
 	}
 }
 

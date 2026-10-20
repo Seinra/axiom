@@ -173,3 +173,171 @@ func TestNilCheckCarriesName(t *testing.T) {
 		t.Fatalf("failure %q does not carry rule message %q", failureText, namelessCheck.Message)
 	}
 }
+
+// buildRangePredicate returns the Catalyst exam score range predicate (0-100).
+func buildRangePredicate() valid.Predicate[int] {
+	return func(candidateScore int) bool {
+		return candidateScore >= minExamScore && candidateScore <= maxExamScore
+	}
+}
+
+// buildPassingPredicate returns the Catalyst exam passing predicate (score >= 60).
+func buildPassingPredicate() valid.Predicate[int] {
+	return func(candidateScore int) bool {
+		return candidateScore >= passingExamScore
+	}
+}
+
+func TestAndExamScore(t *testing.T) {
+	isInRange := buildRangePredicate()
+	isPassing := buildPassingPredicate()
+	examCases := []struct {
+		scenario       string
+		candidateScore int
+		combined       valid.Predicate[int]
+		wantSatisfied  bool
+	}{
+		{scenario: "score in range and passing satisfies", candidateScore: 85, combined: valid.And(isInRange, isPassing), wantSatisfied: true},
+		{scenario: "score in range but failing violates one leg", candidateScore: 45, combined: valid.And(isInRange, isPassing), wantSatisfied: false},
+		{scenario: "score passing but out of range violates one leg", candidateScore: 150, combined: valid.And(isInRange, isPassing), wantSatisfied: false},
+		{scenario: "score violating both legs dissatisfies", candidateScore: -5, combined: valid.And(isInRange, isPassing), wantSatisfied: false},
+		{scenario: "single passing predicate satisfies alone", candidateScore: 85, combined: valid.And(isPassing), wantSatisfied: true},
+		{scenario: "vacuous empty conjunction holds", candidateScore: -999, combined: valid.And[int](), wantSatisfied: true},
+	}
+	for _, examCase := range examCases {
+		t.Run(examCase.scenario, func(t *testing.T) {
+			observedSatisfied := examCase.combined(examCase.candidateScore)
+			if observedSatisfied != examCase.wantSatisfied {
+				t.Fatalf("And(%d) = %v, want %v", examCase.candidateScore, observedSatisfied, examCase.wantSatisfied)
+			}
+		})
+	}
+}
+
+func TestAndShortCircuitsOnFirstFalse(t *testing.T) {
+	firstCallCount := 0
+	secondCallCount := 0
+	thirdCallCount := 0
+	isAlwaysTrue := func(candidateScore int) bool {
+		firstCallCount++
+		return candidateScore >= minExamScore
+	}
+	isNeverTrue := func(candidateScore int) bool {
+		secondCallCount++
+		return false
+	}
+	isUnreached := func(candidateScore int) bool {
+		thirdCallCount++
+		return candidateScore <= maxExamScore
+	}
+	combined := valid.And(isAlwaysTrue, isNeverTrue, isUnreached)
+	if combined(85) {
+		t.Fatal("And with a false leg returned true, want false")
+	}
+	if firstCallCount != 1 {
+		t.Fatalf("first predicate calls = %d, want 1", firstCallCount)
+	}
+	if secondCallCount != 1 {
+		t.Fatalf("second predicate calls = %d, want 1", secondCallCount)
+	}
+	if thirdCallCount != 0 {
+		t.Fatalf("third predicate calls = %d, want 0 (short-circuited)", thirdCallCount)
+	}
+}
+
+func TestOrExamScore(t *testing.T) {
+	isPassing := buildPassingPredicate()
+	isPerfect := func(candidateScore int) bool { return candidateScore == maxExamScore }
+	examCases := []struct {
+		scenario       string
+		candidateScore int
+		combined       valid.Predicate[int]
+		wantSatisfied  bool
+	}{
+		{scenario: "passing score satisfies one leg", candidateScore: 85, combined: valid.Or(isPassing, isPerfect), wantSatisfied: true},
+		{scenario: "perfect score satisfies second leg", candidateScore: 100, combined: valid.Or(func(candidateScore int) bool { return false }, isPerfect), wantSatisfied: true},
+		{scenario: "failing score dissatisfies every leg", candidateScore: 45, combined: valid.Or(isPassing, isPerfect), wantSatisfied: false},
+		{scenario: "single failing predicate dissatisfies alone", candidateScore: 45, combined: valid.Or(isPassing), wantSatisfied: false},
+		{scenario: "vacuous empty disjunction fails", candidateScore: 85, combined: valid.Or[int](), wantSatisfied: false},
+	}
+	for _, examCase := range examCases {
+		t.Run(examCase.scenario, func(t *testing.T) {
+			observedSatisfied := examCase.combined(examCase.candidateScore)
+			if observedSatisfied != examCase.wantSatisfied {
+				t.Fatalf("Or(%d) = %v, want %v", examCase.candidateScore, observedSatisfied, examCase.wantSatisfied)
+			}
+		})
+	}
+}
+
+func TestOrShortCircuitsOnFirstTrue(t *testing.T) {
+	firstCallCount := 0
+	secondCallCount := 0
+	isPassing := func(candidateScore int) bool {
+		firstCallCount++
+		return candidateScore >= passingExamScore
+	}
+	isUnreached := func(candidateScore int) bool {
+		secondCallCount++
+		return candidateScore <= maxExamScore
+	}
+	combined := valid.Or(isPassing, isUnreached)
+	if !combined(85) {
+		t.Fatal("Or with a true first leg returned false, want true")
+	}
+	if firstCallCount != 1 {
+		t.Fatalf("first predicate calls = %d, want 1", firstCallCount)
+	}
+	if secondCallCount != 0 {
+		t.Fatalf("second predicate calls = %d, want 0 (short-circuited)", secondCallCount)
+	}
+}
+
+func TestNotExamScore(t *testing.T) {
+	isPassing := buildPassingPredicate()
+	examCases := []struct {
+		scenario       string
+		candidateScore int
+		negated        valid.Predicate[int]
+		wantSatisfied  bool
+	}{
+		{scenario: "failing score negates to true", candidateScore: 45, negated: valid.Not(isPassing), wantSatisfied: true},
+		{scenario: "passing score negates to false", candidateScore: 85, negated: valid.Not(isPassing), wantSatisfied: false},
+		{scenario: "nil predicate negates to always false", candidateScore: 45, negated: valid.Not[int](nil), wantSatisfied: false},
+		{scenario: "nil predicate stays false on passing score", candidateScore: 85, negated: valid.Not[int](nil), wantSatisfied: false},
+	}
+	for _, examCase := range examCases {
+		t.Run(examCase.scenario, func(t *testing.T) {
+			observedSatisfied := examCase.negated(examCase.candidateScore)
+			if observedSatisfied != examCase.wantSatisfied {
+				t.Fatalf("Not(%d) = %v, want %v", examCase.candidateScore, observedSatisfied, examCase.wantSatisfied)
+			}
+		})
+	}
+}
+
+func TestComposedAndThroughValidator(t *testing.T) {
+	scoreValidator := valid.New(valid.Rule[int]{
+		Name:    "score in range and passing",
+		Check:   valid.And(buildRangePredicate(), buildPassingPredicate()),
+		Message: "exam score must be between 0 and 100 and reach the passing mark",
+	})
+	examCases := []struct {
+		scenario       string
+		candidateScore int
+		wantValid      bool
+	}{
+		{scenario: "score in range and passing is valid", candidateScore: 85, wantValid: true},
+		{scenario: "score in range but failing is invalid", candidateScore: 45, wantValid: false},
+		{scenario: "score passing but out of range is invalid", candidateScore: 150, wantValid: false},
+		{scenario: "negative score is invalid", candidateScore: -5, wantValid: false},
+	}
+	for _, examCase := range examCases {
+		t.Run(examCase.scenario, func(t *testing.T) {
+			observedValid := scoreValidator.Valid(examCase.candidateScore)
+			if observedValid != examCase.wantValid {
+				t.Fatalf("Valid(%d) = %v, want %v", examCase.candidateScore, observedValid, examCase.wantValid)
+			}
+		})
+	}
+}

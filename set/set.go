@@ -5,6 +5,18 @@
 // queries (Has, Len, IsEmpty, Equal) and combinations (Union, Intersection,
 // Difference, MapValue) never mutate. Members snapshots come unordered: never
 // assert order, only membership.
+//
+// Which function?
+//
+// | When you want to ...           | Reach for ...                                  |
+// |-------------------------------|----------------------------------------------|
+// | Start empty / start with values | New / Of                                   |
+// | Add / drop / reset members    | Add / Remove / Clear                       |
+// | Ask membership or size        | Has / Len / IsEmpty                        |
+// | Merge holdings                | Union / Intersection / Difference / SymmetricDifference |
+// | Compare holdings              | Equal / IsSubsetOf / IsSupersetOf / Overlaps |
+// | Ask whether holdings share nothing | IsDisjoint                         |
+// | Snapshot or transform members | Members / MapValue                         |
 package set
 
 // Set holds distinct members of type Member.
@@ -106,6 +118,66 @@ func (current Set[Member]) Difference(other Set[Member]) Set[Member] {
 		}
 	}
 	return remaining
+}
+
+// SymmetricDifference returns the set of members held by exactly one side.
+func (current Set[Member]) SymmetricDifference(other Set[Member]) Set[Member] {
+	differed := New[Member]()
+	for member := range current.members {
+		if !other.Has(member) {
+			differed.Add(member)
+		}
+	}
+	for member := range other.members {
+		if !current.Has(member) {
+			differed.Add(member)
+		}
+	}
+	return differed
+}
+
+// IsSubsetOf reports whether every member of current is held by other.
+func (current Set[Member]) IsSubsetOf(other Set[Member]) bool {
+	if len(current.members) > len(other.members) {
+		return false
+	}
+	for member := range current.members {
+		if !other.Has(member) {
+			return false
+		}
+	}
+	return true
+}
+
+// IsSupersetOf reports whether every member of other is held by current.
+func (current Set[Member]) IsSupersetOf(other Set[Member]) bool {
+	return other.IsSubsetOf(current)
+}
+
+// Overlaps reports whether current and other share any member.
+// It iterates the smaller side so the fewest Has probes run.
+func (current Set[Member]) Overlaps(other Set[Member]) bool {
+	smaller := current
+	larger := other
+	if len(smaller.members) > len(larger.members) {
+		smaller, larger = larger, smaller
+	}
+	for member := range smaller.members {
+		if larger.Has(member) {
+			return true
+		}
+	}
+	return false
+}
+
+// IsDisjoint reports whether current and other share no member.
+// It is the complement of Overlaps: current.IsDisjoint(other) equals
+// !current.Overlaps(other). Like the other queries it is zero-value safe:
+// an empty set shares nothing, so empty against anything is disjoint.
+// For example, Of(1, 2).IsDisjoint(Of(3, 4)) is true
+// while Of(1, 2).IsDisjoint(Of(2, 3)) is false.
+func (current Set[Member]) IsDisjoint(other Set[Member]) bool {
+	return !current.Overlaps(other)
 }
 
 // Members returns a snapshot slice of held members in unspecified order.

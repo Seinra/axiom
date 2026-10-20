@@ -21,6 +21,8 @@ const (
 
 var errFastFailure = errors.New("fast failure")
 
+var errSlowFailure = errors.New("slow failure")
+
 func contextWithTestTimeout(parent context.Context) (context.Context, context.CancelFunc) {
 	return context.WithTimeout(parent, testTimeout)
 }
@@ -158,6 +160,45 @@ func TestEachFirstFailureCancelsSiblings(t *testing.T) {
 	}
 }
 
+func TestMapSkipsUnstartedWorkAfterFailure(t *testing.T) {
+	// Drain contract: after the first failure, runners stop starting new
+	// work even when the transform ignores the context. In-flight
+	// context-ignoring transforms still run to completion, so extra work is
+	// bounded by the runner count and Map returns without hanging.
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	workerTotal := 4
+	inputTotal := 50
+	inputs := make([]int, inputTotal)
+	for position := range inputs {
+		inputs[position] = position
+	}
+	var started atomic.Int64
+	ignoring := func(taskContext context.Context, candidate int) (int, error) {
+		started.Add(1)
+		if candidate == 0 {
+			return 0, errFastFailure
+		}
+		// Ignores taskContext on purpose: proves unstarted work is still
+		// skipped (via the drain) while in-flight work completes.
+		time.Sleep(slowDelay)
+		return candidate, nil
+	}
+	began := time.Now()
+	_, mapFailure := flow.Map(active, inputs, workerTotal, ignoring)
+	cancelLatency := time.Since(began)
+	if !errors.Is(mapFailure, errFastFailure) {
+		t.Fatalf("Map failure = %v, want %v", mapFailure, errFastFailure)
+	}
+	if observed := started.Load(); observed > int64(workerTotal) {
+		t.Fatalf("Map started = %d, want <= %d", observed, workerTotal)
+	}
+	noHangCeiling := 5 * time.Second
+	if cancelLatency >= noHangCeiling {
+		t.Fatalf("Map cancel latency = %v, want < %v", cancelLatency, noHangCeiling)
+	}
+}
+
 func TestWorkerCountDefaultsWhenNotPositive(t *testing.T) {
 	active, cancelTask := contextWithTestTimeout(context.Background())
 	defer cancelTask()
@@ -261,5 +302,181 @@ func TestEmptyInputs(t *testing.T) {
 	}
 	if eachFailure := flow.Each(active, []int{}, 2, neverConsumes); eachFailure != nil {
 		t.Fatalf("Each failure = %v, want nil", eachFailure)
+	}
+}
+
+func TestRace(t *testing.T) {
+	// startedCeiling bounds transforms started (-1 skips); startedExact pins
+	// the exact count (-1 skips). Every row asserts prompt latency below the
+	// shared ceiling, mirroring the Map cancellation proofs.
+	raceCases := []struct {
+		name           string
+		inputs         []int
+		workerCount    int
+		preCanceled    bool
+		delays         map[int]time.Duration
+		fallbackDelay  time.Duration
+		failures       map[int]error
+		wantWinner     int
+		wantFailure    error
+		startedCeiling int64
+		startedExact   int64
+	}{
+		{
+			name:        "staggered first success wins",
+			inputs:      []int{0, 1, 2, 3, 4, 5},
+			workerCount: 6,
+			delays: map[int]time.Duration{
+				0: 5 * staggerStep,
+				1: 4 * staggerStep,
+				2: 3 * staggerStep,
+				3: 2 * staggerStep,
+				4: staggerStep,
+			},
+			wantWinner:     5 * outputFactor,
+			startedCeiling: 6,
+			startedExact:   -1,
+		},
+		{
+			name:        "all fail returns first failure",
+			inputs:      []int{0, 1, 2, 3},
+			workerCount: 2,
+			delays: map[int]time.Duration{
+				1: staggerStep,
+				2: 2 * staggerStep,
+				3: 3 * staggerStep,
+			},
+			failures: map[int]error{
+				0: errFastFailure,
+				1: errSlowFailure,
+				2: errSlowFailure,
+				3: errSlowFailure,
+			},
+			wantWinner:     0,
+			wantFailure:    errFastFailure,
+			startedCeiling: -1,
+			// Failures never cancel siblings, so every input still races.
+			startedExact: 4,
+		},
+		{
+			name:           "pre-canceled context reports promptly",
+			inputs:         []int{1, 2, 3},
+			workerCount:    2,
+			preCanceled:    true,
+			wantWinner:     0,
+			wantFailure:    context.Canceled,
+			startedCeiling: -1,
+			startedExact:   0,
+		},
+		{
+			name:           "empty inputs yield sentinel failure",
+			inputs:         []int{},
+			workerCount:    2,
+			wantWinner:     0,
+			wantFailure:    flow.ErrNoRaceInputs,
+			startedCeiling: -1,
+			startedExact:   0,
+		},
+		{
+			name:           "fast success cancels slow siblings",
+			inputs:         []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19},
+			workerCount:    4,
+			delays:         map[int]time.Duration{0: 0},
+			fallbackDelay:  slowDelay,
+			wantWinner:     0,
+			startedCeiling: 4,
+			startedExact:   -1,
+		},
+		{
+			name:           "zero worker count falls back",
+			inputs:         []int{7},
+			workerCount:    0,
+			wantWinner:     7 * outputFactor,
+			startedCeiling: -1,
+			startedExact:   1,
+		},
+		{
+			name:           "negative worker count falls back",
+			inputs:         []int{7},
+			workerCount:    -3,
+			wantWinner:     7 * outputFactor,
+			startedCeiling: -1,
+			startedExact:   1,
+		},
+		{
+			name:           "zero value win stays a success",
+			inputs:         []int{0},
+			workerCount:    2,
+			wantWinner:     0,
+			startedCeiling: -1,
+			startedExact:   1,
+		},
+	}
+	for _, raceCase := range raceCases {
+		t.Run(raceCase.name, func(t *testing.T) {
+			var active context.Context
+			var cancelTask context.CancelFunc
+			if raceCase.preCanceled {
+				active, cancelTask = context.WithCancel(context.Background())
+				cancelTask()
+			} else {
+				active, cancelTask = contextWithTestTimeout(context.Background())
+				defer cancelTask()
+			}
+			var started atomic.Int64
+			transform := func(taskContext context.Context, candidate int) (int, error) {
+				started.Add(1)
+				stagger, timed := raceCase.delays[candidate]
+				if !timed {
+					stagger = raceCase.fallbackDelay
+				}
+				if stagger > 0 {
+					staggerTimer := time.NewTimer(stagger)
+					defer staggerTimer.Stop()
+					select {
+					case <-taskContext.Done():
+						return 0, taskContext.Err()
+					case <-staggerTimer.C:
+					}
+				} else {
+					select {
+					case <-taskContext.Done():
+						return 0, taskContext.Err()
+					default:
+					}
+				}
+				if transformFailure, failed := raceCase.failures[candidate]; failed {
+					return 0, transformFailure
+				}
+				return candidate * outputFactor, nil
+			}
+			began := time.Now()
+			winner, raceFailure := flow.Race(active, raceCase.inputs, raceCase.workerCount, transform)
+			raceLatency := time.Since(began)
+			if raceCase.wantFailure == nil {
+				if raceFailure != nil {
+					t.Fatalf("Race failure = %v, want nil", raceFailure)
+				}
+			} else if !errors.Is(raceFailure, raceCase.wantFailure) {
+				t.Fatalf("Race failure = %v, want %v", raceFailure, raceCase.wantFailure)
+			}
+			if winner != raceCase.wantWinner {
+				t.Fatalf("Race winner = %v, want %v", winner, raceCase.wantWinner)
+			}
+			if raceCase.startedCeiling >= 0 {
+				if observed := started.Load(); observed > raceCase.startedCeiling {
+					t.Fatalf("Race started = %d, want <= %d", observed, raceCase.startedCeiling)
+				}
+			}
+			if raceCase.startedExact >= 0 {
+				if observed := started.Load(); observed != raceCase.startedExact {
+					t.Fatalf("Race started = %d, want %d", observed, raceCase.startedExact)
+				}
+			}
+			promptCeiling := 2 * time.Second
+			if raceLatency >= promptCeiling {
+				t.Fatalf("Race latency = %v, want < %v", raceLatency, promptCeiling)
+			}
+		})
 	}
 }

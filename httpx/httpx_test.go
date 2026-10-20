@@ -143,3 +143,124 @@ func TestListResponseCarriesItemsPageTotal(t *testing.T) {
 		t.Fatalf("ListResponse Total = %d, want 5", decoded.Total)
 	}
 }
+
+// TestResponseStructZeroDataIsRetained pins the envelope contract: a zero
+// struct Body still emits the data key, so struct Bodies never collapse.
+func TestResponseStructZeroDataIsRetained(t *testing.T) {
+	encoded, encodeFailure := json.Marshal(httpx.Response[personPayload]{Data: personPayload{}})
+	if encodeFailure != nil {
+		t.Fatalf("marshal struct-zero envelope: unexpected failure: %v", encodeFailure)
+	}
+	if !strings.Contains(string(encoded), `"data"`) {
+		t.Fatalf("struct-zero envelope = %s, want a data key", string(encoded))
+	}
+}
+
+// TestResponseScalarZeroDataOmitsKey pins the envelope contract: a scalar
+// zero Body (0, "", false) encodes with no data key under omitempty.
+func TestResponseScalarZeroDataOmitsKey(t *testing.T) {
+	encoded, encodeFailure := json.Marshal(httpx.Response[int]{Data: 0})
+	if encodeFailure != nil {
+		t.Fatalf("marshal int-zero envelope: unexpected failure: %v", encodeFailure)
+	}
+	if string(encoded) != "{}" {
+		t.Fatalf("int-zero envelope = %s, want {} (keyless zero value)", string(encoded))
+	}
+}
+
+// TestFailEnvelopeOmitsDataKey pins that failure envelopes carry no data
+// key: a nil any Data is omitted, never encoded as null.
+func TestFailEnvelopeOmitsDataKey(t *testing.T) {
+	encoded, encodeFailure := json.Marshal(httpx.Response[any]{Error: "bad input"})
+	if encodeFailure != nil {
+		t.Fatalf("marshal fail envelope: unexpected failure: %v", encodeFailure)
+	}
+	if string(encoded) != `{"error":"bad input"}` {
+		t.Fatalf("fail envelope = %s, want exactly an error key", string(encoded))
+	}
+}
+
+func TestValidationFailJoinsMultipleFailures(t *testing.T) {
+	engine := echo.New()
+	httpContext, recorder := newBareContext(engine)
+	failures := []error{errors.New("name is required"), errors.New("age must be positive")}
+	if writeFailure := httpx.ValidationFail(httpContext, failures); writeFailure != nil {
+		t.Fatalf("ValidationFail multi: unexpected failure: %v", writeFailure)
+	}
+	if recorder.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("ValidationFail multi: status = %d, want %d", recorder.Code, http.StatusUnprocessableEntity)
+	}
+	var envelope httpx.Response[personPayload]
+	if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
+		t.Fatalf("ValidationFail multi: decode failure: %v", decodeFailure)
+	}
+	if envelope.Error != "name is required; age must be positive" {
+		t.Fatalf("ValidationFail multi: Error = %q, want joined messages", envelope.Error)
+	}
+}
+
+func TestValidationFailSingleFailure(t *testing.T) {
+	engine := echo.New()
+	httpContext, recorder := newBareContext(engine)
+	failures := []error{errors.New("name is required")}
+	if writeFailure := httpx.ValidationFail(httpContext, failures); writeFailure != nil {
+		t.Fatalf("ValidationFail single: unexpected failure: %v", writeFailure)
+	}
+	if recorder.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("ValidationFail single: status = %d, want %d", recorder.Code, http.StatusUnprocessableEntity)
+	}
+	var envelope httpx.Response[personPayload]
+	if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
+		t.Fatalf("ValidationFail single: decode failure: %v", decodeFailure)
+	}
+	if envelope.Error != "name is required" {
+		t.Fatalf("ValidationFail single: Error = %q, want %q", envelope.Error, "name is required")
+	}
+}
+
+func TestValidationFailEmptySliceGuard(t *testing.T) {
+	for _, scenario := range []struct {
+		scenarioName string
+		failures     []error
+	}{
+		{scenarioName: "nil failures", failures: nil},
+		{scenarioName: "empty failures", failures: []error{}},
+	} {
+		engine := echo.New()
+		httpContext, recorder := newBareContext(engine)
+		if writeFailure := httpx.ValidationFail(httpContext, scenario.failures); writeFailure != nil {
+			t.Fatalf("ValidationFail %s: unexpected failure: %v", scenario.scenarioName, writeFailure)
+		}
+		if recorder.Code != http.StatusUnprocessableEntity {
+			t.Fatalf("ValidationFail %s: status = %d, want %d", scenario.scenarioName, recorder.Code, http.StatusUnprocessableEntity)
+		}
+		var envelope httpx.Response[personPayload]
+		if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
+			t.Fatalf("ValidationFail %s: decode failure: %v", scenario.scenarioName, decodeFailure)
+		}
+		if envelope.Error == "" {
+			t.Fatalf("ValidationFail %s: Error is empty, want descriptive message", scenario.scenarioName)
+		}
+	}
+}
+
+// TestValidationFailSkipsNilEntries pins that nil entries inside failures
+// are skipped instead of panicking or contributing empty messages.
+func TestValidationFailSkipsNilEntries(t *testing.T) {
+	engine := echo.New()
+	httpContext, recorder := newBareContext(engine)
+	failures := []error{nil, errors.New("name is required"), nil}
+	if writeFailure := httpx.ValidationFail(httpContext, failures); writeFailure != nil {
+		t.Fatalf("ValidationFail nil entries: unexpected failure: %v", writeFailure)
+	}
+	if recorder.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("ValidationFail nil entries: status = %d, want %d", recorder.Code, http.StatusUnprocessableEntity)
+	}
+	var envelope httpx.Response[personPayload]
+	if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
+		t.Fatalf("ValidationFail nil entries: decode failure: %v", decodeFailure)
+	}
+	if envelope.Error != "name is required" {
+		t.Fatalf("ValidationFail nil entries: Error = %q, want %q", envelope.Error, "name is required")
+	}
+}

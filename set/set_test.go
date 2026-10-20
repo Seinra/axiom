@@ -160,7 +160,175 @@ func TestCombinationsNeverMutateInputs(t *testing.T) {
 	_ = first.Union(second)
 	_ = first.Intersection(second)
 	_ = first.Difference(second)
+	_ = first.SymmetricDifference(second)
 	if !first.Equal(set.Of(1, 2)) || !second.Equal(set.Of(2, 3)) {
 		t.Fatalf("inputs mutated: first = %v, second = %v", first.Members(), second.Members())
+	}
+}
+
+func TestSymmetricDifferenceKeepsExactlyOneSide(t *testing.T) {
+	differed := set.Of(1, 2, 3).SymmetricDifference(set.Of(2, 3, 4))
+	want := set.Of(1, 4)
+	if !differed.Equal(want) {
+		t.Fatalf("SymmetricDifference = %v, want %v", differed.Members(), want.Members())
+	}
+}
+
+func TestSymmetricDifferenceWithEmpty(t *testing.T) {
+	populated := set.Of(1, 2)
+	var empty set.Set[int]
+	if got := populated.SymmetricDifference(empty); !got.Equal(populated) {
+		t.Fatalf("populated ^ empty = %v, want %v", got.Members(), populated.Members())
+	}
+	if got := empty.SymmetricDifference(populated); !got.Equal(populated) {
+		t.Fatalf("empty ^ populated = %v, want %v", got.Members(), populated.Members())
+	}
+}
+
+func TestSymmetricDifferenceBothEmpty(t *testing.T) {
+	var first, second set.Set[int]
+	differed := first.SymmetricDifference(second)
+	if !differed.IsEmpty() {
+		t.Fatalf("empty ^ empty len = %d, want 0", differed.Len())
+	}
+	if differed.Len() != 0 {
+		t.Fatalf("Len = %d, want 0", differed.Len())
+	}
+}
+
+func TestIsSubsetOf(t *testing.T) {
+	if !set.Of(1, 2).IsSubsetOf(set.Of(1, 2, 3)) {
+		t.Fatal("IsSubsetOf = false for held members, want true")
+	}
+	if !set.Of(1, 2).IsSubsetOf(set.Of(1, 2)) {
+		t.Fatal("IsSubsetOf = false for equal sets, want true")
+	}
+	if set.Of(1, 4).IsSubsetOf(set.Of(1, 2, 3)) {
+		t.Fatal("IsSubsetOf = true with unheld member, want false")
+	}
+}
+
+func TestIsSubsetOfEmptyEdges(t *testing.T) {
+	var empty set.Set[int]
+	if !empty.IsSubsetOf(set.Of(1)) {
+		t.Fatal("empty IsSubsetOf populated = false, want true")
+	}
+	var otherEmpty set.Set[int]
+	if !empty.IsSubsetOf(otherEmpty) {
+		t.Fatal("empty IsSubsetOf empty = false, want true")
+	}
+	if set.Of(1).IsSubsetOf(empty) {
+		t.Fatal("populated IsSubsetOf empty = true, want false")
+	}
+}
+
+func TestIsSupersetOf(t *testing.T) {
+	if !set.Of(1, 2, 3).IsSupersetOf(set.Of(1, 2)) {
+		t.Fatal("IsSupersetOf = false for held members, want true")
+	}
+	if !set.Of(1, 2).IsSupersetOf(set.Of(1, 2)) {
+		t.Fatal("IsSupersetOf = false for equal sets, want true")
+	}
+	if set.Of(1, 2).IsSupersetOf(set.Of(1, 4)) {
+		t.Fatal("IsSupersetOf = true with unheld member, want false")
+	}
+}
+
+func TestIsSupersetOfEmptyEdges(t *testing.T) {
+	var empty set.Set[int]
+	if !set.Of(1).IsSupersetOf(empty) {
+		t.Fatal("populated IsSupersetOf empty = false, want true")
+	}
+	var otherEmpty set.Set[int]
+	if !empty.IsSupersetOf(otherEmpty) {
+		t.Fatal("empty IsSupersetOf empty = false, want true")
+	}
+	if empty.IsSupersetOf(set.Of(1)) {
+		t.Fatal("empty IsSupersetOf populated = true, want false")
+	}
+}
+
+func TestOverlapsReportsShared(t *testing.T) {
+	if !set.Of(1, 2, 3).Overlaps(set.Of(3, 4)) {
+		t.Fatal("Overlaps = false for shared member, want true")
+	}
+	if set.Of(1, 2).Overlaps(set.Of(3, 4)) {
+		t.Fatal("Overlaps = true for disjoint sets, want false")
+	}
+}
+
+func TestOverlapsEmptyEdges(t *testing.T) {
+	var empty set.Set[int]
+	if empty.Overlaps(set.Of(1)) {
+		t.Fatal("empty Overlaps populated = true, want false")
+	}
+	if set.Of(1).Overlaps(empty) {
+		t.Fatal("populated Overlaps empty = true, want false")
+	}
+	var otherEmpty set.Set[int]
+	if empty.Overlaps(otherEmpty) {
+		t.Fatal("empty Overlaps empty = true, want false")
+	}
+}
+
+func TestIsDisjointTable(t *testing.T) {
+	testCases := []struct {
+		name   string
+		first  set.Set[int]
+		second set.Set[int]
+		want   bool
+	}{
+		{
+			name:   "disjoint holdings",
+			first:  set.Of(1, 2),
+			second: set.Of(3, 4),
+			want:   true,
+		},
+		{
+			name:   "shared member",
+			first:  set.Of(1, 2, 3),
+			second: set.Of(3, 4),
+			want:   false,
+		},
+		{
+			name:   "identical non-empty",
+			first:  set.Of(1, 2),
+			second: set.Of(1, 2),
+			want:   false,
+		},
+		{
+			name:   "subset shares members",
+			first:  set.Of(1),
+			second: set.Of(1, 2),
+			want:   false,
+		},
+		{
+			name:   "empty against populated",
+			first:  set.Set[int]{},
+			second: set.Of(1),
+			want:   true,
+		},
+		{
+			name:   "populated against empty",
+			first:  set.Of(1),
+			second: set.Set[int]{},
+			want:   true,
+		},
+		{
+			name:   "both empty",
+			first:  set.Set[int]{},
+			second: set.New[int](),
+			want:   true,
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			if got := testCase.first.IsDisjoint(testCase.second); got != testCase.want {
+				t.Fatalf("IsDisjoint = %v, want %v", got, testCase.want)
+			}
+			if got := testCase.first.IsDisjoint(testCase.second); got != !testCase.first.Overlaps(testCase.second) {
+				t.Fatalf("IsDisjoint = %v, want complement of Overlaps %v", got, testCase.first.Overlaps(testCase.second))
+			}
+		})
 	}
 }

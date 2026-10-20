@@ -23,6 +23,24 @@ One small, dependable generics library at Echo-level quality: typed helpers for 
    ```
 3. Verify: `go test ./...` — expect `ok` for `opt`, `result`, `slice`.
 
+## Which function? (guide index)
+
+Each package doc opens with a "Which function?" table (outcome → function).
+Start there, then `go doc` the package:
+
+| If you are holding ... | Start with | Guide |
+| --- | --- | --- |
+| a maybe-present value | `opt` | `go doc ./opt` ([opt/opt.go](opt/opt.go)) |
+| a success-or-failure outcome | `result` | `go doc ./result` ([result/result.go](result/result.go)) |
+| a slice to transform, find, or fold | `slice` | `go doc ./slice` ([slice/slice.go](slice/slice.go)) |
+| distinct values to combine or compare | `set` | `go doc ./set` ([set/set.go](set/set.go)) |
+| a builtin map to reshape | `mapx` | `go doc ./mapx` ([mapx/mapx.go](mapx/mapx.go)) |
+| a lazy `iter.Seq` pipeline | `iterx` | `go doc ./iterx` ([iterx/iterx.go](iterx/iterx.go)) |
+
+`slice` functions returning `(value, bool)` — `FindSlice`, `Min`/`Max`,
+`MinBy`/`MaxBy`, `Average` — use the OrNull shape: check the `bool` before
+trusting the value.
+
 ## Details
 
 | Topic | Decision |

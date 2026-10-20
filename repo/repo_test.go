@@ -280,3 +280,56 @@ func TestHugePageYieldsEmpty(t *testing.T) {
 		t.Fatalf("List huge page len = %d, want 0", len(overflowed))
 	}
 }
+
+func TestTotalPagesComputesCeiling(t *testing.T) {
+	pageCases := []struct {
+		scenario   string
+		totalCount int
+		pageSize   int
+		want       int
+	}{
+		{scenario: "empty store yields zero", totalCount: 0, pageSize: 2, want: 0},
+		{scenario: "negative total yields zero", totalCount: -3, pageSize: 2, want: 0},
+		{scenario: "zero size yields zero", totalCount: 4, pageSize: 0, want: 0},
+		{scenario: "negative size yields zero", totalCount: 4, pageSize: -2, want: 0},
+		{scenario: "exact multiple divides evenly", totalCount: 4, pageSize: 2, want: 2},
+		{scenario: "remainder rounds up", totalCount: 5, pageSize: 2, want: 3},
+		{scenario: "singleton fits one page", totalCount: 1, pageSize: 10, want: 1},
+		{scenario: "size one counts records", totalCount: 3, pageSize: 1, want: 3},
+	}
+	for _, pageCase := range pageCases {
+		t.Run(pageCase.scenario, func(t *testing.T) {
+			if total := repo.TotalPages(pageCase.totalCount, pageCase.pageSize); total != pageCase.want {
+				t.Fatalf("TotalPages(%d, %d) = %d, want %d", pageCase.totalCount, pageCase.pageSize, total, pageCase.want)
+			}
+		})
+	}
+}
+
+func TestHasNextPageReportsNext(t *testing.T) {
+	pageCases := []struct {
+		scenario   string
+		current    repo.Page
+		totalCount int
+		want       bool
+	}{
+		{scenario: "first page with remainder has next", current: repo.Page{Number: 1, Size: 2}, totalCount: 4, want: true},
+		{scenario: "exact multiple boundary has no next", current: repo.Page{Number: 2, Size: 2}, totalCount: 4, want: false},
+		{scenario: "middle page with remainder has next", current: repo.Page{Number: 2, Size: 2}, totalCount: 5, want: true},
+		{scenario: "last partial page has no next", current: repo.Page{Number: 3, Size: 2}, totalCount: 5, want: false},
+		{scenario: "past end has no next", current: repo.Page{Number: 3, Size: 2}, totalCount: 4, want: false},
+		{scenario: "empty store has no next", current: repo.Page{Number: 1, Size: 2}, totalCount: 0, want: false},
+		{scenario: "negative total has no next", current: repo.Page{Number: 1, Size: 2}, totalCount: -1, want: false},
+		{scenario: "zero number is invalid", current: repo.Page{Number: 0, Size: 2}, totalCount: 4, want: false},
+		{scenario: "negative number is invalid", current: repo.Page{Number: -1, Size: 2}, totalCount: 4, want: false},
+		{scenario: "zero size is invalid", current: repo.Page{Number: 1, Size: 0}, totalCount: 4, want: false},
+		{scenario: "negative size is invalid", current: repo.Page{Number: 1, Size: -2}, totalCount: 4, want: false},
+	}
+	for _, pageCase := range pageCases {
+		t.Run(pageCase.scenario, func(t *testing.T) {
+			if next := repo.HasNextPage(pageCase.current, pageCase.totalCount); next != pageCase.want {
+				t.Fatalf("HasNextPage(%+v, %d) = %v, want %v", pageCase.current, pageCase.totalCount, next, pageCase.want)
+			}
+		})
+	}
+}

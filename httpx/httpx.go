@@ -7,6 +7,8 @@ package httpx
 import (
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v5"
 
@@ -16,6 +18,11 @@ import (
 // Response is the single JSON envelope for success and failure replies.
 // Exactly one of Data/Error is meaningful per response: success sets Data
 // with Error empty, failure sets Error with Data omitted.
+//
+// Contract: Data carries `omitempty`, so a scalar zero Body (0, "", false)
+// encodes with no data key — read a keyless `{}` success as "zero value",
+// never as failure. Prefer struct, slice, or map Bodies: a zero struct
+// still emits `"data":{}`.
 type Response[Body any] struct {
 	Data  Body   `json:"data,omitempty"`
 	Error string `json:"error,omitempty"`
@@ -45,6 +52,24 @@ func Fail(httpContext *echo.Context, status int, failure error) error {
 		failure = errors.New("axiom httpx: Fail needs a non-nil failure")
 	}
 	return httpContext.JSON(status, Response[any]{Error: failure.Error()})
+}
+
+// ValidationFail writes validator failures as a 422 envelope with the
+// failure messages joined by "; ". Nil entries inside failures are
+// skipped. Empty or all-nil failures write a descriptive guard message,
+// never an empty envelope.
+func ValidationFail(httpContext *echo.Context, failures []error) error {
+	messages := make([]string, 0, len(failures))
+	for _, failure := range failures {
+		if failure == nil {
+			continue
+		}
+		messages = append(messages, failure.Error())
+	}
+	if len(messages) == 0 {
+		return Fail(httpContext, http.StatusUnprocessableEntity, errors.New("axiom httpx: ValidationFail needs at least one failure"))
+	}
+	return Fail(httpContext, http.StatusUnprocessableEntity, errors.New(strings.Join(messages, "; ")))
 }
 
 // ListResponse carries a page of records with its page cursor and total count.

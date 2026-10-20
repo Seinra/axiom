@@ -12,6 +12,54 @@ import "fmt"
 // Predicate reports whether candidate satisfies a single condition.
 type Predicate[Value any] func(Value) bool
 
+// And combines predicates into one that holds only when every leg holds.
+// An empty conjunction holds vacuously, so And with no predicates always
+// reports true. Legs run left to right and stop at the first false, so
+// later legs never run after a failure. A nil leg counts as false.
+func And[Value any](predicates ...Predicate[Value]) Predicate[Value] {
+	return func(candidate Value) bool {
+		for _, activePredicate := range predicates {
+			if activePredicate == nil {
+				return false
+			}
+			if !activePredicate(candidate) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+// Or combines predicates into one that holds when any leg holds.
+// An empty disjunction fails vacuously, so Or with no predicates always
+// reports false. Legs run left to right and stop at the first true, so
+// later legs never run after a success. A nil leg counts as false and is skipped.
+func Or[Value any](predicates ...Predicate[Value]) Predicate[Value] {
+	return func(candidate Value) bool {
+		for _, activePredicate := range predicates {
+			if activePredicate == nil {
+				continue
+			}
+			if activePredicate(candidate) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// Not negates predicate. A nil predicate is a programmer error handled
+// as always-false rather than panicking: Not of nil always reports false,
+// matching how Validator already accepts empty rule sets gracefully.
+func Not[Value any](predicate Predicate[Value]) Predicate[Value] {
+	return func(candidate Value) bool {
+		if predicate == nil {
+			return false
+		}
+		return !predicate(candidate)
+	}
+}
+
 // Rule pairs a human-readable Name with a Check and a failure Message.
 // Name identifies the rule in errors; Message explains the failure.
 type Rule[Value any] struct {

@@ -232,3 +232,35 @@ func TestNewStoreAcceptsDottedOrderColumn(t *testing.T) {
 		t.Fatal("NewStore(dotted column) = nil store, want non-nil")
 	}
 }
+
+// TestListFollowsConfiguredOrderColumn pins the paging contract: List sorts
+// by the order column fixed at construction, so a unique column (here slug)
+// yields deterministic pages independent of insertion order.
+func TestListFollowsConfiguredOrderColumn(t *testing.T) {
+	lessonStore, buildFailure := repogorm.NewStore[Lesson, uint](openTestDatabase(t), []any{Lesson{}}, "slug")
+	if buildFailure != nil {
+		t.Fatalf("NewStore(slug column): unexpected failure: %v", buildFailure)
+	}
+	seeded := []Lesson{
+		{ID: 1, Slug: "lesson-c", Title: "Lesson C"},
+		{ID: 2, Slug: "lesson-a", Title: "Lesson A"},
+		{ID: 3, Slug: "lesson-b", Title: "Lesson B"},
+	}
+	for _, candidate := range seeded {
+		if storeFailure := lessonStore.Store(candidate); storeFailure != nil {
+			t.Fatalf("seed Store(%q): unexpected failure: %v", candidate.Slug, storeFailure)
+		}
+	}
+	listed, listFailure := lessonStore.List(repo.Page{Number: 1, Size: 10})
+	if listFailure != nil {
+		t.Fatalf("List: unexpected failure: %v", listFailure)
+	}
+	wantSlugs := []string{"lesson-a", "lesson-b", "lesson-c"}
+	gotSlugs := make([]string, 0, len(listed))
+	for _, candidate := range listed {
+		gotSlugs = append(gotSlugs, candidate.Slug)
+	}
+	if !slices.Equal(gotSlugs, wantSlugs) {
+		t.Fatalf("List slug order = %v, want %v", gotSlugs, wantSlugs)
+	}
+}

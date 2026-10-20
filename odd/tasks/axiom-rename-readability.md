@@ -28,6 +28,7 @@ Owner principles 2026-10-20: (1) human readability first, students, pre-v0 windo
 | `slice.Counts` | `Tally` | verb reads; noun read as property | cheap |
 | `httpx.JSON` / `httpx.Fail` | `WriteJSON` / `WriteError` | kills `encoding/json` collision; symmetric pair | medium (adapters) |
 | `httpx.Bind` | `Decode` | `Decode[Body](ctx)` explicit vs bare verb | medium |
+| `httpx.ValidationFail` | `ValidationWriteError` | follow-through consistente de `Fail→WriteError` (confirmado retroactivo L6) | cheap |
 | `flow.Each` | `ForEach` | explicit; `Each` empty first-read | cheap |
 | `either` params `L/R` | `LeftT/RightT` | readability-first + ban-13; single letters hurt novices/grep — REVERSES #18 `L/R` call, flagged explicitly | cheap, needs explicit sign-off |
 | `valid.And/Or/Not` | KEEP + vacuous-truth table | boolean ops fine qualified; churn not worth it | docs only |

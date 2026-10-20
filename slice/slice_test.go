@@ -672,3 +672,153 @@ func TestAverageNeverMutatesInput(t *testing.T) {
 		t.Fatalf("input mutated to %v", numbers)
 	}
 }
+
+func TestSortByOrdersByKey(t *testing.T) {
+	testCases := []struct {
+		scenario string
+		input    []int
+		expected []int
+	}{
+		{scenario: "unsorted orders ascending", input: []int{3, 1, 2}, expected: []int{1, 2, 3}},
+		{scenario: "already sorted stays ordered", input: []int{1, 2, 3}, expected: []int{1, 2, 3}},
+		{scenario: "reversed orders ascending", input: []int{5, 4, 3, 2, 1}, expected: []int{1, 2, 3, 4, 5}},
+		{scenario: "duplicates collapse in order", input: []int{2, 1, 2, 1}, expected: []int{1, 1, 2, 2}},
+		{scenario: "singleton stays singleton", input: []int{7}, expected: []int{7}},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.scenario, func(t *testing.T) {
+			sorted := axiomslice.SortBy(testCase.input, func(element int) int { return element })
+			if !reflect.DeepEqual(sorted, testCase.expected) {
+				t.Fatalf("SortBy(%v) = %v, want %v", testCase.input, sorted, testCase.expected)
+			}
+		})
+	}
+}
+
+func TestSortByKeyOrdersWordsByLength(t *testing.T) {
+	words := []string{"bbbb", "a", "ccc"}
+	sorted := axiomslice.SortBy(words, func(candidate string) int { return len(candidate) })
+	expected := []string{"a", "ccc", "bbbb"}
+	if !reflect.DeepEqual(sorted, expected) {
+		t.Fatalf("SortBy lengths = %v, want %v", sorted, expected)
+	}
+}
+
+func TestSortByTieKeepsFirst(t *testing.T) {
+	type player struct {
+		label string
+		score int
+	}
+	players := []player{{label: "first", score: 1}, {label: "second", score: 1}, {label: "third", score: 2}}
+	sorted := axiomslice.SortBy(players, func(candidate player) int { return candidate.score })
+	if len(sorted) != 3 || sorted[0].label != "first" || sorted[1].label != "second" || sorted[2].label != "third" {
+		t.Fatalf("SortBy tie order = %v, want first/second/third stable", sorted)
+	}
+}
+
+func TestSortByEmptyYieldsEmpty(t *testing.T) {
+	sorted := axiomslice.SortBy([]int{}, func(element int) int { return element })
+	if sorted == nil || len(sorted) != 0 {
+		t.Fatalf("SortBy(empty) = %v, want empty non-nil", sorted)
+	}
+}
+
+func TestSortByNilYieldsEmpty(t *testing.T) {
+	var numbers []int
+	sorted := axiomslice.SortBy(numbers, func(element int) int { return element })
+	if sorted == nil || len(sorted) != 0 {
+		t.Fatalf("SortBy(nil) = %v, want empty non-nil", sorted)
+	}
+}
+
+func TestSortByNeverMutatesInput(t *testing.T) {
+	numbers := []int{3, 1, 2}
+	sorted := axiomslice.SortBy(numbers, func(element int) int { return element })
+	sorted[0] = 99
+	if !reflect.DeepEqual(numbers, []int{3, 1, 2}) {
+		t.Fatalf("input mutated to %v, want [3 1 2]", numbers)
+	}
+}
+
+func TestSortByStabilityAcrossManyTies(t *testing.T) {
+	type player struct {
+		label string
+		score int
+	}
+	players := []player{
+		{label: "k0a", score: 0}, {label: "k1a", score: 1}, {label: "k2a", score: 2},
+		{label: "k0b", score: 0}, {label: "k1b", score: 1}, {label: "k2b", score: 2},
+		{label: "k0c", score: 0}, {label: "k1c", score: 1}, {label: "k2c", score: 2},
+		{label: "k0d", score: 0}, {label: "k1d", score: 1}, {label: "k2d", score: 2},
+	}
+	sorted := axiomslice.SortBy(players, func(candidate player) int { return candidate.score })
+	labels := make([]string, 0, len(sorted))
+	for _, winner := range sorted {
+		labels = append(labels, winner.label)
+	}
+	expected := []string{"k0a", "k0b", "k0c", "k0d", "k1a", "k1b", "k1c", "k1d", "k2a", "k2b", "k2c", "k2d"}
+	if !reflect.DeepEqual(labels, expected) {
+		t.Fatalf("SortBy stable labels = %v, want %v", labels, expected)
+	}
+}
+
+func TestScanRunningTotals(t *testing.T) {
+	testCases := []struct {
+		scenario string
+		input    []int
+		initial  int
+		expected []int
+	}{
+		{scenario: "prefix sums from zero", input: []int{1, 2, 3, 4}, initial: 0, expected: []int{1, 3, 6, 10}},
+		{scenario: "nonzero initial offsets totals", input: []int{1, 2}, initial: 10, expected: []int{11, 13}},
+		{scenario: "singleton holds combined initial", input: []int{5}, initial: 2, expected: []int{7}},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.scenario, func(t *testing.T) {
+			actual := axiomslice.Scan(testCase.input, testCase.initial, func(total int, element int) int { return total + element })
+			if !reflect.DeepEqual(actual, testCase.expected) {
+				t.Fatalf("Scan(%v) = %v, want %v", testCase.input, actual, testCase.expected)
+			}
+		})
+	}
+}
+
+func TestScanConcatenatesStrings(t *testing.T) {
+	actual := axiomslice.Scan([]string{"a", "b", "c"}, "", func(total string, element string) string { return total + element })
+	expected := []string{"a", "ab", "abc"}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Fatalf("Scan strings = %v, want %v", actual, expected)
+	}
+}
+
+func TestScanLengthMatchesInput(t *testing.T) {
+	input := []int{4, 3, 2, 1}
+	actual := axiomslice.Scan(input, 0, func(total int, element int) int { return total + element })
+	if len(actual) != len(input) {
+		t.Fatalf("Scan len = %d, want %d", len(actual), len(input))
+	}
+}
+
+func TestScanEmptyYieldsEmpty(t *testing.T) {
+	actual := axiomslice.Scan([]int{}, 0, func(total int, element int) int { return total + element })
+	if actual == nil || len(actual) != 0 {
+		t.Fatalf("Scan(empty) = %v, want empty non-nil", actual)
+	}
+}
+
+func TestScanNilYieldsEmpty(t *testing.T) {
+	var numbers []int
+	actual := axiomslice.Scan(numbers, 0, func(total int, element int) int { return total + element })
+	if actual == nil || len(actual) != 0 {
+		t.Fatalf("Scan(nil) = %v, want empty non-nil", actual)
+	}
+}
+
+func TestScanNeverMutatesInput(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	actual := axiomslice.Scan(numbers, 0, func(total int, element int) int { return total + element })
+	actual[0] = 99
+	if !reflect.DeepEqual(numbers, []int{1, 2, 3}) {
+		t.Fatalf("input mutated to %v, want [1 2 3]", numbers)
+	}
+}

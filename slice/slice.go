@@ -22,6 +22,8 @@
 // | Drop later duplicates                  | Distinct                  |
 // | Split into matching plus rest          | Partition                 |
 // | Slot a separator between elements      | Intersperse               |
+// | Sort a copy by key, ties keep order    | SortBy                      |
+// | Running folds element by element       | Scan                        |
 //
 // The (value, bool) return on FindSlice, Min, Max, MinBy, MaxBy, and
 // Average is this package's OrNull: the bool reports presence and the
@@ -30,7 +32,10 @@
 // package, and for a wrapped maybe, see opt.
 package slice
 
-import "cmp"
+import (
+	"cmp"
+	"slices"
+)
 
 // MapSlice applies transform to every element, preserving order.
 func MapSlice[Element any, Transformed any](elements []Element, transform func(Element) Transformed) []Transformed {
@@ -359,4 +364,44 @@ func Counts[Element comparable](elements []Element) map[Element]int {
 		counts[element]++
 	}
 	return counts
+}
+
+// SortBy returns a stable sorted copy of elements ordered by the keyOf key.
+// Ties keep input order via slices.SortedStableFunc. The input is never mutated.
+//
+// For example, ordering words by length keeps equal lengths in encounter order:
+//
+//	sorted := SortBy(words, func(candidate string) int { return len(candidate) })
+//
+// Nil or empty input yields an empty non-nil slice.
+func SortBy[Element any, Key cmp.Ordered](elements []Element, keyOf func(Element) Key) []Element {
+	if len(elements) == 0 {
+		return make([]Element, 0)
+	}
+	return slices.SortedStableFunc(slices.Values(elements), func(first Element, second Element) int {
+		return cmp.Compare(keyOf(first), keyOf(second))
+	})
+}
+
+// Scan returns the running accumulations of combining elements from initial.
+// The result length equals the input length: the first slot holds initial
+// combined with the first element, and each later slot folds the next element in.
+// The input is never mutated.
+//
+// For example, prefix sums read directly:
+//
+//	totals := Scan(numbers, 0, func(total int, element int) int { return total + element })
+//
+// Nil or empty input yields an empty non-nil slice.
+func Scan[Element any, Accumulation any](elements []Element, initial Accumulation, combine func(Accumulation, Element) Accumulation) []Accumulation {
+	if len(elements) == 0 {
+		return make([]Accumulation, 0)
+	}
+	running := make([]Accumulation, 0, len(elements))
+	current := initial
+	for _, element := range elements {
+		current = combine(current, element)
+		running = append(running, current)
+	}
+	return running
 }

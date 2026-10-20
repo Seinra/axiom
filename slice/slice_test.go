@@ -371,6 +371,34 @@ func TestZipStopsAtShorter(t *testing.T) {
 	}
 }
 
+func TestZipStopsAtShorterSecond(t *testing.T) {
+	got := axiomslice.Zip([]int{1}, []string{"a", "b", "c"})
+	want := []axiomslice.Pair[int, string]{{First: 1, Second: "a"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Zip = %v, want %v", got, want)
+	}
+}
+
+func TestChunkedCopiesNotAliased(t *testing.T) {
+	numbers := []int{1, 2, 3, 4}
+	chunked := axiomslice.Chunked(numbers, 2)
+	chunked[0][0] = 99
+	chunked[1][1] = 99
+	if !reflect.DeepEqual(numbers, []int{1, 2, 3, 4}) {
+		t.Fatalf("source mutated to %v, want [1 2 3 4]", numbers)
+	}
+}
+
+func TestWindowsCopiesNotAliased(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	windows := axiomslice.Windows(numbers, 2)
+	windows[0][0] = 99
+	windows[1][1] = 99
+	if !reflect.DeepEqual(numbers, []int{1, 2, 3}) {
+		t.Fatalf("source mutated to %v, want [1 2 3]", numbers)
+	}
+}
+
 func TestZipEmptyYieldsEmpty(t *testing.T) {
 	got := axiomslice.Zip([]int{}, []string{"a"})
 	if got == nil || len(got) != 0 {

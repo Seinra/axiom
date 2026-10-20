@@ -26,3 +26,10 @@ Per-layer command tables + evidence rules. Run the narrowest scope first, then t
 
 - Library logic: YES — RED → GREEN → TRIANGULATE with commands recorded.
 - Prose/assets/config: NO — state the one-line why (no branch, no money/security path).
+
+## Standing review orders (owner 2026-10-20)
+
+- Independent verifier (read-only, with the skills fitting the unit) roughly every ~400 authored lines.
+- The independent verifier always runs before any native review of the same candidate.
+- Native review never runs on docs-only candidates (not designed for prose).
+- Commits proceed autonomously; pushes stay owner-gated (permission prompt).

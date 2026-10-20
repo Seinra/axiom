@@ -24,9 +24,9 @@ type Response[Body any] struct {
 // Bind parses the current request into a fresh payload of type Body.
 // Binding failures return the Echo failure wrapped with the target type name
 // for teachable messages.
-func Bind[Body any](context *echo.Context) (Body, error) {
+func Bind[Body any](httpContext *echo.Context) (Body, error) {
 	var payload Body
-	if bindFailure := context.Bind(&payload); bindFailure != nil {
+	if bindFailure := httpContext.Bind(&payload); bindFailure != nil {
 		var empty Body
 		return empty, fmt.Errorf("axiom httpx: bind %T: %w", payload, bindFailure)
 	}
@@ -34,17 +34,17 @@ func Bind[Body any](context *echo.Context) (Body, error) {
 }
 
 // JSON writes envelope holding body with status via context JSON encoding.
-func JSON[Body any](context *echo.Context, status int, body Body) error {
-	return context.JSON(status, Response[Body]{Data: body})
+func JSON[Body any](httpContext *echo.Context, status int, body Body) error {
+	return httpContext.JSON(status, Response[Body]{Data: body})
 }
 
 // Fail writes an envelope holding failure text with status.
 // A nil failure becomes a descriptive message, never an empty envelope.
-func Fail(context *echo.Context, status int, failure error) error {
+func Fail(httpContext *echo.Context, status int, failure error) error {
 	if failure == nil {
 		failure = errors.New("axiom httpx: Fail needs a non-nil failure")
 	}
-	return context.JSON(status, Response[any]{Error: failure.Error()})
+	return httpContext.JSON(status, Response[any]{Error: failure.Error()})
 }
 
 // ListResponse carries a page of records with its page cursor and total count.

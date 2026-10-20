@@ -92,8 +92,5 @@ func (current *Store[Record, Identity]) List(page repo.Page) ([]Record, error) {
 	if outcome.Error != nil {
 		return nil, fmt.Errorf("axiom repogorm: list page %+v: %w", page, outcome.Error)
 	}
-	if listed == nil {
-		return []Record{}, nil
-	}
 	return listed, nil
 }

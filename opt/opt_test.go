@@ -1,6 +1,7 @@
 package opt_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/seinra/axiom/opt"
@@ -59,5 +60,149 @@ func TestZeroValueIsAbsent(t *testing.T) {
 	}
 	if got := current.ValueOr(3); got != 3 {
 		t.Fatalf("ValueOr = %d, want 3", got)
+	}
+}
+
+func TestOrElseSomeWins(t *testing.T) {
+	current := opt.Some(1)
+	fallback := opt.Some(2)
+	if got := opt.OrElse(current, fallback).ValueOr(0); got != 1 {
+		t.Fatalf("OrElse Some/Some = %d, want 1", got)
+	}
+}
+
+func TestOrElseFallsBackOnNone(t *testing.T) {
+	current := opt.None[int]()
+	fallback := opt.Some(2)
+	if got := opt.OrElse(current, fallback).ValueOr(0); got != 2 {
+		t.Fatalf("OrElse None/Some = %d, want 2", got)
+	}
+}
+
+func TestOrElseNoneNoneStaysNone(t *testing.T) {
+	combined := opt.OrElse(opt.None[int](), opt.None[int]())
+	if combined.IsSome() {
+		t.Fatal("OrElse None/None IsSome = true, want false")
+	}
+}
+
+func TestAndThenBindsSome(t *testing.T) {
+	current := opt.Some(4)
+	mapped := opt.AndThen(current, func(held int) opt.Option[string] {
+		return opt.Some("bound")
+	})
+	if got := mapped.ValueOr(""); got != "bound" {
+		t.Fatalf("AndThen = %q, want %q", got, "bound")
+	}
+}
+
+func TestAndThenTransformToNone(t *testing.T) {
+	current := opt.Some(4)
+	mapped := opt.AndThen(current, func(held int) opt.Option[string] {
+		return opt.None[string]()
+	})
+	if mapped.IsSome() {
+		t.Fatal("AndThen to None IsSome = true, want false")
+	}
+}
+
+func TestAndThenNoneShortCircuits(t *testing.T) {
+	ranTransform := false
+	current := opt.None[int]()
+	mapped := opt.AndThen(current, func(held int) opt.Option[string] {
+		ranTransform = true
+		return opt.Some("unreachable")
+	})
+	if mapped.IsSome() {
+		t.Fatal("AndThen on None IsSome = true, want false")
+	}
+	if ranTransform {
+		t.Fatal("AndThen ran transform on None, want short-circuit")
+	}
+}
+
+func TestFilterKeepsMatchingSome(t *testing.T) {
+	current := opt.Some(6)
+	filtered := opt.Filter(current, func(held int) bool { return held%2 == 0 })
+	if got := filtered.ValueOr(0); got != 6 {
+		t.Fatalf("Filter keep = %d, want 6", got)
+	}
+}
+
+func TestFilterDropsNonMatchingSome(t *testing.T) {
+	current := opt.Some(7)
+	filtered := opt.Filter(current, func(held int) bool { return held%2 == 0 })
+	if filtered.IsSome() {
+		t.Fatal("Filter drop IsSome = true, want false")
+	}
+}
+
+func TestFilterNoneStaysNone(t *testing.T) {
+	ranKeep := false
+	current := opt.None[int]()
+	filtered := opt.Filter(current, func(held int) bool {
+		ranKeep = true
+		return true
+	})
+	if filtered.IsSome() {
+		t.Fatal("Filter on None IsSome = true, want false")
+	}
+	if ranKeep {
+		t.Fatal("Filter ran keep on None, want short-circuit")
+	}
+}
+
+func TestValueOrElseSomeSkipsFallback(t *testing.T) {
+	ranFallback := false
+	current := opt.Some(5)
+	got := opt.ValueOrElse(current, func() int {
+		ranFallback = true
+		return 9
+	})
+	if got != 5 {
+		t.Fatalf("ValueOrElse Some = %d, want 5", got)
+	}
+	if ranFallback {
+		t.Fatal("ValueOrElse ran fallback on Some, want lazy skip")
+	}
+}
+
+func TestValueOrElseNoneRunsFallback(t *testing.T) {
+	current := opt.None[int]()
+	got := opt.ValueOrElse(current, func() int { return 9 })
+	if got != 9 {
+		t.Fatalf("ValueOrElse None = %d, want 9", got)
+	}
+}
+
+func TestToResultSomeYieldsOk(t *testing.T) {
+	converted := opt.ToResult(opt.Some(3), errors.New("unused"))
+	got, failure := converted.Unwrap()
+	if failure != nil {
+		t.Fatalf("ToResult Some failure = %v, want nil", failure)
+	}
+	if got != 3 {
+		t.Fatalf("ToResult Some = %d, want 3", got)
+	}
+}
+
+func TestToResultNoneYieldsFailure(t *testing.T) {
+	sentinel := errors.New("missing")
+	converted := opt.ToResult(opt.None[int](), sentinel)
+	if converted.IsOk() {
+		t.Fatal("ToResult None IsOk = true, want false")
+	}
+	if _, failure := converted.Unwrap(); !errors.Is(failure, sentinel) {
+		t.Fatalf("ToResult None failure = %v, want %v", failure, sentinel)
+	}
+}
+
+func TestToResultNilFailureGuards(t *testing.T) {
+	converted := opt.ToResult(opt.None[int](), nil)
+	if converted.IsOk() {
+		t.Fatal("ToResult nil IsOk = true, want false")
+	}
+	if _, failure := converted.Unwrap(); failure == nil {
+		t.Fatal("ToResult nil failure = nil, want guard error")
 	}
 }

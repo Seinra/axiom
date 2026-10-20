@@ -131,3 +131,152 @@ func TestMapZeroReportsError(t *testing.T) {
 		t.Fatal("Map(zero) Unwrap failure = nil, want explicit error")
 	}
 }
+
+func TestMapFailureTransformsFailure(t *testing.T) {
+	sentinel := errors.New("original")
+	current := result.Fail[int](sentinel)
+	mapped := result.MapFailure(current, func(failure error) error {
+		return errors.New("wrapped: " + failure.Error())
+	})
+	if mapped.IsOk() {
+		t.Fatal("MapFailure IsOk = true, want false")
+	}
+	_, failure := mapped.Unwrap()
+	if failure == nil || failure.Error() != "wrapped: original" {
+		t.Fatalf("MapFailure failure = %v, want wrapped original", failure)
+	}
+}
+
+func TestMapFailureSuccessPassesThrough(t *testing.T) {
+	ranTransform := false
+	current := result.Ok(11)
+	mapped := result.MapFailure(current, func(failure error) error {
+		ranTransform = true
+		return errors.New("unreachable")
+	})
+	got, failure := mapped.Unwrap()
+	if failure != nil {
+		t.Fatalf("MapFailure success failure = %v, want nil", failure)
+	}
+	if got != 11 {
+		t.Fatalf("MapFailure success = %d, want 11", got)
+	}
+	if ranTransform {
+		t.Fatal("MapFailure ran transform on success, want pass-through")
+	}
+}
+
+func TestMapFailureNilTransformGuards(t *testing.T) {
+	current := result.Fail[int](errors.New("original"))
+	mapped := result.MapFailure(current, func(failure error) error { return nil })
+	if mapped.IsOk() {
+		t.Fatal("MapFailure nil IsOk = true, want false")
+	}
+	if _, failure := mapped.Unwrap(); failure == nil {
+		t.Fatal("MapFailure nil failure = nil, want guard error")
+	}
+}
+
+func TestAndThenBindsSuccess(t *testing.T) {
+	current := result.Ok(7)
+	mapped := result.AndThen(current, func(held int) result.Result[string] {
+		return result.Ok("bound")
+	})
+	got, failure := mapped.Unwrap()
+	if failure != nil {
+		t.Fatalf("AndThen failure = %v, want nil", failure)
+	}
+	if got != "bound" {
+		t.Fatalf("AndThen = %q, want %q", got, "bound")
+	}
+}
+
+func TestAndThenTransformFailurePropagates(t *testing.T) {
+	sentinel := errors.New("bind failed")
+	current := result.Ok(7)
+	mapped := result.AndThen(current, func(held int) result.Result[string] {
+		return result.Fail[string](sentinel)
+	})
+	if mapped.IsOk() {
+		t.Fatal("AndThen to failure IsOk = true, want false")
+	}
+	if _, failure := mapped.Unwrap(); !errors.Is(failure, sentinel) {
+		t.Fatalf("AndThen failure = %v, want %v", failure, sentinel)
+	}
+}
+
+func TestAndThenFailureShortCircuits(t *testing.T) {
+	ranTransform := false
+	sentinel := errors.New("kept")
+	current := result.Fail[int](sentinel)
+	mapped := result.AndThen(current, func(held int) result.Result[string] {
+		ranTransform = true
+		return result.Ok("unreachable")
+	})
+	if mapped.IsOk() {
+		t.Fatal("AndThen on failure IsOk = true, want false")
+	}
+	if _, failure := mapped.Unwrap(); !errors.Is(failure, sentinel) {
+		t.Fatalf("AndThen failure = %v, want %v", failure, sentinel)
+	}
+	if ranTransform {
+		t.Fatal("AndThen ran transform on failure, want short-circuit")
+	}
+}
+
+func TestOrElseSuccessSkipsRecover(t *testing.T) {
+	ranRecover := false
+	current := result.Ok(5)
+	got, failure := result.OrElse(current, func(failure error) result.Result[int] {
+		ranRecover = true
+		return result.Ok(9)
+	}).Unwrap()
+	if failure != nil {
+		t.Fatalf("OrElse success failure = %v, want nil", failure)
+	}
+	if got != 5 {
+		t.Fatalf("OrElse success = %d, want 5", got)
+	}
+	if ranRecover {
+		t.Fatal("OrElse ran recover on success, want skip")
+	}
+}
+
+func TestOrElseFailureRecoversToOk(t *testing.T) {
+	current := result.Fail[int](errors.New("fell over"))
+	got, failure := result.OrElse(current, func(failure error) result.Result[int] {
+		return result.Ok(9)
+	}).Unwrap()
+	if failure != nil {
+		t.Fatalf("OrElse recover failure = %v, want nil", failure)
+	}
+	if got != 9 {
+		t.Fatalf("OrElse recover = %d, want 9", got)
+	}
+}
+
+func TestOrElseFailureRecoverStaysFailure(t *testing.T) {
+	sentinel := errors.New("still broken")
+	current := result.Fail[int](errors.New("fell over"))
+	recovered := result.OrElse(current, func(failure error) result.Result[int] {
+		return result.Fail[int](sentinel)
+	})
+	if recovered.IsOk() {
+		t.Fatal("OrElse recover IsOk = true, want false")
+	}
+	if _, failure := recovered.Unwrap(); !errors.Is(failure, sentinel) {
+		t.Fatalf("OrElse failure = %v, want %v", failure, sentinel)
+	}
+}
+
+func TestUnwrapOrSuccess(t *testing.T) {
+	if got := result.UnwrapOr(result.Ok(4), 9); got != 4 {
+		t.Fatalf("UnwrapOr success = %d, want 4", got)
+	}
+}
+
+func TestUnwrapOrFailureYieldsFallback(t *testing.T) {
+	if got := result.UnwrapOr(result.Fail[int](errors.New("gone")), 9); got != 9 {
+		t.Fatalf("UnwrapOr failure = %d, want 9", got)
+	}
+}

@@ -80,3 +80,39 @@ func Map[T any, Transformed any](current Result[T], transform func(T) Transforme
 func (current Result[T]) MapValue[Transformed any](transform func(T) Transformed) Result[Transformed] {
 	return Map(current, transform)
 }
+
+// MapFailure transforms the failure side with transform, carrying success through.
+// The Rust map_err precedent: success never runs transform. A nil transform
+// outcome flows into Fail, whose nil guard replaces it with a descriptive error.
+func MapFailure[T any](current Result[T], transform func(error) error) Result[T] {
+	if current.isOk {
+		return current
+	}
+	return Fail[T](transform(current.failure))
+}
+
+// AndThen binds the held success through transform, which returns the next Result.
+// Failure short-circuits: transform never runs and the failure carries through.
+func AndThen[T any, Transformed any](current Result[T], transform func(T) Result[Transformed]) Result[Transformed] {
+	if !current.isOk {
+		return Fail[Transformed](current.failure)
+	}
+	return transform(current.success)
+}
+
+// OrElse recovers a failure through handleFailure, carrying success through untouched.
+// The Rust or_else precedent: success never runs handleFailure.
+func OrElse[T any](current Result[T], handleFailure func(error) Result[T]) Result[T] {
+	if current.isOk {
+		return current
+	}
+	return handleFailure(current.failure)
+}
+
+// UnwrapOr returns the held success, or fallback when current holds a failure.
+func UnwrapOr[T any](current Result[T], fallback T) T {
+	if !current.isOk {
+		return fallback
+	}
+	return current.success
+}

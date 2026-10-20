@@ -6,6 +6,10 @@
 // an error: for failures with causes, see the result package.
 package opt
 
+import (
+	"github.com/seinra/axiom/result"
+)
+
 // Option holds either a success of type T or no success.
 type Option[T any] struct {
 	success T
@@ -49,4 +53,56 @@ func MapOption[T any, Transformed any](current Option[T], transform func(T) Tran
 // chain left to right: Some(5).MapValue(next).MapValue(describe).
 func (current Option[T]) MapValue[Transformed any](transform func(T) Transformed) Option[Transformed] {
 	return MapOption(current, transform)
+}
+
+// OrElse returns current when it holds a success, otherwise fallback.
+// The first Some wins; None plus None stays None.
+func OrElse[T any](current Option[T], fallback Option[T]) Option[T] {
+	if current.isSome {
+		return current
+	}
+	return fallback
+}
+
+// AndThen binds the held success through transform, which returns the next Option.
+// None short-circuits: transform never runs and absence carries through.
+// Function-only by design: MapValue already covers the func(T) Transformed
+// shape, and Go has no overloading, so the Option-returning shape stays a
+// function to keep the method set minimal.
+func AndThen[T any, Transformed any](current Option[T], transform func(T) Option[Transformed]) Option[Transformed] {
+	if !current.isSome {
+		return None[Transformed]()
+	}
+	return transform(current.success)
+}
+
+// Filter keeps the held success only when keep reports true, else None.
+// Absence carries through without running keep.
+func Filter[T any](current Option[T], keep func(T) bool) Option[T] {
+	if !current.isSome {
+		return None[T]()
+	}
+	if !keep(current.success) {
+		return None[T]()
+	}
+	return current
+}
+
+// ValueOrElse returns the held success, or the outcome of fallback when absent.
+// Fallback runs lazily: it never runs when current holds a success.
+func ValueOrElse[T any](current Option[T], fallback func() T) T {
+	if current.isSome {
+		return current.success
+	}
+	return fallback()
+}
+
+// ToResult converts current into a result.Result: Some becomes Ok, None
+// becomes Fail with failure. A nil failure flows into Fail, whose nil guard
+// replaces it with a descriptive error, following the Rust ok_or precedent.
+func ToResult[T any](current Option[T], failure error) result.Result[T] {
+	if current.isSome {
+		return result.Ok(current.success)
+	}
+	return result.Fail[T](failure)
 }

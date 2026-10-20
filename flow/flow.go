@@ -140,6 +140,9 @@ var ErrNoRaceInputs = errors.New("axiom flow: Race needs at least one input")
 
 // raceShared carries the mutable Race outcome across runners. The champion
 // fields change under outcomeMutex; the first failure latches once.
+// Canceling while holding outcomeMutex is a documented design call:
+// context.CancelFunc never blocks and never re-enters this mutex, so the
+// critical section stays a flag flip plus a non-blocking broadcast.
 type raceShared[Output any] struct {
 	outcomeMutex  sync.Mutex
 	champion      Output
@@ -150,7 +153,11 @@ type raceShared[Output any] struct {
 
 // raceRunner drains positions until the first success cancels the task
 // context. Failures latch the first one and keep racing; a success claims
-// the championship once and stops this runner. Every path joins workGroup.
+// the championship once and stops this runner, while concurrent successes
+// that lose the claim return without overwriting. The pre-transform Done
+// check is best effort: a win landing after the check still leaves that
+// transform in flight, bounded by the runner count. Every path joins
+// workGroup.
 func raceRunner[Input any, Output any](taskContext context.Context, positions <-chan int, inputs []Input, transform func(context.Context, Input) (Output, error), shared *raceShared[Output], cancelTask context.CancelFunc, workGroup *sync.WaitGroup) {
 	defer workGroup.Done()
 	for position := range positions {
@@ -190,12 +197,14 @@ func raceRunner[Input any, Output any](taskContext context.Context, positions <-
 // starts no transform.
 //
 // The first success in time wins, even when an earlier input position is
-// still running. Runners that observe the win drain their remaining
-// positions without invoking transform, so unstarted inputs never run after
-// the win. A transform already in flight still runs to completion (Go cannot
-// preempt it), and a transform that ignores the context runs to completion
-// too — extra work stays bounded by the runner count, never by the input
-// length.
+// still running: under concurrent completions "in time" means first to claim
+// the championship, not strict wall-clock finish order. Runners that observe
+// the win drain their remaining positions without invoking transform, so no
+// runner starts new work once it has observed the win. A transform already
+// in flight still runs to completion (Go cannot preempt it), including one
+// that passed its Done check before the win landed, and a transform that
+// ignores the context runs to completion too — extra work stays bounded by
+// the runner count, never by the input length.
 //
 // Transform failures never cancel siblings: runners keep racing until the
 // first success or until every input fails. When every transform fails, Race

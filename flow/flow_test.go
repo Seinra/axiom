@@ -480,3 +480,51 @@ func TestRace(t *testing.T) {
 		})
 	}
 }
+
+func TestRaceFirstWinSticksWithContextIgnoringSiblings(t *testing.T) {
+	// Champion-latch contract: a fast success claims the championship once,
+	// and slower context-ignoring siblings that complete after the win
+	// return without overwriting it. Every runner exits after its first
+	// success, so starts stay bounded by the runner count while in-flight
+	// context-ignoring transforms still run to completion.
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	workerTotal := 4
+	inputTotal := 20
+	inputs := make([]int, inputTotal)
+	for position := range inputs {
+		inputs[position] = position
+	}
+	var started atomic.Int64
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		started.Add(1)
+		if candidate == 0 {
+			// Short delay so every runner has started before the win lands;
+			// the win is still strictly first, forcing late claims from the
+			// context-ignoring siblings below.
+			time.Sleep(2 * staggerStep)
+			return 0, nil
+		}
+		// Ignores taskContext on purpose: proves the champion latch holds
+		// and unstarted work is still skipped (via the drain) while
+		// in-flight work completes.
+		time.Sleep(slowDelay)
+		return candidate * outputFactor, nil
+	}
+	began := time.Now()
+	winner, raceFailure := flow.Race(active, inputs, workerTotal, transform)
+	raceLatency := time.Since(began)
+	if raceFailure != nil {
+		t.Fatalf("Race failure = %v, want nil", raceFailure)
+	}
+	if winner != 0 {
+		t.Fatalf("Race winner = %v, want 0", winner)
+	}
+	if observed := started.Load(); observed > int64(workerTotal) {
+		t.Fatalf("Race started = %d, want <= %d", observed, workerTotal)
+	}
+	promptCeiling := 2 * time.Second
+	if raceLatency >= promptCeiling {
+		t.Fatalf("Race latency = %v, want < %v", raceLatency, promptCeiling)
+	}
+}

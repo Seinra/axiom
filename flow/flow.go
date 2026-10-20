@@ -200,7 +200,7 @@ func raceRunner[Input any, Output any](taskContext context.Context, positions <-
 // still running: under concurrent completions "in time" means first to claim
 // the championship, not strict wall-clock finish order. Runners that observe
 // the win drain their remaining positions without invoking transform, so no
-// runner starts new work once it has observed the win. A transform already
+// runner starts new work after observing the win. A transform already
 // in flight still runs to completion (Go cannot preempt it), including one
 // that passed its Done check before the win landed, and a transform that
 // ignores the context runs to completion too — extra work stays bounded by

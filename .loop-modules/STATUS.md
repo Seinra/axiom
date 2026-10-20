@@ -61,6 +61,7 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-20 | R5 flow Race T5b quemado en Axiom-1 | VALIDATE | review-6286a8e56d8db9ea APPROVED + burned (resilience+readability+reliability); 7 parked (R2-001/002/003, R3-cancel-under-lock, R3-doc-race-window WARNING, R4-1/R4-2) |
 | 2026-10-20 | Delivery: push + issues #14-18 | DELIVERY | branch pushed; 5 issues created with read-back confirmed; #14 approval pending for PR |
 | 2026-10-20 | Delivery: PR #19 CI verde | DELIVERY | Closes approved #14, type:feature; validate+verify pass; merge owner-gated |
+| 2026-10-20 | Delivery: PR #19 mergeado | DELIVERY | merge commit por orden owner; #14 cerrado, #15-18 abiertos |
 
 ## Debt ledger
 

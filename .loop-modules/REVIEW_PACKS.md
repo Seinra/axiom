@@ -42,6 +42,7 @@ Loop-engineering guard: domain scouts/writers/verifiers NEVER use loop-engineeri
 - [ ] Exactly one `foundry` Decision Gate playbook per IMPLEMENT task.
 - [ ] Docs units load the trio: `foundry` + `foundry-docs` + `cognitive-doc-design`.
 - [ ] `loop-engineering` only for loop artifacts — never domain work.
+- [ ] Docs verifiers load `foundry-review` (never `foundry`) + `foundry-docs` + `cognitive-doc-design`.
 - [ ] Return carries `packs_loaded`, `code_intel`, `modules_read`.
 
 ## Next step

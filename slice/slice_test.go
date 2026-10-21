@@ -1,11 +1,8 @@
 package slice_test
 
 import (
-	"math"
 	"reflect"
-	"strings"
 	"testing"
-	"unsafe"
 
 	axiomslice "github.com/seinra/axiom/slice"
 )
@@ -300,40 +297,8 @@ func TestFlattenNilYieldsEmpty(t *testing.T) {
 	}
 }
 
-// TestFlattenLengthTotalOverflowPanics pins the length-total guard: inner
-// lengths summing past math.MaxInt panic with an axiom message before any
-// allocation. Lengths are fabricated via unsafe.Slice (headers only, never
-// dereferenced), so the test is deterministic with no real OOM. result.Flatten
-// needs no such guard (single-level unwrap, no length total) and FlatMap
-// grows incrementally via append (no precomputed total), so the guard lives
-// on slice.Flatten only.
-func TestFlattenLengthTotalOverflowPanics(t *testing.T) {
-	// Overflow by summation: many headers, zero element bytes. Each inner
-	// slice is a header-only fabrication via unsafe.Slice (anchored on a real
-	// base, lengths within runtime bounds, never dereferenced) sized so the
-	// length total exceeds math.MaxInt. No real OOM: only headers allocate.
-	// result.Flatten needs no such guard (single-level unwrap, no length
-	// total) and FlatMap grows incrementally via append (no precomputed
-	// total), so the guard lives on slice.Flatten only.
-	const pieces = 1 << 20
-	each := math.MaxInt/pieces + 1
-	var base [1]int
-	nested := make([][]int, 0, pieces)
-	for range pieces {
-		nested = append(nested, unsafe.Slice(&base[0], each))
-	}
-	panicked := func() (recovered any) {
-		defer func() { recovered = recover() }()
-		_ = axiomslice.Flatten(nested)
-		return nil
-	}()
-	if panicked == nil {
-		t.Fatal("Flatten(length total overflow) did not panic, want axiom panic")
-	}
-	if message, isString := panicked.(string); !isString || !strings.Contains(message, "axiom slice: Flatten") {
-		t.Fatalf("Flatten panic = %v, want message carrying axiom slice: Flatten", panicked)
-	}
-}
+// TestFlattenLengthTotalOverflowPanics lives in flatten_overflow_test.go
+// (//go:build !race): header fabrication trips checkptr.
 
 func TestChunkedSplitsEvenChunks(t *testing.T) {
 	got := axiomslice.Chunked([]int{1, 2, 3, 4}, 2)

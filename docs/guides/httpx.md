@@ -34,7 +34,7 @@ The package doc (`go doc ./httpx`) is the source; this table mirrors its
 | Shape a paged listing payload | `ListResponse` |
 
 > [!NOTE]
-> Success envelopes are typed (`Response[Body]`); only the failure path uses `Response[any]`, because Echo's JSON encoder takes `any` and a failure carries no payload to type. This is the codec-edge exception to the no-`any` rule, not a hole in it.
+> Success envelopes are typed (`Response[Body]`); both paths cross Echo's `any`-typed JSON encoder, but the failure path uses `Response[any]` because there is no payload to type.
 
 ## Example
 

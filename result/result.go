@@ -2,7 +2,7 @@
 //
 // Use Ok to wrap a success and Fail to wrap a failure. Unwrap splits both
 // paths explicitly, Must unwraps a known success (it panics only on programmer
-// error, never for control flow), and Map/MapValue transform the success side
+// error, never for control flow), and MapValue transforms the success side
 // while carrying the failure through untouched.
 //
 // Which function?
@@ -16,7 +16,7 @@
 // | Read a known success (tests, seeds) | Must               |
 // | Read with an explicit fallback      | UnwrapOr           |
 // | Read with a lazy fallback           | UnwrapOrElse       |
-// | Transform the success side          | Map / MapValue     |
+// | Transform the success side          | MapValue           |
 // | Transform the failure side          | MapFailure         |
 // | Chain to the next Result            | AndThen            |
 // | Collapse one nesting level          | Flatten            |
@@ -91,20 +91,14 @@ func Must[T any](current Result[T]) T {
 	return success
 }
 
-// Map transforms the success side with transform, carrying failures through.
-// Pure function form; see MapValue for the chainable Go 1.27 generic method.
-func Map[T any, Transformed any](current Result[T], transform func(T) Transformed) Result[Transformed] {
-	if !current.isOk {
-		return Fail[Transformed](current.failure)
-	}
-	return Ok(transform(current.success))
-}
-
 // MapValue transforms the success side, carrying failures through.
 // Go 1.27 generic method: the method declares its own type params, so calls
 // chain left to right: Ok(2).MapValue(triple).MapValue(describe).
 func (current Result[T]) MapValue[Transformed any](transform func(T) Transformed) Result[Transformed] {
-	return Map(current, transform)
+	if !current.isOk {
+		return Fail[Transformed](current.failure)
+	}
+	return Ok(transform(current.success))
 }
 
 // MapFailure transforms the failure side with transform, carrying success through.
@@ -137,7 +131,7 @@ func OrElse[T any](current Result[T], handleFailure func(error) Result[T]) Resul
 
 // Flatten collapses one nesting level: Fail yields Fail carrying the outer
 // failure, Ok(inner) yields inner. A zero outer Result yields Fail with an
-// explicit error, matching Map on a zero Result.
+// explicit error, matching MapValue on a zero Result.
 // For example, Flatten(Ok(Ok(3))) holds 3 while Flatten(Ok(Fail(cause))) holds cause.
 func Flatten[Outcome any](current Result[Result[Outcome]]) Result[Outcome] {
 	if !current.isOk {

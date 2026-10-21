@@ -27,9 +27,9 @@ func TestNoneIsNone(t *testing.T) {
 	}
 }
 
-func TestMapOptionTransformsSome(t *testing.T) {
+func TestMapValueTransformsSome(t *testing.T) {
 	current := opt.Some(4)
-	mapped := opt.MapOption(current, func(success int) string { return "four" })
+	mapped := current.MapValue(func(success int) string { return "four" })
 	if !mapped.IsSome() {
 		t.Fatal("IsSome = false, want true")
 	}
@@ -38,9 +38,9 @@ func TestMapOptionTransformsSome(t *testing.T) {
 	}
 }
 
-func TestMapOptionKeepsNone(t *testing.T) {
+func TestMapValueKeepsNone(t *testing.T) {
 	current := opt.None[int]()
-	mapped := opt.MapOption(current, func(success int) string { return "unreachable" })
+	mapped := current.MapValue(func(success int) string { return "unreachable" })
 	if mapped.IsSome() {
 		t.Fatal("IsSome = true, want false")
 	}
@@ -303,20 +303,10 @@ func pinnedNoPanic(t *testing.T, label string, call func()) {
 	}
 }
 
-func TestMapNilTransformPanicsOnSomeSkipsOnNone(t *testing.T) {
-	pinnedPanics(t, "MapOption(Some, nil)", func() {
-		_ = opt.MapOption[int, string](opt.Some(1), nil)
-	})
+func TestMapValueNilTransformPanicsOnSomeSkipsOnNone(t *testing.T) {
 	pinnedPanics(t, "Some.MapValue(nil)", func() {
 		_ = opt.Some(1).MapValue[string](nil)
 	})
-	var mappedFunc opt.Option[string]
-	pinnedNoPanic(t, "MapOption(None, nil)", func() {
-		mappedFunc = opt.MapOption[int, string](opt.None[int](), nil)
-	})
-	if mappedFunc.IsSome() {
-		t.Fatal("MapOption(None, nil) IsSome = true, want false")
-	}
 	var mappedMethod opt.Option[string]
 	pinnedNoPanic(t, "None.MapValue(nil)", func() {
 		mappedMethod = opt.None[int]().MapValue[string](nil)

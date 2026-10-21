@@ -27,6 +27,7 @@ its "Which function?" table:
 |---|---|
 | Share one execution across same-key callers | `Group.Call` |
 | Drop the in-flight entry so next `Call` re-runs | `Group.Forget` |
+| Inspect calls, shared waiters, and panics | `Group.Stats` |
 | Hold one key space (zero value ready) | `Group` |
 
 ## Example
@@ -64,6 +65,24 @@ Run it: `go test ./singleflight/ -run ExampleGroup_Call -v`.
 | One outcome for leader and waiters | Duplicates receive the same outcome *and* the same failure the leader produced. If `execute` panics, every waiter panics with the same payload. |
 | `Forget` forces a re-run | `Forget(key)` drops the in-flight entry so the next `Call` runs fresh, even while earlier waiters still hold the dropped execution. |
 | No extras by design | No `CallChan`, no sharding, no batching (YAGNI). `Call` never holds its internal lock while running `execute`. |
+
+## Observability
+
+`Group.Stats` returns a point-in-time `Stats{Calls, Shared, Panics}` snapshot:
+every `Call` invocation, duplicates that received the leader broadcast, and
+leader executions that panicked (waiter re-panics never add). In serving it
+tells you whether the key space actually collapses — rising `Shared` means
+deduplication is working, while `Panics` flags a poisoned execution fanning
+out to every waiter.
+
+```go
+var flight singleflight.Group[string, string]
+_, _, _ = flight.Call("greeting", func() (string, error) { return "hello", nil })
+stats := flight.Stats()
+fmt.Println(stats.Calls, stats.Shared, stats.Panics)
+// Output:
+// 1 0 0
+```
 
 ## Next step
 

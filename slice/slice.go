@@ -216,8 +216,22 @@ func FlatMap[Element any, Transformed any](elements []Element, transform func(El
 	return flattened
 }
 
+// checkedAdd returns total+add, panicking on math.MaxInt overflow: inner
+// lengths summing past MaxInt are a programmer error, matching the size <= 0
+// panic policy of Chunked and Windows.
+func checkedAdd(total, add int) int {
+	if add > math.MaxInt-total {
+		panic(fmt.Sprintf("axiom slice: Flatten needs total length <= %d, got overflow", math.MaxInt))
+	}
+	return total + add
+}
+
 // Flatten concatenates nested slices in order.
 // Nil or empty input yields an empty non-nil slice.
+//
+// Same elements as slices.Concat(nested...) for non-empty input (Concat
+// yields nil on empty; Flatten yields empty non-nil); kept as the
+// discoverable one-arg shape with preallocated backing.
 //
 // Length-total overflow panics: inner lengths summing past math.MaxInt are a
 // programmer error, matching the size <= 0 panic policy of Chunked and
@@ -226,10 +240,7 @@ func FlatMap[Element any, Transformed any](elements []Element, transform func(El
 func Flatten[Element any](nested [][]Element) []Element {
 	total := 0
 	for _, inner := range nested {
-		if len(inner) > math.MaxInt-total {
-			panic(fmt.Sprintf("axiom slice: Flatten needs total length <= %d, got overflow across %d inner slices", math.MaxInt, len(nested)))
-		}
-		total += len(inner)
+		total = checkedAdd(total, len(inner))
 	}
 	flattened := make([]Element, 0, total)
 	for _, inner := range nested {

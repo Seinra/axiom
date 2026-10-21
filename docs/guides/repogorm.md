@@ -19,6 +19,9 @@ Pick the order column before constructing — usually the primary key.
 2. Build: `repogorm.NewStore[Lesson, uint](database, []any{Lesson{}}, "id")`.
 3. Use it as a `repo.Repository`: `Store` / `Fetch` / `Remove` / `List`.
 
+> [!NOTE]
+> `models []any` is GORM-forced: `AutoMigrate` takes `...any`, so no typed spelling exists. The `any` never leaks past construction — every operation after `NewStore` is fully typed via `Record`/`Identity`.
+
 ## Which function?
 
 The package doc (`go doc ./repogorm`) is the source; this table mirrors its

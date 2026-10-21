@@ -18,7 +18,7 @@ both paths explicitly with `Unwrap`.
 
 **When to use the stdlib directly:** plain `(T, error)` returns at function
 boundaries are idiomatic Go and stay that way. Reach for `result` when a success
-travels through several transforms (`Map`/`AndThen`), recovers (`OrElse`), or
+travels through several transforms (`MapValue`/`AndThen`), recovers (`OrElse`), or
 crosses a boundary where panicking code must become a value (`Try`).
 
 ## Steps
@@ -31,7 +31,7 @@ crosses a boundary where panicking code must become a value (`Try`).
 > [!WARNING]
 > `Must` panics on failure. Use it only for values known at construction time
 > (tests, static seeds) — never to steer branches.
-3. Transform: `Map` / `MapValue` convert the success side; `MapFailure`
+3. Transform: `MapValue` converts the success side; `MapFailure`
    converts the failure side; failures carry through untouched either way.
 4. Chain and recover: `AndThen` feeds success into the next `Result`;
    `Flatten` collapses one nesting level; `OrElse` recovers from failure.
@@ -55,7 +55,7 @@ Resumed from the package table — see `go doc ./result` for the full version.
 | Read a known success (tests, seeds) | `Must` |
 | Read with an explicit fallback | `UnwrapOr` |
 | Read with a lazy fallback | `UnwrapOrElse` |
-| Transform the success side | `Map` / `MapValue` |
+| Transform the success side | `MapValue` |
 | Transform the failure side | `MapFailure` |
 | Chain to the next Result | `AndThen` |
 | Collapse one nesting level | `Flatten` |
@@ -78,7 +78,7 @@ import (
 )
 
 func main() {
-	doubled := result.Map(result.Ok(21), func(value int) int { return value * 2 })
+	doubled := result.Ok(21).MapValue(func(value int) int { return value * 2 })
 	success, _ := doubled.Unwrap()
 	fmt.Println(success)
 	failed := result.Fail[int](errors.New("boom"))

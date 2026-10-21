@@ -12,7 +12,7 @@ func ExampleSome() {
 	present := opt.Some("gopher")
 	fmt.Println(present.ValueOr("nobody"))
 	fmt.Println(opt.None[string]().ValueOr("nobody"))
-	shouted := opt.MapOption(present, strings.ToUpper)
+	shouted := present.MapValue(strings.ToUpper)
 	fmt.Println(shouted.ValueOr("nobody"))
 	// Output:
 	// gopher

@@ -33,6 +33,9 @@ The package doc (`go doc ./httpx`) is the source; this table mirrors its
 | Reply validation failures as 422 | `ValidationWriteError` |
 | Shape a paged listing payload | `ListResponse` |
 
+> [!NOTE]
+> Success envelopes are typed (`Response[Body]`); both paths cross Echo's `any`-typed JSON encoder, but the failure path uses `Response[any]` because there is no payload to type.
+
 ## Example
 
 From `httpx/example_test.go` (`ExampleWriteJSON`):

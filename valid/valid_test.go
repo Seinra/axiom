@@ -412,7 +412,10 @@ func TestNewCopiesRulesSliceIsolation(t *testing.T) {
 	// Mutate the caller slice after New: overwrite the slot and grow the
 	// slice. Neither may leak into the Validator.
 	rules[0] = buildPassingRule()
-	rules = append(rules, buildPassingRule())
+	grown := append(rules, buildPassingRule())
+	if len(grown) != 2 {
+		t.Fatalf("grown rules = %d, want 2 (append happened, Validator must still hold the original)", len(grown))
+	}
 	// 150 violates the original range rule only, so the isolated Validator
 	// reports exactly one failure carrying the original name and message.
 	validationFailures := scoreValidator.Validate(150)

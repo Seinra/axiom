@@ -92,7 +92,7 @@ func TestMapFirstFailureCancelsSiblings(t *testing.T) {
 	}
 }
 
-func TestEachCollectsEverySideEffect(t *testing.T) {
+func TestForEachCollectsEverySideEffect(t *testing.T) {
 	active, cancelTask := contextWithTestTimeout(context.Background())
 	defer cancelTask()
 	inputs := []int{1, 2, 3, 4, 5, 6, 7, 8}
@@ -109,13 +109,13 @@ func TestEachCollectsEverySideEffect(t *testing.T) {
 		consumeMutex.Unlock()
 		return nil
 	}
-	if eachFailure := flow.Each(active, inputs, 3, consume); eachFailure != nil {
-		t.Fatalf("Each failure = %v, want nil", eachFailure)
+	if forEachFailure := flow.ForEach(active, inputs, 3, consume); forEachFailure != nil {
+		t.Fatalf("ForEach failure = %v, want nil", forEachFailure)
 	}
 	consumeMutex.Lock()
 	defer consumeMutex.Unlock()
 	if len(consumed) != len(inputs) {
-		t.Fatalf("Each consumed count = %d, want %d", len(consumed), len(inputs))
+		t.Fatalf("ForEach consumed count = %d, want %d", len(consumed), len(inputs))
 	}
 	seen := make(map[int]bool, len(inputs))
 	for _, observed := range consumed {
@@ -123,12 +123,12 @@ func TestEachCollectsEverySideEffect(t *testing.T) {
 	}
 	for _, candidate := range inputs {
 		if !seen[candidate*outputFactor] {
-			t.Fatalf("Each missing input %d in %v", candidate, consumed)
+			t.Fatalf("ForEach missing input %d in %v", candidate, consumed)
 		}
 	}
 }
 
-func TestEachFirstFailureCancelsSiblings(t *testing.T) {
+func TestForEachFirstFailureCancelsSiblings(t *testing.T) {
 	active, cancelTask := contextWithTestTimeout(context.Background())
 	defer cancelTask()
 	workerTotal := 4
@@ -152,11 +152,11 @@ func TestEachFirstFailureCancelsSiblings(t *testing.T) {
 			return nil
 		}
 	}
-	if eachFailure := flow.Each(active, inputs, workerTotal, consume); !errors.Is(eachFailure, errFastFailure) {
-		t.Fatalf("Each failure = %v, want %v", eachFailure, errFastFailure)
+	if forEachFailure := flow.ForEach(active, inputs, workerTotal, consume); !errors.Is(forEachFailure, errFastFailure) {
+		t.Fatalf("ForEach failure = %v, want %v", forEachFailure, errFastFailure)
 	}
 	if observed := started.Load(); observed > int64(workerTotal) {
-		t.Fatalf("Each started = %d, want <= %d", observed, workerTotal)
+		t.Fatalf("ForEach started = %d, want <= %d", observed, workerTotal)
 	}
 }
 
@@ -230,11 +230,11 @@ func TestWorkerCountDefaultsWhenNotPositive(t *testing.T) {
 				return nil
 			}
 		}
-		if eachFailure := flow.Each(active, inputs, workerCount, consume); eachFailure != nil {
-			t.Fatalf("Each(%d) failure = %v, want nil", workerCount, eachFailure)
+		if forEachFailure := flow.ForEach(active, inputs, workerCount, consume); forEachFailure != nil {
+			t.Fatalf("ForEach(%d) failure = %v, want nil", workerCount, forEachFailure)
 		}
 		if observed := consumed.Load(); observed != int64(len(inputs)) {
-			t.Fatalf("Each(%d) consumed = %d, want %d", workerCount, observed, len(inputs))
+			t.Fatalf("ForEach(%d) consumed = %d, want %d", workerCount, observed, len(inputs))
 		}
 	}
 }
@@ -258,8 +258,8 @@ func TestPreCanceledContextReturnsCanceled(t *testing.T) {
 	neverConsumes := func(taskContext context.Context, candidate int) error {
 		return nil
 	}
-	if eachFailure := flow.Each(active, []int{1, 2, 3}, 2, neverConsumes); !errors.Is(eachFailure, context.Canceled) {
-		t.Fatalf("Each failure = %v, want %v", eachFailure, context.Canceled)
+	if forEachFailure := flow.ForEach(active, []int{1, 2, 3}, 2, neverConsumes); !errors.Is(forEachFailure, context.Canceled) {
+		t.Fatalf("ForEach failure = %v, want %v", forEachFailure, context.Canceled)
 	}
 }
 
@@ -297,11 +297,11 @@ func TestEmptyInputs(t *testing.T) {
 		t.Fatalf("Map ordered len = %d, want 0", len(ordered))
 	}
 	neverConsumes := func(taskContext context.Context, candidate int) error {
-		t.Error("Each consume ran on empty inputs")
+		t.Error("ForEach consume ran on empty inputs")
 		return nil
 	}
-	if eachFailure := flow.Each(active, []int{}, 2, neverConsumes); eachFailure != nil {
-		t.Fatalf("Each failure = %v, want nil", eachFailure)
+	if forEachFailure := flow.ForEach(active, []int{}, 2, neverConsumes); forEachFailure != nil {
+		t.Fatalf("ForEach failure = %v, want nil", forEachFailure)
 	}
 }
 
@@ -534,4 +534,257 @@ func TestRaceFirstWinSticksWithContextIgnoringSiblings(t *testing.T) {
 	if raceLatency >= winLatencyCeiling {
 		t.Fatalf("Race latency = %v, want < %v", raceLatency, winLatencyCeiling)
 	}
+}
+
+var errPanicSentinel = errors.New("panic sentinel")
+
+func assertPanicPayload(panicked any, want error, t *testing.T) {
+	t.Helper()
+	payload, holds := panicked.(error)
+	if !holds || !errors.Is(payload, want) {
+		t.Fatalf("panic = %v, want sentinel %v", panicked, want)
+	}
+}
+
+func TestMapPanicPropagatesPayload(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	inputs := []int{1, 2, 3}
+	ran := make(map[int]bool)
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		ran[candidate] = true
+		if candidate == 2 {
+			panic(errPanicSentinel)
+		}
+		return candidate * outputFactor, nil
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_, _ = flow.Map(active, inputs, 1, transform)
+		return nil
+	}()
+	assertPanicPayload(panicked, errPanicSentinel, t)
+	if ran[3] {
+		t.Fatal("Map ran input 3 after panic, want stop")
+	}
+}
+
+func TestMapPanicCancelsSiblings(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	gate := make(chan struct{}) // never closed: progress comes only from cancellation
+	sawCancel := make(chan struct{}, 1)
+	inputs := []int{0, 1}
+	transform := func(taskContext context.Context, candidate int) (string, error) {
+		if candidate == 1 {
+			panic(errPanicSentinel)
+		}
+		select {
+		case <-gate:
+			return "gated", nil
+		case <-taskContext.Done():
+			sawCancel <- struct{}{}
+			return "", taskContext.Err()
+		}
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_, _ = flow.Map(active, inputs, 2, transform)
+		return nil
+	}()
+	assertPanicPayload(panicked, errPanicSentinel, t)
+	select {
+	case <-sawCancel:
+	default:
+		t.Fatal("Map sibling did not observe cancellation after panic")
+	}
+}
+
+func TestRaceAllPanicRepanicsPayload(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	inputs := []int{1, 2}
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		panic(errPanicSentinel)
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_, _ = flow.Race(active, inputs, 1, transform)
+		return nil
+	}()
+	assertPanicPayload(panicked, errPanicSentinel, t)
+}
+
+func TestRacePanicBeforeSuccessPoisons(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	inputs := []int{1, 2}
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		if candidate == 1 {
+			panic(errPanicSentinel)
+		}
+		return candidate * outputFactor, nil
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_, _ = flow.Race(active, inputs, 1, transform)
+		return nil
+	}()
+	assertPanicPayload(panicked, errPanicSentinel, t)
+}
+
+func TestRaceSuccessBeforePanicWins(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	inputs := []int{1, 2}
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		if candidate == 2 {
+			panic(errPanicSentinel)
+		}
+		return candidate * outputFactor, nil
+	}
+	winner, raceFailure := flow.Race(active, inputs, 1, transform)
+	if raceFailure != nil {
+		t.Fatalf("Race failure = %v, want nil", raceFailure)
+	}
+	if winner != outputFactor {
+		t.Fatalf("Race winner = %v, want %v", winner, outputFactor)
+	}
+}
+
+func TestForEachPanicPropagatesPayload(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	inputs := []int{1, 2, 3}
+	consume := func(taskContext context.Context, candidate int) error {
+		if candidate == 2 {
+			panic(errPanicSentinel)
+		}
+		return nil
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_ = flow.ForEach(active, inputs, 1, consume)
+		return nil
+	}()
+	assertPanicPayload(panicked, errPanicSentinel, t)
+}
+
+var errPanicOther = errors.New("other panic")
+
+func TestMapConcurrentPanicsLatchOne(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	var gate sync.Mutex
+	release := make(chan struct{})
+	arrived := 0
+	barrier := func() {
+		gate.Lock()
+		arrived++
+		if arrived == 2 {
+			close(release)
+		}
+		gate.Unlock()
+		<-release
+	}
+	ran := make(map[int]bool)
+	var ranGuard sync.Mutex
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		barrier()
+		ranGuard.Lock()
+		ran[candidate] = true
+		ranGuard.Unlock()
+		if candidate == 1 {
+			panic(errPanicSentinel)
+		}
+		panic(errPanicOther)
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_, _ = flow.Map(active, []int{1, 2}, 2, transform)
+		return nil
+	}()
+	payload, holds := panicked.(error)
+	if !holds || (!errors.Is(payload, errPanicSentinel) && !errors.Is(payload, errPanicOther)) {
+		t.Fatalf("Map panic = %v, want one of the two sentinels", panicked)
+	}
+	ranGuard.Lock()
+	defer ranGuard.Unlock()
+	if !ran[1] || !ran[2] {
+		t.Fatalf("Map ran = %v, want both inputs attempted", ran)
+	}
+}
+
+func TestMapPanicWinsOverFailure(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	gate := make(chan struct{}) // never closed: failure path resolves only via cancellation
+	inputs := []int{0, 1}
+	transform := func(taskContext context.Context, candidate int) (string, error) {
+		if candidate == 1 {
+			panic(errPanicSentinel)
+		}
+		select {
+		case <-gate:
+			return "gated", nil
+		case <-taskContext.Done():
+			return "", taskContext.Err()
+		}
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_, _ = flow.Map(active, inputs, 2, transform)
+		return nil
+	}()
+	assertPanicPayload(panicked, errPanicSentinel, t)
+}
+
+func TestRaceFailureThenPanicPoisons(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	inputs := []int{1, 2}
+	calls := 0
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		calls++
+		if candidate == 1 {
+			return 0, errFastFailure
+		}
+		panic(errPanicSentinel)
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_, _ = flow.Race(active, inputs, 1, transform)
+		return nil
+	}()
+	assertPanicPayload(panicked, errPanicSentinel, t)
+	if calls != 2 {
+		t.Fatalf("Race calls = %d, want 2 (failure keeps racing into the panic)", calls)
+	}
+}
+
+func TestRaceChampionThenPanicPoisons(t *testing.T) {
+	// Poison contract: a panic latched while a champion is already claimed
+	// still re-panics in the caller, even though the winner stands. The gate
+	// makes the interleaving deterministic: the panicker is guaranteed
+	// in flight (sleeping) when the champion lands, so scheduling cannot
+	// drain the panic away; only the duration depends on slowDelay.
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	started := make(chan struct{}) // closed when the panicker goes in flight
+	inputs := []int{1, 2}
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		if candidate == 2 {
+			close(started)
+			time.Sleep(slowDelay)
+			panic(errPanicSentinel)
+		}
+		<-started // champion waits until the panicker is in flight
+		return candidate * outputFactor, nil
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_, _ = flow.Race(active, inputs, 2, transform)
+		return nil
+	}()
+	assertPanicPayload(panicked, errPanicSentinel, t)
 }

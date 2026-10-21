@@ -75,6 +75,14 @@ func (current Result[T]) Unwrap() (T, error) {
 
 // Must returns the success, panicking only when current holds a failure.
 // Use Must solely for values known at construction time (tests, static seeds).
+//
+// Which panicker?
+//
+// | You hold ...                  | Reach for ...                          |
+// |-------------------------------|------------------------------------------|
+// | A Result with a known success | Must                                     |
+// | A service name in a container | di.MustResolve                           |
+// | Panicking code at a boundary  | Try, which returns a Result, never panic |
 func Must[T any](current Result[T]) T {
 	success, failure := current.Unwrap()
 	if failure != nil {

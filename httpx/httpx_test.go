@@ -35,84 +35,84 @@ func newBareContext(engine *echo.Echo) (*echo.Context, *httptest.ResponseRecorde
 	return httpContext, recorder
 }
 
-func TestBindValidJSONRoundTrip(t *testing.T) {
+func TestDecodeValidJSONRoundTrip(t *testing.T) {
 	engine := echo.New()
 	httpContext, _ := newPostContext(engine, `{"name":"Ada"}`)
-	bound, bindFailure := httpx.Bind[personPayload](httpContext)
-	if bindFailure != nil {
-		t.Fatalf("Bind valid JSON: unexpected failure: %v", bindFailure)
+	decoded, decodeFailure := httpx.Decode[personPayload](httpContext)
+	if decodeFailure != nil {
+		t.Fatalf("Decode valid JSON: unexpected failure: %v", decodeFailure)
 	}
-	if bound.Name != "Ada" {
-		t.Fatalf("Bind valid JSON: Name = %q, want %q", bound.Name, "Ada")
+	if decoded.Name != "Ada" {
+		t.Fatalf("Decode valid JSON: Name = %q, want %q", decoded.Name, "Ada")
 	}
 }
 
-func TestBindInvalidJSONNamesType(t *testing.T) {
+func TestDecodeInvalidJSONNamesType(t *testing.T) {
 	engine := echo.New()
 	httpContext, _ := newPostContext(engine, `{"name":}`)
-	_, bindFailure := httpx.Bind[personPayload](httpContext)
-	if bindFailure == nil {
-		t.Fatal("Bind invalid JSON: expected failure, got nil")
+	_, decodeFailure := httpx.Decode[personPayload](httpContext)
+	if decodeFailure == nil {
+		t.Fatal("Decode invalid JSON: expected failure, got nil")
 	}
-	if !strings.Contains(bindFailure.Error(), "personPayload") {
-		t.Fatalf("Bind invalid JSON: failure %q does not name personPayload", bindFailure.Error())
+	if !strings.Contains(decodeFailure.Error(), "personPayload") {
+		t.Fatalf("Decode invalid JSON: failure %q does not name personPayload", decodeFailure.Error())
 	}
 }
 
-func TestJSONWritesStatusAndEnvelope(t *testing.T) {
+func TestWriteJSONStatusAndEnvelope(t *testing.T) {
 	engine := echo.New()
 	httpContext, recorder := newBareContext(engine)
-	if writeFailure := httpx.JSON(httpContext, http.StatusCreated, personPayload{Name: "Ada"}); writeFailure != nil {
-		t.Fatalf("JSON: unexpected failure: %v", writeFailure)
+	if writeFailure := httpx.WriteJSON(httpContext, http.StatusCreated, personPayload{Name: "Ada"}); writeFailure != nil {
+		t.Fatalf("WriteJSON: unexpected failure: %v", writeFailure)
 	}
 	if recorder.Code != http.StatusCreated {
-		t.Fatalf("JSON: status = %d, want %d", recorder.Code, http.StatusCreated)
+		t.Fatalf("WriteJSON: status = %d, want %d", recorder.Code, http.StatusCreated)
 	}
 	var envelope httpx.Response[personPayload]
 	if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
-		t.Fatalf("JSON: decode failure: %v", decodeFailure)
+		t.Fatalf("WriteJSON: decode failure: %v", decodeFailure)
 	}
 	if envelope.Data.Name != "Ada" {
-		t.Fatalf("JSON: Data.Name = %q, want %q", envelope.Data.Name, "Ada")
+		t.Fatalf("WriteJSON: Data.Name = %q, want %q", envelope.Data.Name, "Ada")
 	}
 	if envelope.Error != "" {
-		t.Fatalf("JSON: Error = %q, want empty", envelope.Error)
+		t.Fatalf("WriteJSON: Error = %q, want empty", envelope.Error)
 	}
 }
 
-func TestFailWritesStatusAndError(t *testing.T) {
+func TestWriteErrorWritesStatusAndError(t *testing.T) {
 	engine := echo.New()
 	httpContext, recorder := newBareContext(engine)
-	if writeFailure := httpx.Fail(httpContext, http.StatusBadRequest, errors.New("bad input")); writeFailure != nil {
-		t.Fatalf("Fail: unexpected failure: %v", writeFailure)
+	if writeFailure := httpx.WriteError(httpContext, http.StatusBadRequest, errors.New("bad input")); writeFailure != nil {
+		t.Fatalf("WriteError: unexpected failure: %v", writeFailure)
 	}
 	if recorder.Code != http.StatusBadRequest {
-		t.Fatalf("Fail: status = %d, want %d", recorder.Code, http.StatusBadRequest)
+		t.Fatalf("WriteError: status = %d, want %d", recorder.Code, http.StatusBadRequest)
 	}
 	var envelope httpx.Response[personPayload]
 	if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
-		t.Fatalf("Fail: decode failure: %v", decodeFailure)
+		t.Fatalf("WriteError: decode failure: %v", decodeFailure)
 	}
 	if envelope.Error != "bad input" {
-		t.Fatalf("Fail: Error = %q, want %q", envelope.Error, "bad input")
+		t.Fatalf("WriteError: Error = %q, want %q", envelope.Error, "bad input")
 	}
 	if envelope.Data.Name != "" {
-		t.Fatalf("Fail: Data.Name = %q, want empty", envelope.Data.Name)
+		t.Fatalf("WriteError: Data.Name = %q, want empty", envelope.Data.Name)
 	}
 }
 
-func TestFailNilNeverEmptyError(t *testing.T) {
+func TestWriteErrorNilNeverEmptyError(t *testing.T) {
 	engine := echo.New()
 	httpContext, recorder := newBareContext(engine)
-	if writeFailure := httpx.Fail(httpContext, http.StatusInternalServerError, nil); writeFailure != nil {
-		t.Fatalf("Fail(nil): unexpected failure: %v", writeFailure)
+	if writeFailure := httpx.WriteError(httpContext, http.StatusInternalServerError, nil); writeFailure != nil {
+		t.Fatalf("WriteError(nil): unexpected failure: %v", writeFailure)
 	}
 	var envelope httpx.Response[personPayload]
 	if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
-		t.Fatalf("Fail(nil): decode failure: %v", decodeFailure)
+		t.Fatalf("WriteError(nil): decode failure: %v", decodeFailure)
 	}
 	if envelope.Error == "" {
-		t.Fatal("Fail(nil): Error is empty, want descriptive message")
+		t.Fatal("WriteError(nil): Error is empty, want descriptive message")
 	}
 }
 
@@ -168,9 +168,9 @@ func TestResponseScalarZeroDataOmitsKey(t *testing.T) {
 	}
 }
 
-// TestFailEnvelopeOmitsDataKey pins that failure envelopes carry no data
+// TestWriteErrorEnvelopeOmitsDataKey pins that failure envelopes carry no data
 // key: a nil any Data is omitted, never encoded as null.
-func TestFailEnvelopeOmitsDataKey(t *testing.T) {
+func TestWriteErrorEnvelopeOmitsDataKey(t *testing.T) {
 	encoded, encodeFailure := json.Marshal(httpx.Response[any]{Error: "bad input"})
 	if encodeFailure != nil {
 		t.Fatalf("marshal fail envelope: unexpected failure: %v", encodeFailure)
@@ -180,45 +180,45 @@ func TestFailEnvelopeOmitsDataKey(t *testing.T) {
 	}
 }
 
-func TestValidationFailJoinsMultipleFailures(t *testing.T) {
+func TestValidationWriteErrorJoinsMultipleFailures(t *testing.T) {
 	engine := echo.New()
 	httpContext, recorder := newBareContext(engine)
 	failures := []error{errors.New("name is required"), errors.New("age must be positive")}
-	if writeFailure := httpx.ValidationFail(httpContext, failures); writeFailure != nil {
-		t.Fatalf("ValidationFail multi: unexpected failure: %v", writeFailure)
+	if writeFailure := httpx.ValidationWriteError(httpContext, failures); writeFailure != nil {
+		t.Fatalf("ValidationWriteError multi: unexpected failure: %v", writeFailure)
 	}
 	if recorder.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("ValidationFail multi: status = %d, want %d", recorder.Code, http.StatusUnprocessableEntity)
+		t.Fatalf("ValidationWriteError multi: status = %d, want %d", recorder.Code, http.StatusUnprocessableEntity)
 	}
 	var envelope httpx.Response[personPayload]
 	if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
-		t.Fatalf("ValidationFail multi: decode failure: %v", decodeFailure)
+		t.Fatalf("ValidationWriteError multi: decode failure: %v", decodeFailure)
 	}
 	if envelope.Error != "name is required; age must be positive" {
-		t.Fatalf("ValidationFail multi: Error = %q, want joined messages", envelope.Error)
+		t.Fatalf("ValidationWriteError multi: Error = %q, want joined messages", envelope.Error)
 	}
 }
 
-func TestValidationFailSingleFailure(t *testing.T) {
+func TestValidationWriteErrorSingleFailure(t *testing.T) {
 	engine := echo.New()
 	httpContext, recorder := newBareContext(engine)
 	failures := []error{errors.New("name is required")}
-	if writeFailure := httpx.ValidationFail(httpContext, failures); writeFailure != nil {
-		t.Fatalf("ValidationFail single: unexpected failure: %v", writeFailure)
+	if writeFailure := httpx.ValidationWriteError(httpContext, failures); writeFailure != nil {
+		t.Fatalf("ValidationWriteError single: unexpected failure: %v", writeFailure)
 	}
 	if recorder.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("ValidationFail single: status = %d, want %d", recorder.Code, http.StatusUnprocessableEntity)
+		t.Fatalf("ValidationWriteError single: status = %d, want %d", recorder.Code, http.StatusUnprocessableEntity)
 	}
 	var envelope httpx.Response[personPayload]
 	if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
-		t.Fatalf("ValidationFail single: decode failure: %v", decodeFailure)
+		t.Fatalf("ValidationWriteError single: decode failure: %v", decodeFailure)
 	}
 	if envelope.Error != "name is required" {
-		t.Fatalf("ValidationFail single: Error = %q, want %q", envelope.Error, "name is required")
+		t.Fatalf("ValidationWriteError single: Error = %q, want %q", envelope.Error, "name is required")
 	}
 }
 
-func TestValidationFailEmptySliceGuard(t *testing.T) {
+func TestValidationWriteErrorEmptySliceGuard(t *testing.T) {
 	for _, scenario := range []struct {
 		scenarioName string
 		failures     []error
@@ -228,39 +228,39 @@ func TestValidationFailEmptySliceGuard(t *testing.T) {
 	} {
 		engine := echo.New()
 		httpContext, recorder := newBareContext(engine)
-		if writeFailure := httpx.ValidationFail(httpContext, scenario.failures); writeFailure != nil {
-			t.Fatalf("ValidationFail %s: unexpected failure: %v", scenario.scenarioName, writeFailure)
+		if writeFailure := httpx.ValidationWriteError(httpContext, scenario.failures); writeFailure != nil {
+			t.Fatalf("ValidationWriteError %s: unexpected failure: %v", scenario.scenarioName, writeFailure)
 		}
 		if recorder.Code != http.StatusUnprocessableEntity {
-			t.Fatalf("ValidationFail %s: status = %d, want %d", scenario.scenarioName, recorder.Code, http.StatusUnprocessableEntity)
+			t.Fatalf("ValidationWriteError %s: status = %d, want %d", scenario.scenarioName, recorder.Code, http.StatusUnprocessableEntity)
 		}
 		var envelope httpx.Response[personPayload]
 		if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
-			t.Fatalf("ValidationFail %s: decode failure: %v", scenario.scenarioName, decodeFailure)
+			t.Fatalf("ValidationWriteError %s: decode failure: %v", scenario.scenarioName, decodeFailure)
 		}
 		if envelope.Error == "" {
-			t.Fatalf("ValidationFail %s: Error is empty, want descriptive message", scenario.scenarioName)
+			t.Fatalf("ValidationWriteError %s: Error is empty, want descriptive message", scenario.scenarioName)
 		}
 	}
 }
 
-// TestValidationFailSkipsNilEntries pins that nil entries inside failures
+// TestValidationWriteErrorSkipsNilEntries pins that nil entries inside failures
 // are skipped instead of panicking or contributing empty messages.
-func TestValidationFailSkipsNilEntries(t *testing.T) {
+func TestValidationWriteErrorSkipsNilEntries(t *testing.T) {
 	engine := echo.New()
 	httpContext, recorder := newBareContext(engine)
 	failures := []error{nil, errors.New("name is required"), nil}
-	if writeFailure := httpx.ValidationFail(httpContext, failures); writeFailure != nil {
-		t.Fatalf("ValidationFail nil entries: unexpected failure: %v", writeFailure)
+	if writeFailure := httpx.ValidationWriteError(httpContext, failures); writeFailure != nil {
+		t.Fatalf("ValidationWriteError nil entries: unexpected failure: %v", writeFailure)
 	}
 	if recorder.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("ValidationFail nil entries: status = %d, want %d", recorder.Code, http.StatusUnprocessableEntity)
+		t.Fatalf("ValidationWriteError nil entries: status = %d, want %d", recorder.Code, http.StatusUnprocessableEntity)
 	}
 	var envelope httpx.Response[personPayload]
 	if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
-		t.Fatalf("ValidationFail nil entries: decode failure: %v", decodeFailure)
+		t.Fatalf("ValidationWriteError nil entries: decode failure: %v", decodeFailure)
 	}
 	if envelope.Error != "name is required" {
-		t.Fatalf("ValidationFail nil entries: Error = %q, want %q", envelope.Error, "name is required")
+		t.Fatalf("ValidationWriteError nil entries: Error = %q, want %q", envelope.Error, "name is required")
 	}
 }

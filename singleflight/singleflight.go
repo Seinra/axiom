@@ -1,12 +1,12 @@
 // Package singleflight collapses concurrent duplicate executions sharing one
 // key into a single run, broadcasting the shared outcome to every waiter.
 //
-// Use a Group for one key space. Concurrent Do calls with equal keys share
+// Use a Group for one key space. Concurrent Call invocations with equal keys share
 // one execution: the first caller runs while duplicates wait, then every
 // waiter receives the same outcome and failure. Sequential calls re-run;
 // entries live only while executing.
 //
-// No DoChan, no sharding, no batching: YAGNI.
+// No CallChan, no sharding, no batching: YAGNI.
 package singleflight
 
 import "sync"
@@ -23,21 +23,21 @@ type callEntry[Value any] struct {
 }
 
 // Group holds the in-flight executions for one key space.
-// The zero value is ready to use; the map initializes lazily on first Do.
+// The zero value is ready to use; the map initializes lazily on first Call.
 // Use through a pointer so concurrent callers share the same table.
 type Group[Key comparable, Value any] struct {
 	guard    sync.Mutex
 	inflight map[Key]*callEntry[Value]
 }
 
-// Do runs execute for requestKey, sharing one execution across concurrent
+// Call runs execute for requestKey, sharing one execution across concurrent
 // callers with equal keys. The leader runs execute and reports isShared
 // false; duplicates wait and receive the same outcome and failure with
 // isShared true. Sequential calls re-run: singleflight dedups concurrency,
 // it is NOT a cache.
 // If execute panics, every waiter panics with the same value.
-// Do never holds the guard mutex while running execute.
-func (flight *Group[Key, Value]) Do(requestKey Key, execute func() (Value, error)) (outcome Value, failure error, isShared bool) {
+// Call never holds the guard mutex while running execute.
+func (flight *Group[Key, Value]) Call(requestKey Key, execute func() (Value, error)) (outcome Value, failure error, isShared bool) {
 	flight.guard.Lock()
 	if flight.inflight == nil {
 		flight.inflight = make(map[Key]*callEntry[Value])
@@ -52,7 +52,7 @@ func (flight *Group[Key, Value]) Do(requestKey Key, execute func() (Value, error
 	return flight.settleExecution(requestKey, pending, execute)
 }
 
-// Forget drops the in-flight entry for requestKey, so the next Do re-runs
+// Forget drops the in-flight entry for requestKey, so the next Call re-runs
 // even while earlier waiters still hold the dropped execution.
 func (flight *Group[Key, Value]) Forget(requestKey Key) {
 	flight.guard.Lock()

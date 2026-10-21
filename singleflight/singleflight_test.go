@@ -10,7 +10,7 @@ import (
 	"github.com/seinra/axiom/singleflight"
 )
 
-func TestDoConcurrentHammerSharesSingleExecution(t *testing.T) {
+func TestCallConcurrentHammerSharesSingleExecution(t *testing.T) {
 	t.Parallel()
 	const workerCount = 32
 	const expectedOutcome = 42
@@ -27,7 +27,7 @@ func TestDoConcurrentHammerSharesSingleExecution(t *testing.T) {
 		go func(position int) {
 			defer waiterGroup.Done()
 			<-starter
-			outcome, failure, isShared := flight.Do("hammer", func() (int, error) {
+			outcome, failure, isShared := flight.Call("hammer", func() (int, error) {
 				executions.Add(1)
 				time.Sleep(holdOpen)
 				return expectedOutcome, nil
@@ -63,7 +63,7 @@ func TestDoConcurrentHammerSharesSingleExecution(t *testing.T) {
 	}
 }
 
-func TestDoDistinctKeysRunIndependently(t *testing.T) {
+func TestCallDistinctKeysRunIndependently(t *testing.T) {
 	t.Parallel()
 	requestKeys := []string{"north", "south", "east", "west"}
 	var flight singleflight.Group[string, int]
@@ -75,7 +75,7 @@ func TestDoDistinctKeysRunIndependently(t *testing.T) {
 		waiterGroup.Add(1)
 		go func(slot int) {
 			defer waiterGroup.Done()
-			outcome, failure, _ := flight.Do(requestKeys[slot], func() (int, error) {
+			outcome, failure, _ := flight.Call(requestKeys[slot], func() (int, error) {
 				executions.Add(1)
 				time.Sleep(20 * time.Millisecond)
 				return slot*100 + 7, nil
@@ -100,7 +100,7 @@ func TestDoDistinctKeysRunIndependently(t *testing.T) {
 	}
 }
 
-func TestDoErrorPropagatesToWaiters(t *testing.T) {
+func TestCallErrorPropagatesToWaiters(t *testing.T) {
 	t.Parallel()
 	const workerCount = 8
 	boomFailure := errors.New("axiom singleflight: boom")
@@ -115,7 +115,7 @@ func TestDoErrorPropagatesToWaiters(t *testing.T) {
 		go func(position int) {
 			defer waiterGroup.Done()
 			<-starter
-			_, failure, isShared := flight.Do("fragile", func() (int, error) {
+			_, failure, isShared := flight.Call("fragile", func() (int, error) {
 				time.Sleep(30 * time.Millisecond)
 				return 0, boomFailure
 			})
@@ -166,18 +166,18 @@ func TestForgetDuringFlightForcesRerun(t *testing.T) {
 	}
 	leaderDone := make(chan int, 1)
 	go func() {
-		outcome, _, _ := flight.Do("lonely", produce)
+		outcome, _, _ := flight.Call("lonely", produce)
 		leaderDone <- outcome
 	}()
 	awaitFirstExecution(t, &executions)
 	waiterDone := make(chan int, 1)
 	go func() {
-		outcome, _, _ := flight.Do("lonely", produce)
+		outcome, _, _ := flight.Call("lonely", produce)
 		waiterDone <- outcome
 	}()
 	time.Sleep(waiterAttachWindow)
 	flight.Forget("lonely")
-	freshOutcome, failure, _ := flight.Do("lonely", produce)
+	freshOutcome, failure, _ := flight.Call("lonely", produce)
 	if failure != nil {
 		t.Fatalf("fresh failure = %v, want nil", failure)
 	}
@@ -195,18 +195,18 @@ func TestForgetDuringFlightForcesRerun(t *testing.T) {
 	}
 }
 
-func TestDoSequentialCallsRerun(t *testing.T) {
+func TestCallSequentialCallsRerun(t *testing.T) {
 	t.Parallel()
 	var flight singleflight.Group[string, int]
 	var executions atomic.Int64
 	produce := func() (int, error) {
 		return int(executions.Add(1)), nil
 	}
-	firstOutcome, firstFailure, firstShared := flight.Do("chain", produce)
+	firstOutcome, firstFailure, firstShared := flight.Call("chain", produce)
 	if firstFailure != nil {
 		t.Fatalf("first failure = %v, want nil", firstFailure)
 	}
-	secondOutcome, secondFailure, secondShared := flight.Do("chain", produce)
+	secondOutcome, secondFailure, secondShared := flight.Call("chain", produce)
 	if secondFailure != nil {
 		t.Fatalf("second failure = %v, want nil", secondFailure)
 	}
@@ -221,7 +221,7 @@ func TestDoSequentialCallsRerun(t *testing.T) {
 	}
 }
 
-func TestDoPanicPropagatesToWaiters(t *testing.T) {
+func TestCallPanicPropagatesToWaiters(t *testing.T) {
 	t.Parallel()
 	const workerCount = 8
 	const blastPayload = "axiom singleflight: blast"
@@ -241,7 +241,7 @@ func TestDoPanicPropagatesToWaiters(t *testing.T) {
 				writeGuard.Unlock()
 			}()
 			<-starter
-			_, _, _ = flight.Do("volatile", func() (int, error) {
+			_, _, _ = flight.Call("volatile", func() (int, error) {
 				executions.Add(1)
 				time.Sleep(50 * time.Millisecond)
 				panic(blastPayload)

@@ -313,11 +313,15 @@ func TestChunkedLastChunkShort(t *testing.T) {
 	}
 }
 
-func TestChunkedInvalidSizeYieldsEmpty(t *testing.T) {
+func TestChunkedInvalidSizePanics(t *testing.T) {
 	for _, width := range []int{0, -1} {
-		got := axiomslice.Chunked([]int{1, 2}, width)
-		if got == nil || len(got) != 0 {
-			t.Fatalf("Chunked(size %d) = %v, want empty non-nil", width, got)
+		panicked := func() (didPanic any) {
+			defer func() { didPanic = recover() }()
+			_ = axiomslice.Chunked([]int{1, 2}, width)
+			return nil
+		}()
+		if panicked == nil {
+			t.Fatalf("Chunked(size %d) did not panic, want panic", width)
 		}
 	}
 }
@@ -346,12 +350,23 @@ func TestWindowsFullLengthYieldsSingleton(t *testing.T) {
 	}
 }
 
-func TestWindowsInvalidSizeYieldsEmpty(t *testing.T) {
-	for _, width := range []int{0, -1, 5} {
-		got := axiomslice.Windows([]int{1, 2, 3}, width)
-		if got == nil || len(got) != 0 {
-			t.Fatalf("Windows(size %d) = %v, want empty non-nil", width, got)
+func TestWindowsInvalidSizePanics(t *testing.T) {
+	for _, width := range []int{0, -1} {
+		panicked := func() (didPanic any) {
+			defer func() { didPanic = recover() }()
+			_ = axiomslice.Windows([]int{1, 2, 3}, width)
+			return nil
+		}()
+		if panicked == nil {
+			t.Fatalf("Windows(size %d) did not panic, want panic", width)
 		}
+	}
+}
+
+func TestWindowsOversizeYieldsEmpty(t *testing.T) {
+	got := axiomslice.Windows([]int{1, 2, 3}, 5)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Windows(size 5) = %v, want empty non-nil", got)
 	}
 }
 
@@ -558,27 +573,27 @@ func TestIntersperseNilYieldsEmpty(t *testing.T) {
 	}
 }
 
-func TestCountsTalliesCollision(t *testing.T) {
-	got := axiomslice.Counts([]string{"a", "b", "a", "c", "b", "a"})
+func TestTallyCollisionSums(t *testing.T) {
+	got := axiomslice.Tally([]string{"a", "b", "a", "c", "b", "a"})
 	want := map[string]int{"a": 3, "b": 2, "c": 1}
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("Counts = %v, want %v", got, want)
+		t.Fatalf("Tally = %v, want %v", got, want)
 	}
 }
 
-func TestCountsSingletonTalliesOnce(t *testing.T) {
-	got := axiomslice.Counts([]string{"only"})
+func TestTallySingletonTalliesOnce(t *testing.T) {
+	got := axiomslice.Tally([]string{"only"})
 	want := map[string]int{"only": 1}
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("Counts = %v, want %v", got, want)
+		t.Fatalf("Tally = %v, want %v", got, want)
 	}
 }
 
-func TestCountsNilYieldsEmptyMap(t *testing.T) {
+func TestTallyNilYieldsEmptyMap(t *testing.T) {
 	var words []string
-	got := axiomslice.Counts(words)
+	got := axiomslice.Tally(words)
 	if got == nil || len(got) != 0 {
-		t.Fatalf("Counts(nil) = %v, want empty non-nil", got)
+		t.Fatalf("Tally(nil) = %v, want empty non-nil", got)
 	}
 }
 
@@ -601,7 +616,7 @@ func TestCollectionHelpersNeverMutateInput(t *testing.T) {
 	_ = axiomslice.MapIndexed(numbers, func(position int, element int) int { return element })
 	_ = axiomslice.FilterIndexed(numbers, func(position int, element int) bool { return true })
 	_ = axiomslice.Intersperse(numbers, 0)
-	_ = axiomslice.Counts(numbers)
+	_ = axiomslice.Tally(numbers)
 	if !reflect.DeepEqual(numbers, []int{3, 1, 2, 1}) {
 		t.Fatalf("input mutated to %v", numbers)
 	}
@@ -762,7 +777,7 @@ func TestSortByStabilityAcrossManyTies(t *testing.T) {
 	}
 }
 
-func TestScanRunningTotals(t *testing.T) {
+func TestRunningFoldRunningTotals(t *testing.T) {
 	testCases := []struct {
 		scenario string
 		input    []int
@@ -775,48 +790,48 @@ func TestScanRunningTotals(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.scenario, func(t *testing.T) {
-			actual := axiomslice.Scan(testCase.input, testCase.initial, func(total int, element int) int { return total + element })
+			actual := axiomslice.RunningFold(testCase.input, testCase.initial, func(total int, element int) int { return total + element })
 			if !reflect.DeepEqual(actual, testCase.expected) {
-				t.Fatalf("Scan(%v) = %v, want %v", testCase.input, actual, testCase.expected)
+				t.Fatalf("RunningFold(%v) = %v, want %v", testCase.input, actual, testCase.expected)
 			}
 		})
 	}
 }
 
-func TestScanConcatenatesStrings(t *testing.T) {
-	actual := axiomslice.Scan([]string{"a", "b", "c"}, "", func(total string, element string) string { return total + element })
+func TestRunningFoldConcatenatesStrings(t *testing.T) {
+	actual := axiomslice.RunningFold([]string{"a", "b", "c"}, "", func(total string, element string) string { return total + element })
 	expected := []string{"a", "ab", "abc"}
 	if !reflect.DeepEqual(actual, expected) {
-		t.Fatalf("Scan strings = %v, want %v", actual, expected)
+		t.Fatalf("RunningFold strings = %v, want %v", actual, expected)
 	}
 }
 
-func TestScanLengthMatchesInput(t *testing.T) {
+func TestRunningFoldLengthMatchesInput(t *testing.T) {
 	input := []int{4, 3, 2, 1}
-	actual := axiomslice.Scan(input, 0, func(total int, element int) int { return total + element })
+	actual := axiomslice.RunningFold(input, 0, func(total int, element int) int { return total + element })
 	if len(actual) != len(input) {
-		t.Fatalf("Scan len = %d, want %d", len(actual), len(input))
+		t.Fatalf("RunningFold len = %d, want %d", len(actual), len(input))
 	}
 }
 
-func TestScanEmptyYieldsEmpty(t *testing.T) {
-	actual := axiomslice.Scan([]int{}, 0, func(total int, element int) int { return total + element })
+func TestRunningFoldEmptyYieldsEmpty(t *testing.T) {
+	actual := axiomslice.RunningFold([]int{}, 0, func(total int, element int) int { return total + element })
 	if actual == nil || len(actual) != 0 {
-		t.Fatalf("Scan(empty) = %v, want empty non-nil", actual)
+		t.Fatalf("RunningFold(empty) = %v, want empty non-nil", actual)
 	}
 }
 
-func TestScanNilYieldsEmpty(t *testing.T) {
+func TestRunningFoldNilYieldsEmpty(t *testing.T) {
 	var numbers []int
-	actual := axiomslice.Scan(numbers, 0, func(total int, element int) int { return total + element })
+	actual := axiomslice.RunningFold(numbers, 0, func(total int, element int) int { return total + element })
 	if actual == nil || len(actual) != 0 {
-		t.Fatalf("Scan(nil) = %v, want empty non-nil", actual)
+		t.Fatalf("RunningFold(nil) = %v, want empty non-nil", actual)
 	}
 }
 
-func TestScanNeverMutatesInput(t *testing.T) {
+func TestRunningFoldNeverMutatesInput(t *testing.T) {
 	numbers := []int{1, 2, 3}
-	actual := axiomslice.Scan(numbers, 0, func(total int, element int) int { return total + element })
+	actual := axiomslice.RunningFold(numbers, 0, func(total int, element int) int { return total + element })
 	actual[0] = 99
 	if !reflect.DeepEqual(numbers, []int{1, 2, 3}) {
 		t.Fatalf("input mutated to %v, want [1 2 3]", numbers)

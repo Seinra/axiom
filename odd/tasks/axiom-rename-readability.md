@@ -28,6 +28,7 @@ Owner principles 2026-10-20: (1) human readability first, students, pre-v0 windo
 | `slice.Counts` | `Tally` | verb reads; noun read as property | cheap |
 | `httpx.JSON` / `httpx.Fail` | `WriteJSON` / `WriteError` | kills `encoding/json` collision; symmetric pair | medium (adapters) |
 | `httpx.Bind` | `Decode` | `Decode[Body](ctx)` explicit vs bare verb | medium |
+| `httpx.ValidationFail` | `ValidationWriteError` | follow-through consistente de `Fail→WriteError` (confirmado retroactivo L6) | cheap |
 | `flow.Each` | `ForEach` | explicit; `Each` empty first-read | cheap |
 | `either` params `L/R` | `LeftT/RightT` | readability-first + ban-13; single letters hurt novices/grep — REVERSES #18 `L/R` call, flagged explicitly | cheap, needs explicit sign-off |
 | `valid.And/Or/Not` | KEEP + vacuous-truth table | boolean ops fine qualified; churn not worth it | docs only |
@@ -39,6 +40,12 @@ Owner principles 2026-10-20: (1) human readability first, students, pre-v0 windo
 | Other type params | KEEP | `T` universal; rest positional-but-harmless; document | docs only |
 | bare-`any` publics | KEEP + document | GORM-forced + envelope; revisit at v0 | docs only |
 | Seeding verbs | KEEP + mapping table | five verbs, one table | docs only |
+
+## Bounds sign-off (owner, R3 — cierra R4-001/R4-002)
+
+| Decision | Sign-off |
+|---|---|
+| `slice.Chunked/Windows` y `iterx.ChunkedSeq/WindowsSeq` panic en `size <= 0` (paridad stdlib `slices.Chunk`); oversize/empty siguen empty | owner 2026-10-20 L7: "Panic como stdlib, rompo tests" |
 
 ## Research staged (evidence gathered, analysis pending next session)
 
@@ -74,3 +81,12 @@ Opinion: adopt the consensus in `flow.Map/Race` — recover per runner, latch th
 
 - L1 (verbatim principles): "1) Legibilidad humana primero, necesitamos que los alumnos entienda el codigo que implementan y leen. Se aprovecha ahora que todavia nadie consume Axiom. 2) stdlib como preferencia, pero conveniencia pesa mas que minimalismo (ej para ahorrar lineas de codigo, y otros casos de conveniencia), ese nivel de dinamismo tiene que tener esta libreria. 3) De nuevo, legibilidad humana primero. 4) Investigacion para lograr algo dinamico y adaptable, con comentarios u otras formas de contrarestar/informar el problema/debilidad de lo elegido de acuerdo a la situacion. 5) Aca necesitamos opinion de ingeniero con investigacion de como lo resolvieron otras librerias/frameworks. 6) Meh, si el problema es que aun no existe clase, se deja parked hasta que exista. 7) Invesgicacion."
 - L2 (verbatim): "No lances sub-agentes aun, simplemente prepara todo para dejarlo listo y arrancar en la proxima sesion."
+- L3 (2026-10-20, R0 sign-off verbatim): bloque barato APROBADO TODO; bloque medio APROBADO TODO; L/R→LeftT/RightT SI (revierte #18); KEEPs NO congelados — "Reabris el que tengas que reabrir y corregir, aca nada esta congelado hasta que todo este perfecto." R1 conclusiones ya en doc (parent 2026-10-20); opens de profundidad → verifier R4; R2 lanza 3 writers paralelos (either+result / singleflight+di+flow / slice+iterx+httpx+README).
+- L4 (2026-10-20, R2 DONE inline): writers rechazados por gateway (exige Spec T<n>, ordenó inline sin reintento); fallback inline con skills leídos (foundry+craft-floor, foundry-testing, cognitive-doc-design); 16 files +340/-332 commit 70955f4 en feat/axiom-rename-readability; evidencia suite 15 pkgs ok, vet 0, gofmt clean, cero refs viejas; slice 672 líneas >400 heuristic — R3 abre slice nuevo.
+- L4b (2026-10-20, corrección L4): el slice real es 675 líneas (medición nativa frozen: original_changed_lines 675), no 672.
+- L5 (2026-10-20, R4 review quemado): native review-3adf1ae846c2a550 APPROVED + burned (readability, 18 files/675 líneas, 3 advisories informativas R2-001/002/003); verifier Go con 8 SUGGESTIONs aplicadas en 7c4de71 (39+/39-, strings/tests/docs, verificado httpx/either/result/di ok); ValidationFail→ValidationWriteError fue follow-through consistente no listado en R0 — pendiente confirmación explícita del owner; push/PR owner-gated.
+- L6 (2026-10-20, owner verbatim): ante "¿Lo confirmo retroactivamente?" eligió "Sí, confirmar fila" — ValidationWriteError queda en tabla R0.
+- L7 (2026-10-20, owner verbatim, cierra R4-001/R4-002): ante "¿Qué hago?" eligió "Panic como stdlib, rompo tests" — panic en size<=0 es conducta pedida y firmada (ventana pre-v0), no regresión.
+- L8 (2026-10-20, follow-ups verifier R3 aplicados): doc qualifiers (iterx package laziness call-time, Race latched-poison, callTransform panic(nil), Map godoc rejoin) + 3 tests nuevos deterministas (latch-first concurrent con barrier, panic-wins-over-failure, failure-then-panic poison); verificado suite 15 pkgs ok, flow -race PASS (5/5 el gateado), vet 0, gofmt clean, lint 0 issues.
+- L8b (2026-10-20, flake real en TestRaceChampionThenPanicPoisons): el drain-on-cancel saltea trabajo no iniciado tras el win, así que el test era racy (0.00s sin panic cuando el sibling arrancaba tarde); fix con gate channel (el champion espera a que el panicker esté in-flight) — determinismo por diseño, sleep solo duración.
+- L9 (2026-10-20, review final quemado): review-0a4fe1cbb184f533 abandonado por capture-group trabado y re-empezado por orden owner → APPROVED + burned (3 lentes, 6 advisories informativas); se parkean con razón: recover/didPanic pineado por 7 tests deterministas + verifier Go, drain-holes imposibles por join semantics (documentado en mapRunner), poison ordering pineado por tests gateados, slice panic firmado en L7.

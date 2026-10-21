@@ -8,6 +8,10 @@
 // upstream — see TestTakeStopsEarly. Re-ranging a sequence re-runs the whole
 // pipeline from the source.
 //
+// Fail-fast exception: ChunkedSeq and WindowsSeq validate size at call time
+// and panic on size <= 0 instead of yielding nothing — valid sizes stay
+// fully lazy.
+//
 // Which function?
 //
 // | When you want to ...                               | Reach for ...           |
@@ -18,19 +22,22 @@
 // | Keep / skip the first count                        | Take / Drop             |
 // | Keep / skip while a condition holds                | TakeWhile / DropWhile   |
 // | Pair positions / pair two sequences                | Enumerate / ZipSeq      |
-// | Observe elements without changing flow             | TapSeq                  |
+// | Observe elements without changing flow             | OnEachSeq               |
 // | Repeat one value / cycle a slice (bound with Take) | Repeat / Cycle          |
-// | Collapse adjacent duplicates                       | DedupSeq                |
+// | Collapse adjacent duplicates                       | DeduplicateSeq          |
 // | Unfold evolving state into values                  | Unfold                  |
 // | Generate values until a stop                       | Generate                |
 // | Map and keep only some results                     | FilterMapSeq            |
 // | Fixed chunks, last short (slice.Chunked)           | ChunkedSeq              |
 // | Sliding windows (slice.Windows)                    | WindowsSeq              |
 // | Slot a separator between elements                  | IntersperseSeq          |
-// | Concatenate sequences in order                     | Chain                   |
+// | Concatenate sequences in order                     | ConcatSeq             |
 package iterx
 
-import "iter"
+import (
+	"fmt"
+	"iter"
+)
 
 // MapSeq transforms every element of sequence, preserving order.
 func MapSeq[Element any, Transformed any](sequence iter.Seq[Element], transform func(Element) Transformed) iter.Seq[Transformed] {
@@ -203,10 +210,10 @@ func ZipSeq[First, Second any](first iter.Seq[First], second iter.Seq[Second]) i
 	}
 }
 
-// TapSeq runs effect once per element during iteration and yields the
+// OnEachSeq runs effect once per element during iteration and yields the
 // element unchanged. Use it to observe a pipeline while debugging; it adds
 // no buffering and propagates early termination upstream.
-func TapSeq[Element any](sequence iter.Seq[Element], effect func(Element)) iter.Seq[Element] {
+func OnEachSeq[Element any](sequence iter.Seq[Element], effect func(Element)) iter.Seq[Element] {
 	return func(yield func(Element) bool) {
 		for element := range sequence {
 			effect(element)
@@ -247,10 +254,10 @@ func Cycle[Element any](elements []Element) iter.Seq[Element] {
 	}
 }
 
-// DedupSeq drops adjacent duplicates, keeping the first of each run.
+// DeduplicateSeq drops adjacent duplicates, keeping the first of each run.
 // This matches itertools.groupby semantics: only consecutive equals collapse,
 // so [1 2 1] keeps all three. For all-seen uniqueness use a set instead.
-func DedupSeq[Element comparable](sequence iter.Seq[Element]) iter.Seq[Element] {
+func DeduplicateSeq[Element comparable](sequence iter.Seq[Element]) iter.Seq[Element] {
 	return func(yield func(Element) bool) {
 		started := false
 		var previous Element
@@ -346,15 +353,21 @@ func FilterMapSeq[Element any, Transformed any](sequence iter.Seq[Element], tran
 // Example: ChunkedSeq(slices.Values([]int{1, 2, 3, 4, 5}), 2) yields
 // [1 2], [3 4], [5].
 //
-// A non-positive size yields an empty sequence. Chunks fill lazily as the
-// caller pulls; breaking early stops pulling the source, and re-ranging
-// re-runs from the source.
+// Size <= 0 panics at call time: a non-positive chunk size is a programmer
+// error, matching slices.Chunk. Chunks fill lazily as the caller pulls;
+// breaking early stops pulling the source, and re-ranging re-runs from
+// the source.
+//
+// Cost: O(n) time and O(size) working space for n elements — every element
+// is copied once into a fresh chunk.
 func ChunkedSeq[Element any](sequence iter.Seq[Element], size int) iter.Seq[[]Element] {
+	if size <= 0 {
+		panic(fmt.Sprintf("axiom iterx: ChunkedSeq needs size >= 1, got %d", size))
+	}
 	return func(yield func([]Element) bool) {
-		if size <= 0 {
-			return
-		}
-		chunk := make([]Element, 0, size)
+		// No presized backing: a huge size must not allocate upfront. The chunk
+		// grows incrementally and never exceeds size elements.
+		chunk := make([]Element, 0)
 		for element := range sequence {
 			chunk = append(chunk, element)
 			if len(chunk) < size {
@@ -381,15 +394,20 @@ func ChunkedSeq[Element any](sequence iter.Seq[Element], size int) iter.Seq[[]El
 // Example: WindowsSeq(slices.Values([]int{1, 2, 3}), 2) yields
 // [1 2], [2 3].
 //
-// A non-positive size, or a size beyond the input length, yields an empty
-// sequence. Windows fill lazily as the caller pulls; breaking early stops
-// pulling the source, and re-ranging re-runs from the source.
+// Size <= 0 panics at call time: a non-positive window size is a programmer
+// error, matching slices.Chunk. A size beyond the input length yields an
+// empty sequence. Windows fill lazily as the caller pulls; breaking early
+// stops pulling the source, and re-ranging re-runs from the source.
+//
+// Cost: O(n*size) element copies for n elements — every window is a fresh copy.
 func WindowsSeq[Element any](sequence iter.Seq[Element], size int) iter.Seq[[]Element] {
+	if size <= 0 {
+		panic(fmt.Sprintf("axiom iterx: WindowsSeq needs size >= 1, got %d", size))
+	}
 	return func(yield func([]Element) bool) {
-		if size <= 0 {
-			return
-		}
-		window := make([]Element, 0, size)
+		// No presized backing: a huge size must not allocate upfront. The window
+		// grows incrementally and never exceeds size elements.
+		window := make([]Element, 0)
 		for element := range sequence {
 			window = append(window, element)
 			if len(window) < size {
@@ -431,15 +449,15 @@ func IntersperseSeq[Element any](sequence iter.Seq[Element], separator Element) 
 	}
 }
 
-// Chain concatenates first with each sequence in rest, in order.
+// ConcatSeq concatenates first with each sequence in rest, in order.
 //
-// Example: Chain(slices.Values([]int{1}), slices.Values([]int{2, 3}))
+// Example: ConcatSeq(slices.Values([]int{1}), slices.Values([]int{2, 3}))
 // yields 1, 2, 3.
 //
 // Inputs range lazily in order: later inputs never start while the caller
 // still pulls earlier ones, breaking early stops the current input, and
 // re-ranging re-runs from the first input.
-func Chain[Element any](first iter.Seq[Element], rest ...iter.Seq[Element]) iter.Seq[Element] {
+func ConcatSeq[Element any](first iter.Seq[Element], rest ...iter.Seq[Element]) iter.Seq[Element] {
 	return func(yield func(Element) bool) {
 		for element := range first {
 			if !yield(element) {

@@ -60,10 +60,8 @@ func TestRaceFirstSuccess(t *testing.T) {
 		case "fast-mirror":
 			return "lesson from " + mirror, nil
 		case "slow-mirror":
-			select {
-			case <-ctx.Done():
-				return "", ctx.Err()
-			}
+			<-ctx.Done()
+			return "", ctx.Err()
 		default:
 			return "", errors.New("mirror unreachable: " + mirror)
 		}

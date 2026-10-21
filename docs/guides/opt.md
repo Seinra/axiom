@@ -21,7 +21,7 @@ want the plumbing — map, chain, filter, fall back — without an `if` at each 
 1. Wrap: `Some(value)` holds a value; `None[T]()` holds absence.
 2. Ask or read: `IsSome` checks, `ValueOr` reads with an explicit fallback,
    `ValueOrElse` reads with a lazy fallback (runs only when absent).
-3. Transform: `MapOption` / `MapValue` convert the held value and carry absence
+3. Transform: `MapValue` converts the held value and carries absence
    through untouched.
 4. Chain: `AndThen` feeds the held value into the next `Option`;
    `Flatten` collapses one nesting level; `OrElse` falls back to another
@@ -45,7 +45,7 @@ Resumed from the package table — see `go doc ./opt` for the full version.
 | Ask whether a value is held | `IsSome` |
 | Read with an explicit fallback | `ValueOr` |
 | Read with a lazy fallback | `ValueOrElse` |
-| Transform the held value | `MapOption` / `MapValue` |
+| Transform the held value | `MapValue` |
 | Chain to the next Option | `AndThen` |
 | Collapse one nesting level | `Flatten` |
 | Fall back to another Option | `OrElse` |
@@ -71,7 +71,7 @@ func main() {
 	present := opt.Some("gopher")
 	fmt.Println(present.ValueOr("nobody"))
 	fmt.Println(opt.None[string]().ValueOr("nobody"))
-	shouted := opt.MapOption(present, strings.ToUpper)
+	shouted := present.MapValue(strings.ToUpper)
 	fmt.Println(shouted.ValueOr("nobody"))
 }
 ```

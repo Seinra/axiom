@@ -34,9 +34,9 @@ func TestFailStoresFailure(t *testing.T) {
 	}
 }
 
-func TestMapTransformsSuccess(t *testing.T) {
+func TestMapValueTransformsSuccess(t *testing.T) {
 	current := result.Ok(21)
-	mapped := result.Map(current, func(success int) string {
+	mapped := current.MapValue(func(success int) string {
 		if success != 21 {
 			t.Fatalf("transform input = %d, want 21", success)
 		}
@@ -51,10 +51,10 @@ func TestMapTransformsSuccess(t *testing.T) {
 	}
 }
 
-func TestMapKeepsFailure(t *testing.T) {
+func TestMapValueKeepsFailure(t *testing.T) {
 	sentinel := errors.New("kept")
 	current := result.Fail[int](sentinel)
-	mapped := result.Map(current, func(success int) string { return "unreachable" })
+	mapped := current.MapValue(func(success int) string { return "unreachable" })
 	if mapped.IsOk() {
 		t.Fatal("IsOk = true, want false")
 	}
@@ -124,12 +124,12 @@ func TestZeroValueReportsError(t *testing.T) {
 	}
 }
 
-func TestMapZeroReportsError(t *testing.T) {
+func TestMapValueZeroReportsError(t *testing.T) {
 	var current result.Result[int]
-	mapped := result.Map(current, func(success int) string { return "unreachable" })
+	mapped := current.MapValue(func(success int) string { return "unreachable" })
 	_, failure := mapped.Unwrap()
 	if failure == nil {
-		t.Fatal("Map(zero) Unwrap failure = nil, want explicit error")
+		t.Fatal("MapValue(zero) Unwrap failure = nil, want explicit error")
 	}
 }
 
@@ -590,21 +590,11 @@ func pinnedNoPanic(t *testing.T, label string, call func()) {
 	}
 }
 
-func TestMapNilTransformPanicsOnOkCarriesFailure(t *testing.T) {
-	pinnedPanics(t, "Map(Ok, nil)", func() {
-		_ = result.Map[int, string](result.Ok(1), nil)
-	})
+func TestMapValueNilTransformPanicsOnOkCarriesFailure(t *testing.T) {
 	pinnedPanics(t, "Ok.MapValue(nil)", func() {
 		_ = result.Ok(1).MapValue[string](nil)
 	})
 	sentinel := errors.New("carried")
-	var mappedFunc result.Result[string]
-	pinnedNoPanic(t, "Map(Fail, nil)", func() {
-		mappedFunc = result.Map[int, string](result.Fail[int](sentinel), nil)
-	})
-	if _, failure := mappedFunc.Unwrap(); !errors.Is(failure, sentinel) {
-		t.Fatalf("Map(Fail, nil) failure = %v, want %v", failure, sentinel)
-	}
 	var mappedMethod result.Result[string]
 	pinnedNoPanic(t, "Fail.MapValue(nil)", func() {
 		mappedMethod = result.Fail[int](sentinel).MapValue[string](nil)
@@ -613,11 +603,11 @@ func TestMapNilTransformPanicsOnOkCarriesFailure(t *testing.T) {
 		t.Fatalf("Fail.MapValue(nil) failure = %v, want %v", failure, sentinel)
 	}
 	var mappedZero result.Result[string]
-	pinnedNoPanic(t, "Map(zero, nil)", func() {
-		mappedZero = result.Map[int, string](result.Result[int]{}, nil)
+	pinnedNoPanic(t, "MapValue(zero, nil)", func() {
+		mappedZero = result.Result[int]{}.MapValue[string](nil)
 	})
 	if _, failure := mappedZero.Unwrap(); failure == nil {
-		t.Fatal("Map(zero, nil) failure = nil, want explicit error")
+		t.Fatal("MapValue(zero, nil) failure = nil, want explicit error")
 	}
 }
 

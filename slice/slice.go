@@ -219,6 +219,9 @@ func FlatMap[Element any, Transformed any](elements []Element, transform func(El
 // Flatten concatenates nested slices in order.
 // Nil or empty input yields an empty non-nil slice.
 //
+// Same result as slices.Concat(nested...); kept as the discoverable one-arg
+// shape with preallocated backing.
+//
 // Length-total overflow panics: inner lengths summing past math.MaxInt are a
 // programmer error, matching the size <= 0 panic policy of Chunked and
 // Windows. result.Flatten needs no such guard (single-level unwrap, no

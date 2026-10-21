@@ -1,7 +1,7 @@
 // Package opt provides a typed Option[T] for values that may be absent.
 //
 // Use Some to hold a success and None for absence. ValueOr reads with an
-// explicit fallback, MapOption/MapValue transform the held success while
+// explicit fallback, MapValue transforms the held success while
 // carrying absence through untouched. Absence is a normal outcome here, never
 // an error: for failures with causes, see the result package.
 //
@@ -14,7 +14,7 @@
 // | Ask whether a value is held      | IsSome                |
 // | Read with an explicit fallback   | ValueOr               |
 // | Read with a lazy fallback        | ValueOrElse           |
-// | Transform the held value         | MapOption / MapValue  |
+// | Transform the held value         | MapValue              |
 // | Chain to the next Option         | AndThen               |
 // | Collapse one nesting level       | Flatten               |
 // | Fall back to another Option      | OrElse                |
@@ -55,20 +55,14 @@ func (current Option[T]) ValueOr(fallback T) T {
 	return current.success
 }
 
-// MapOption transforms the held success with transform, carrying absence through.
-// Pure function form; see MapValue for the chainable Go 1.27 generic method.
-func MapOption[T any, Transformed any](current Option[T], transform func(T) Transformed) Option[Transformed] {
-	if !current.isSome {
-		return None[Transformed]()
-	}
-	return Some(transform(current.success))
-}
-
 // MapValue transforms the held success, carrying absence through.
 // Go 1.27 generic method: the method declares its own type params, so calls
 // chain left to right: Some(5).MapValue(next).MapValue(describe).
 func (current Option[T]) MapValue[Transformed any](transform func(T) Transformed) Option[Transformed] {
-	return MapOption(current, transform)
+	if !current.isSome {
+		return None[Transformed]()
+	}
+	return Some(transform(current.success))
 }
 
 // OrElse returns current when it holds a success, otherwise fallback.

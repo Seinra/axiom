@@ -188,6 +188,27 @@ func TestListRejectsInvalidPage(t *testing.T) {
 	}
 }
 
+// TestListRejectsOversizedPage pins MaxPageSize: a caller-driven Size beyond
+// the cap is rejected with ErrInvalidPage instead of preallocating an
+// unbounded page (DoS via caller HTTP). The cap boundary itself stays usable.
+func TestListRejectsOversizedPage(t *testing.T) {
+	lessonStore := openLessonStore(t, seedFiveLessons()...)
+	if _, listFailure := lessonStore.List(repo.Page{Number: 1, Size: repogorm.MaxPageSize + 1}); !errors.Is(listFailure, repo.ErrInvalidPage) {
+		t.Fatalf("List(Size MaxPageSize+1): failure = %v, want ErrInvalidPage (cap %d)", listFailure, repogorm.MaxPageSize)
+	}
+	if _, listFailure := lessonStore.List(repo.Page{Number: 1, Size: repogorm.MaxPageSize}); listFailure != nil {
+		t.Fatalf("List(Size MaxPageSize): unexpected failure: %v", listFailure)
+	}
+}
+
+// TestMaxPageSizeValue pins the chosen cap: 1000 bounds the List
+// preallocation while staying generous for legitimate paging.
+func TestMaxPageSizeValue(t *testing.T) {
+	if repogorm.MaxPageSize != 1000 {
+		t.Fatalf("MaxPageSize = %d, want 1000", repogorm.MaxPageSize)
+	}
+}
+
 func TestNewStoreRejectsNilDatabase(t *testing.T) {
 	if _, buildFailure := repogorm.NewStore[Lesson, uint](nil, []any{Lesson{}}, "id"); buildFailure == nil {
 		t.Fatal("NewStore(nil database): expected failure, got nil")

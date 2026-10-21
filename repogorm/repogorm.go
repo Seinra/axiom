@@ -70,6 +70,12 @@ func validOrderColumn(name string) bool {
 	return orderColumnPattern.MatchString(name)
 }
 
+// MaxPageSize caps Store.List page Size: larger Sizes are rejected with a
+// wrapped repo.ErrInvalidPage instead of preallocating an unbounded page.
+// The cap is a DoS bound on caller-driven Sizes (for example from HTTP
+// query params), consistent with the Size < 1 rejection in List.
+const MaxPageSize = 1000
+
 // Store persists candidate, overwriting any record with the same identity.
 func (current *Store[Record, Identity]) Store(candidate Record) error {
 	outcome := current.database.Save(&candidate)
@@ -106,14 +112,18 @@ func (current *Store[Record, Identity]) Remove(identity Identity) error {
 }
 
 // List returns at most Size records for the requested page, ordered by the
-// order column. An invalid page (Number < 1 or Size < 1) yields a wrapped
-// ErrInvalidPage. Listing past the end yields an empty non-nil slice.
+// order column. An invalid page (Number < 1, Size < 1, or Size > MaxPageSize)
+// yields a wrapped ErrInvalidPage. Listing past the end yields an empty
+// non-nil slice.
 func (current *Store[Record, Identity]) List(page repo.Page) ([]Record, error) {
 	if page.Number < 1 {
 		return nil, fmt.Errorf("axiom repogorm: list page number %d: %w (numbers start at 1)", page.Number, repo.ErrInvalidPage)
 	}
 	if page.Size < 1 {
 		return nil, fmt.Errorf("axiom repogorm: list page size %d: %w (sizes start at 1)", page.Size, repo.ErrInvalidPage)
+	}
+	if page.Size > MaxPageSize {
+		return nil, fmt.Errorf("axiom repogorm: list page size %d exceeds max %d: %w", page.Size, MaxPageSize, repo.ErrInvalidPage)
 	}
 	listed := make([]Record, 0, page.Size)
 	outcome := current.database.Order(current.orderColumn).Offset(page.Offset()).Limit(page.Size).Find(&listed)

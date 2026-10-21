@@ -325,6 +325,52 @@ func TestTryErrorPayloadBecomesFailure(t *testing.T) {
 	}
 }
 
+// boomPayload is the typed panic payload proving Try carries types: only a
+// %w wrap lets errors.As recover it with its message preserved.
+type boomPayload struct{}
+
+func (payload boomPayload) Error() string { return "typed boom" }
+
+// TestTryTypedPayloadMatchesAs pins %w carriage: an error panic payload stays
+// matchable via errors.As with its message preserved.
+func TestTryTypedPayloadMatchesAs(t *testing.T) {
+	current := result.Try(func() int { panic(boomPayload{}) })
+	if current.IsOk() {
+		t.Fatal("Try typed panic IsOk = true, want false")
+	}
+	_, failure := current.Unwrap()
+	if failure == nil {
+		t.Fatal("Try typed panic failure = nil, want recovered panic")
+	}
+	var matched boomPayload
+	if !errors.As(failure, &matched) {
+		t.Fatalf("Try failure = %v (%T), want errors.As match for boomPayload", failure, failure)
+	}
+	if !strings.Contains(failure.Error(), "axiom result: recovered panic: typed boom") {
+		t.Fatalf("Try failure = %q, want recovered panic with typed message", failure.Error())
+	}
+}
+
+// TestTrySentinelPayloadMatchesIs pins %w carriage for sentinel errors: a
+// panicked sentinel stays matchable via errors.Is.
+func TestTrySentinelPayloadMatchesIs(t *testing.T) {
+	sentinel := errors.New("inner boom")
+	current := result.Try(func() int { panic(sentinel) })
+	if current.IsOk() {
+		t.Fatal("Try sentinel panic IsOk = true, want false")
+	}
+	_, failure := current.Unwrap()
+	if failure == nil {
+		t.Fatal("Try sentinel panic failure = nil, want recovered panic")
+	}
+	if !errors.Is(failure, sentinel) {
+		t.Fatalf("Try failure = %v, want errors.Is match for sentinel", failure)
+	}
+	if !strings.Contains(failure.Error(), "axiom result: recovered panic: inner boom") {
+		t.Fatalf("Try failure = %q, want recovered panic with sentinel message", failure.Error())
+	}
+}
+
 func TestTryNilAttemptRecovers(t *testing.T) {
 	var attempt func() int
 	current := result.Try(attempt)

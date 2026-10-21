@@ -313,3 +313,60 @@ func TestValidationWriteErrorAllNilGuard(t *testing.T) {
 		t.Fatalf("ValidationWriteError all-nil: Error = %q, want guard message", envelope.Error)
 	}
 }
+
+// TestFieldFailureMatchesSentinel pins per-field matchability: each field
+// failure wraps ErrValidationFailed, so errors.Is matches the sentinel and
+// errors.As recovers the field in-process (the 422 envelope keeps carrying
+// only text, where the stdlib contract cannot reach).
+func TestFieldFailureMatchesSentinel(t *testing.T) {
+	failure := httpx.FieldFailure{Field: "name", Reason: "name is required"}
+	if !errors.Is(failure, httpx.ErrValidationFailed) {
+		t.Fatalf("errors.Is(%v, ErrValidationFailed) = false, want true", failure)
+	}
+	var matched httpx.FieldFailure
+	if !errors.As(failure, &matched) {
+		t.Fatalf("errors.As(%v) = false, want FieldFailure match", failure)
+	}
+	if matched.Field != "name" || matched.Reason != "name is required" {
+		t.Fatalf("errors.As matched = %+v, want name/name is required", matched)
+	}
+}
+
+// TestFieldFailureWrapsCause pins that an underlying cause stays matchable
+// alongside the sentinel through the multi-unwrap chain.
+func TestFieldFailureWrapsCause(t *testing.T) {
+	cause := errors.New("too short")
+	failure := httpx.FieldFailure{Field: "name", Reason: "name is too short", Cause: cause}
+	if !errors.Is(failure, httpx.ErrValidationFailed) {
+		t.Fatalf("errors.Is(%v, ErrValidationFailed) = false, want true", failure)
+	}
+	if !errors.Is(failure, cause) {
+		t.Fatalf("errors.Is(%v, cause) = false, want true", failure)
+	}
+}
+
+// TestValidationWriteErrorKeepsShapeForFieldFailures pins the HTTP contract:
+// FieldFailure inputs still write 422 with "; "-joined messages, so the
+// envelope shape never changes while failures stay matchable caller-side.
+func TestValidationWriteErrorKeepsShapeForFieldFailures(t *testing.T) {
+	engine := echo.New()
+	httpContext, recorder := newBareContext(engine)
+	failures := []error{
+		httpx.FieldFailure{Field: "name", Reason: "name is required"},
+		httpx.FieldFailure{Field: "age", Reason: "age must be positive"},
+	}
+	if writeFailure := httpx.ValidationWriteError(httpContext, failures); writeFailure != nil {
+		t.Fatalf("ValidationWriteError field failures: unexpected failure: %v", writeFailure)
+	}
+	if recorder.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("ValidationWriteError field failures: status = %d, want %d", recorder.Code, http.StatusUnprocessableEntity)
+	}
+	var envelope httpx.Response[personPayload]
+	if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
+		t.Fatalf("ValidationWriteError field failures: decode failure: %v", decodeFailure)
+	}
+	want := failures[0].Error() + "; " + failures[1].Error()
+	if envelope.Error != want {
+		t.Fatalf("ValidationWriteError field failures: Error = %q, want %q", envelope.Error, want)
+	}
+}

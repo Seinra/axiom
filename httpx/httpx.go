@@ -12,6 +12,7 @@
 // | Reply with a success envelope        | WriteJSON (Response) |
 // | Reply with a failure envelope        | WriteError (Response) |
 // | Reply validation failures as 422     | ValidationWriteError |
+// | Name one field failure (matchable)  | FieldFailure (+ ErrValidationFailed) |
 // | Shape a paged listing payload        | ListResponse        |
 package httpx
 
@@ -65,10 +66,46 @@ func WriteError(httpContext *echo.Context, status int, failure error) error {
 	return httpContext.JSON(status, Response[any]{Error: failure.Error()})
 }
 
+// ErrValidationFailed is the sentinel every FieldFailure wraps. Match
+// per-field failures with errors.Is(failure, ErrValidationFailed) and
+// recover the field with errors.As into FieldFailure.
+var ErrValidationFailed = errors.New("axiom httpx: validation failed")
+
+// FieldFailure reports one field's validation failure. Field names the
+// rejected field and Reason explains the failure in plain words; Cause
+// optionally carries the underlying error. Error renders the human text the
+// 422 envelope carries; Unwrap exposes both the sentinel and the cause, so
+// errors.Is and errors.As match per-field where the stdlib contract allows
+// (in-process values — the HTTP envelope itself carries only text).
+type FieldFailure struct {
+	Field  string
+	Reason string
+	Cause  error
+}
+
+// Error renders the field failure as human text for the 422 envelope.
+func (failure FieldFailure) Error() string {
+	if failure.Cause == nil {
+		return fmt.Sprintf("axiom httpx: field %q invalid: %s", failure.Field, failure.Reason)
+	}
+	return fmt.Sprintf("axiom httpx: field %q invalid: %s: %v", failure.Field, failure.Reason, failure.Cause)
+}
+
+// Unwrap exposes the sentinel plus the cause (when present) for errors.Is
+// and errors.As traversal.
+func (failure FieldFailure) Unwrap() []error {
+	if failure.Cause == nil {
+		return []error{ErrValidationFailed}
+	}
+	return []error{ErrValidationFailed, failure.Cause}
+}
+
 // ValidationWriteError writes validator failures as a 422 envelope with the
 // failure messages joined by "; ". Nil entries inside failures are
 // skipped. Empty or all-nil failures write a descriptive guard message,
-// never an empty envelope.
+// never an empty envelope. Per-field identity stays caller-side: match
+// failures with errors.Is/As (for example FieldFailure) before rendering —
+// the envelope carries only text.
 func ValidationWriteError(httpContext *echo.Context, failures []error) error {
 	messages := make([]string, 0, len(failures))
 	for _, failure := range failures {

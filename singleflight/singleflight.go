@@ -104,6 +104,9 @@ func (flight *Group[Key, Value]) publishOutcome(requestKey Key, pending *callEnt
 	if current, held := flight.inflight[requestKey]; held && current == pending {
 		delete(flight.inflight, requestKey)
 	}
+	// Close doneCh under guard as a deliberate design call: waiters release
+	// exactly once for this entry; the latched panic re-raises after unlock
+	// so a panicking waiter never holds the table lock.
 	close(pending.doneCh)
 	flight.guard.Unlock()
 	if pending.didPanic {

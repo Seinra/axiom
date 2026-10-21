@@ -21,7 +21,7 @@ One small, dependable generics library at Echo-level quality: typed helpers for 
    doubled := axiomslice.MapSlice([]int{1, 2, 3}, func(success int) int { return success * 2 })
    _ = current.MapValue(func(success int) int { return success * 2 })
    ```
-3. Verify: `go test ./...` — expect `ok` for `opt`, `result`, `slice`.
+3. Verify: `go test ./...` — expect `ok` across all packages.
 
 ## Which function? (guide index)
 
@@ -32,24 +32,38 @@ Start there, then `go doc` the package:
 | --- | --- | --- |
 | a maybe-present value | `opt` | `go doc ./opt` ([opt/opt.go](opt/opt.go)) |
 | a success-or-failure outcome | `result` | `go doc ./result` ([result/result.go](result/result.go)) |
+| two typed sides (left / right) | `either` | `go doc ./either` ([either/either.go](either/either.go)) |
 | a slice to transform, find, or fold | `slice` | `go doc ./slice` ([slice/slice.go](slice/slice.go)) |
 | distinct values to combine or compare | `set` | `go doc ./set` ([set/set.go](set/set.go)) |
 | a builtin map to reshape | `mapx` | `go doc ./mapx` ([mapx/mapx.go](mapx/mapx.go)) |
 | a lazy `iter.Seq` pipeline | `iterx` | `go doc ./iterx` ([iterx/iterx.go](iterx/iterx.go)) |
+| predicates to combine (And / Or / Not) | `valid` | `go doc ./valid` ([valid/valid.go](valid/valid.go)) |
+| one call to run once per key | `singleflight` | `go doc ./singleflight` ([singleflight/singleflight.go](singleflight/singleflight.go)) |
+| objects to reuse, not rebuild | `pool` | `go doc ./pool` ([pool/pool.go](pool/pool.go)) |
+| named singleton services | `di` | `go doc ./di` ([di/di.go](di/di.go)) |
+| records addressed by identity | `repo` | `go doc ./repo` ([repo/repo.go](repo/repo.go)) |
+| the same over GORM | `repogorm` | `go doc ./repogorm` ([repogorm/repogorm.go](repogorm/repogorm.go)) |
+| an Echo JSON envelope | `httpx` | `go doc ./httpx` ([httpx/httpx.go](httpx/httpx.go)) |
+| a bounded concurrent map or first-success race | `flow` | `go doc ./flow` ([flow/flow.go](flow/flow.go)) |
 
-`slice` functions returning `(value, bool)` — `FindSlice`, `Min`/`Max`,
-`MinBy`/`MaxBy`, `Average` — use the OrNull shape: check the `bool` before
-trusting the value.
+`(T, bool)` is our OrNull across Axiom: the `bool` reports presence — never trust the value without it. Slice helpers (`FindSlice`, `Min`/`Max`, `MinBy`/`MaxBy`, `Average`) and `iterx` callbacks (`Generate`, `FilterMapSeq`, `Unfold`) use this shape.
+
+| If you are holding ... | Reach for |
+| --- | --- |
+| a loose value that may be missing, your own code | `(T, bool)` |
+| an absence to chain or transform | `opt.Option` |
+| a failure with a cause | `result.Result` |
+| two typed sides | `either` |
 
 ## Details
 
 | Topic | Decision |
 | --- | --- |
 | Module / toolchain | `github.com/seinra/axiom`, `go 1.27` (generic methods on concrete types; no generic interface methods) |
-| Ships now (14 pkgs) | `result`, `opt`, `slice`, `set`, `mapx`, `iterx`, `valid`, `singleflight`, `pool`, `di`, `repo` (+GORM adapter `repogorm`), `httpx` (Echo v5), `flow` — see `.loop-modules/ARCHITECTURE.md` for the map; every package ships godoc + tests green |
-| Rules | stdlib-first (`slices`/`maps`/`cmp`/`iter` before hand-rolled); typed API, `any` only at codec edges; grep-able names (no `data`/`item`/`req`/`res`); godoc + example on every export |
+| Ships now (15 pkgs) | `result`, `opt`, `either`, `slice`, `set`, `mapx`, `iterx`, `valid`, `singleflight`, `pool`, `di`, `repo` (+GORM adapter `repogorm`), `httpx` (Echo v5), `flow` — see `.loop-modules/ARCHITECTURE.md` for the map; every package ships godoc + tests green |
+| Rules | stdlib-first (`slices`/`maps`/`cmp`/`iter` before hand-rolled); typed API, `any` only at codec edges; grep-able names (no `data`/`item`/`req`/`res`); godoc on every export + one compiling Example per package happy path |
 | Loop | `AXIOM_LOOP.md` + `.loop-modules/` + `VISION.md` + `loop-config.yaml`; ODD-tracked in `odd/tasks/` |
-| Declared future | `mapx`, `set`, `iterx`, concurrency (fan-in/out, pipeline, worker pool), `pool`, `singleflight`, `di`, `repo` (GORM), `httpx` (Echo), `valid` — see `.loop-modules/ARCHITECTURE.md` |
+| Declared future | concurrency (fan-in/out, pipeline, worker pool), async (Future/Task), collections (OrderedMap, Stack, Queue, LRU), combinations — see `.loop-modules/ARCHITECTURE.md` |
 | Consumer | Catalyst (`D:\Proyectos\AI Tech\Catalyst`, offline-first course app) pilots via scratch `replace` only — never a Catalyst commit from here |
 
 ## Checklist

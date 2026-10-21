@@ -46,7 +46,7 @@ Core packages MUST NOT import Echo, Gin, or GORM. Adapter packages (`httpx`, `re
 1. Go 1.27 minimum; generic methods allowed on concrete types; NO generic interface methods (language limit, GO-GENERIC-METHODS).
 2. Stdlib-first: `slices`/`maps`/`cmp`/`iter` before hand-rolled (Simplicity Ladder rung 3).
 3. No `any` in domain-facing API (craft-floor ban 17); `any` only at JSON/codec edges with typed wrappers.
-4. Naming per foundry code-style: no single-letter vars (except ≤5-line loop index), no abbreviations (`usr`/`cfg`/`req`/`res`), no generic names (`data`/`item`/`result`); collections are plural nouns; predicates are `is/has/can/should`.
+4. Naming per foundry code-style: no single-letter vars (except ≤5-line loop index), no abbreviations (`usr`/`cfg`/`req`/`res`), no generic names (`data`/`item`/`result`); collections are plural nouns; predicates are `is/has/can/should`. Constructors: bare `New()` is the zero-arg constructor per type; stateful construction gets a named constructor (`NewStore`, `NewMemoryRepository`). Single-letter identifiers verified absent (ban-13/-14 hold).
 5. Fewest files: one file per boundary, never single-export files (ban 22) — co-locate until the file earns its boundary.
 6. Functions ≤50 lines / complexity ≤10 / params ≤4; guard clauses over nesting; sentinel errors + `fmt.Errorf("…: %w", …)` wrapping.
 7. Convenience outweighs minimalism (owner decision 2026-10-20): a stdlib-adjacent helper that saves lines or teaches better stays even if it wraps stdlib thinly; YAGNI still kills speculative generality, never proven convenience.

@@ -33,6 +33,9 @@ The package doc (`go doc ./httpx`) is the source; this table mirrors its
 | Reply validation failures as 422 | `ValidationWriteError` |
 | Shape a paged listing payload | `ListResponse` |
 
+> [!NOTE]
+> Success envelopes are typed (`Response[Body]`); only the failure path uses `Response[any]`, because Echo's JSON encoder takes `any` and a failure carries no payload to type. This is the codec-edge exception to the no-`any` rule, not a hole in it.
+
 ## Example
 
 From `httpx/example_test.go` (`ExampleWriteJSON`):

@@ -32,3 +32,4 @@ guías por familia estilo Swift (los godocs por paquete lo cubren a medias) y
 Que nos falta exactamente para tenerlo completo y como lo podemos completar? Respondeme, nada de planificar implementaciones aun"
 - L2 (request verbatim): "Anota todo al loop y prepara un ODD, no implementaremos el ODD en esta sesion, en la proxima sesion lo iniciamos pero investigando primero lo que dice el internet asi encontramos las referencias que mejor se adapten a nuestro enfoque."
 - L3 (2026-10-20): evidence measured (S3); ODD prepared with research staged; no implementation this session by owner order; next session starts at T1 INVESTIGATE, then owner reference pick.
+- L4 (2026-10-20, disposition): candidate af31eba3 (ODD doc + 1 STATUS row, docs-only, sin código) explicitly left unreviewed by owner decision — standing docs-only rule (no native review for prose; build gate + human review apply).

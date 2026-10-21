@@ -15,10 +15,14 @@
 // |------------------------------------------------|---------------|
 // | Share one execution across same-key callers    | Group.Call    |
 // | Drop the in-flight entry so next Call re-runs  | Group.Forget  |
+// | Inspect calls, shared waiters, and panics      | Group.Stats   |
 // | Hold one key space (zero value ready)          | Group         |
 package singleflight
 
-import "sync"
+import (
+	"sync"
+	"sync/atomic"
+)
 
 // callEntry tracks one in-flight execution and its broadcast outcome.
 // The leader writes outcome, failure, and panic state before closing doneCh;
@@ -31,12 +35,28 @@ type callEntry[Value any] struct {
 	didPanic     bool
 }
 
+// Stats is a point-in-time snapshot of one Group's activity.
+// Calls counts every Call invocation, leaders plus duplicates.
+// Shared counts duplicate calls that received the leader broadcast,
+// including duplicates of a panicking execution.
+// Panics counts leader executions that panicked; waiter re-panics never add.
+// Read it through Group.Stats; the zero value reports no activity yet.
+type Stats struct {
+	Calls  uint64
+	Shared uint64
+	Panics uint64
+}
+
 // Group holds the in-flight executions for one key space.
 // The zero value is ready to use; the map initializes lazily on first Call.
 // Use through a pointer so concurrent callers share the same table.
+// Do not copy after first use: the guard and the counters stay with the table.
 type Group[Key comparable, Value any] struct {
-	guard    sync.Mutex
-	inflight map[Key]*callEntry[Value]
+	guard       sync.Mutex
+	inflight    map[Key]*callEntry[Value]
+	callCount   atomic.Uint64
+	sharedCount atomic.Uint64
+	panicCount  atomic.Uint64
 }
 
 // Call runs execute for requestKey, sharing one execution across concurrent
@@ -47,6 +67,7 @@ type Group[Key comparable, Value any] struct {
 // If execute panics, every waiter panics with the same value.
 // Call never holds the guard mutex while running execute.
 func (flight *Group[Key, Value]) Call(requestKey Key, execute func() (Value, error)) (outcome Value, failure error, isShared bool) {
+	flight.callCount.Add(1)
 	flight.guard.Lock()
 	if flight.inflight == nil {
 		flight.inflight = make(map[Key]*callEntry[Value])
@@ -61,6 +82,17 @@ func (flight *Group[Key, Value]) Call(requestKey Key, execute func() (Value, err
 	return flight.settleExecution(requestKey, pending, execute)
 }
 
+// Stats returns a snapshot copy of the flight counters. Each counter
+// loads atomically, so under concurrent Call the three values may come
+// from slightly different instants; the copy never aliases internal state.
+func (flight *Group[Key, Value]) Stats() Stats {
+	return Stats{
+		Calls:  flight.callCount.Load(),
+		Shared: flight.sharedCount.Load(),
+		Panics: flight.panicCount.Load(),
+	}
+}
+
 // Forget drops the in-flight entry for requestKey, so the next Call re-runs
 // even while earlier waiters still hold the dropped execution.
 func (flight *Group[Key, Value]) Forget(requestKey Key) {
@@ -73,6 +105,7 @@ func (flight *Group[Key, Value]) Forget(requestKey Key) {
 // A panicking leader re-panics here with the same payload.
 func (flight *Group[Key, Value]) awaitDuplicate(pending *callEntry[Value]) (Value, error, bool) {
 	<-pending.doneCh
+	flight.sharedCount.Add(1)
 	if pending.didPanic {
 		panic(pending.panicPayload)
 	}
@@ -88,6 +121,7 @@ func (flight *Group[Key, Value]) settleExecution(requestKey Key, pending *callEn
 		if payload := recover(); payload != nil {
 			pending.panicPayload = payload
 			pending.didPanic = true
+			flight.panicCount.Add(1)
 		}
 	}()
 	outcome, failure = execute()

@@ -260,6 +260,142 @@ func TestCallPanicPropagatesToWaiters(t *testing.T) {
 	}
 }
 
+func TestStatsSingleCallSnapshot(t *testing.T) {
+	t.Parallel()
+	var flight singleflight.Group[string, int]
+	if fresh := flight.Stats(); fresh.Calls != 0 || fresh.Shared != 0 || fresh.Panics != 0 {
+		t.Fatalf("fresh Stats = %+v, want zero value", fresh)
+	}
+	outcome, failure, isShared := flight.Call("solo", func() (int, error) {
+		return 7, nil
+	})
+	if failure != nil {
+		t.Fatalf("failure = %v, want nil", failure)
+	}
+	if outcome != 7 || isShared {
+		t.Fatalf("outcome = %d isShared = %v, want 7 false", outcome, isShared)
+	}
+	if stats := flight.Stats(); stats.Calls != 1 || stats.Shared != 0 || stats.Panics != 0 {
+		t.Fatalf("Stats = %+v, want {Calls:1 Shared:0 Panics:0}", stats)
+	}
+}
+
+func TestStatsConcurrentSameKeyCountsShared(t *testing.T) {
+	t.Parallel()
+	const workerCount = 8
+	const expectedOutcome = 7
+	var flight singleflight.Group[string, int]
+	var executions atomic.Int64
+	starter := make(chan struct{})
+	release := make(chan struct{})
+	sharedResults := make(chan bool, workerCount)
+	var waiterGroup sync.WaitGroup
+	for workerIdx := 0; workerIdx < workerCount; workerIdx++ {
+		waiterGroup.Add(1)
+		go func(position int) {
+			defer waiterGroup.Done()
+			<-starter
+			outcome, failure, isShared := flight.Call("shared-key", func() (int, error) {
+				executions.Add(1)
+				<-release
+				return expectedOutcome, nil
+			})
+			if failure != nil {
+				t.Errorf("worker %d: failure = %v, want nil", position, failure)
+				return
+			}
+			if outcome != expectedOutcome {
+				t.Errorf("worker %d: outcome = %d, want %d", position, outcome, expectedOutcome)
+				return
+			}
+			sharedResults <- isShared
+		}(workerIdx)
+	}
+	close(starter)
+	awaitFirstExecution(t, &executions)
+	time.Sleep(waiterAttachWindow)
+	close(release)
+	waiterGroup.Wait()
+	close(sharedResults)
+	if got := executions.Load(); got != 1 {
+		t.Fatalf("executions = %d, want 1", got)
+	}
+	reported := 0
+	flagShared := 0
+	for isShared := range sharedResults {
+		reported++
+		if isShared {
+			flagShared++
+		}
+	}
+	if reported != workerCount {
+		t.Fatalf("reported = %d, want %d", reported, workerCount)
+	}
+	stats := flight.Stats()
+	if stats.Calls != workerCount {
+		t.Fatalf("Stats.Calls = %d, want %d", stats.Calls, workerCount)
+	}
+	if stats.Shared == 0 {
+		t.Fatalf("Stats.Shared = 0, want at least 1")
+	}
+	if stats.Shared != uint64(flagShared) {
+		t.Fatalf("Stats.Shared = %d, isShared flags count = %d, want match", stats.Shared, flagShared)
+	}
+	if stats.Panics != 0 {
+		t.Fatalf("Stats.Panics = %d, want 0", stats.Panics)
+	}
+}
+
+func TestStatsPanicCountsExecutionOnce(t *testing.T) {
+	t.Parallel()
+	const workerCount = 8
+	const blastPayload = "axiom singleflight: blast"
+	var flight singleflight.Group[string, int]
+	var executions atomic.Int64
+	starter := make(chan struct{})
+	release := make(chan struct{})
+	recovered := make([]any, workerCount)
+	var writeGuard sync.Mutex
+	var waiterGroup sync.WaitGroup
+	for workerIdx := 0; workerIdx < workerCount; workerIdx++ {
+		waiterGroup.Add(1)
+		go func(position int) {
+			defer waiterGroup.Done()
+			defer func() {
+				writeGuard.Lock()
+				recovered[position] = recover()
+				writeGuard.Unlock()
+			}()
+			<-starter
+			_, _, _ = flight.Call("volatile", func() (int, error) {
+				executions.Add(1)
+				<-release
+				panic(blastPayload)
+			})
+		}(workerIdx)
+	}
+	close(starter)
+	awaitFirstExecution(t, &executions)
+	time.Sleep(waiterAttachWindow)
+	close(release)
+	waiterGroup.Wait()
+	if got := executions.Load(); got != 1 {
+		t.Fatalf("executions = %d, want 1", got)
+	}
+	for position, payload := range recovered {
+		if payload != blastPayload {
+			t.Fatalf("recovered[%d] = %v, want %q", position, payload, blastPayload)
+		}
+	}
+	stats := flight.Stats()
+	if stats.Calls != workerCount {
+		t.Fatalf("Stats.Calls = %d, want %d", stats.Calls, workerCount)
+	}
+	if stats.Panics != 1 {
+		t.Fatalf("Stats.Panics = %d, want 1", stats.Panics)
+	}
+}
+
 func awaitFirstExecution(testingT *testing.T, executions *atomic.Int64) {
 	testingT.Helper()
 	deadline := time.Now().Add(2 * time.Second)

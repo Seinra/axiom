@@ -71,6 +71,8 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-20 | R2 native review quemado + follow-ups | VALIDATE | review-3adf1ae846c2a550 APPROVED + burned (readability, 675 líneas, 3 advisories); verifier Go 8 SUGGESTIONs aplicadas en 7c4de71; push/PR owner-gated |
 | 2026-10-20 | R3 native review quemado + follow-ups | VALIDATE | review-e85de13a1635e810 APPROVED + burned (3 lentes, 1133 líneas, corrección sign-off 14cece4, validator host); verifier R3 Go 3W+4S aplicadas (docs + 3 tests deterministas); suite 15 ok, vet/lint clean |
 | 2026-10-20 | Final native review quemado | VALIDATE | review-0a4fe1cbb184f533 APPROVED + burned tras abandon+restart (3 lentes, 6 advisories informativas parkeadas con razón); árbol final 23cffd7; suite 15 ok, vet/lint clean |
+| 2026-10-21 | Delivery: PR #29 mergeado | DELIVERY | merge commit por orden owner; Closes #28 (auto-cerrado); rama feat/axiom-rename-readability |
+| 2026-10-20 | Docs track: guides+OrNull ODD prepared | PLAN | gaps medidos (7/15 Which-tables, OrNull solo slice+2 callbacks, README rancio) + ODD odd/tasks/axiom-guides-ornull.md + mirror; research web staged para próxima sesión; sin implementación |
 
 ## Debt ledger
 

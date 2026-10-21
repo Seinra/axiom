@@ -18,7 +18,7 @@ go mod init axiom-hello
 
 Add these lines to your `go.mod`:
 
-```go
+```go.mod
 require github.com/seinra/axiom v0.0.0
 
 replace github.com/seinra/axiom => ../Axiom

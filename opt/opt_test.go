@@ -278,3 +278,89 @@ func TestFlattenZeroNestingTable(t *testing.T) {
 		})
 	}
 }
+
+func pinnedPanics(t *testing.T, label string, call func()) {
+	t.Helper()
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		call()
+		return nil
+	}()
+	if panicked == nil {
+		t.Fatalf("%s did not panic, want panic (nil func runs on the held success)", label)
+	}
+}
+
+func pinnedNoPanic(t *testing.T, label string, call func()) {
+	t.Helper()
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		call()
+		return nil
+	}()
+	if panicked != nil {
+		t.Fatalf("%s panicked with %v, want no panic (nil func never runs on the short-circuit path)", label, panicked)
+	}
+}
+
+func TestMapNilTransformPanicsOnSomeSkipsOnNone(t *testing.T) {
+	pinnedPanics(t, "MapOption(Some, nil)", func() {
+		_ = opt.MapOption[int, string](opt.Some(1), nil)
+	})
+	pinnedPanics(t, "Some.MapValue(nil)", func() {
+		_ = opt.Some(1).MapValue[string](nil)
+	})
+	var mappedFunc opt.Option[string]
+	pinnedNoPanic(t, "MapOption(None, nil)", func() {
+		mappedFunc = opt.MapOption[int, string](opt.None[int](), nil)
+	})
+	if mappedFunc.IsSome() {
+		t.Fatal("MapOption(None, nil) IsSome = true, want false")
+	}
+	var mappedMethod opt.Option[string]
+	pinnedNoPanic(t, "None.MapValue(nil)", func() {
+		mappedMethod = opt.None[int]().MapValue[string](nil)
+	})
+	if mappedMethod.IsSome() {
+		t.Fatal("None.MapValue(nil) IsSome = true, want false")
+	}
+}
+
+func TestAndThenNilTransformPanicsOnSomeSkipsOnNone(t *testing.T) {
+	pinnedPanics(t, "AndThen(Some, nil)", func() {
+		_ = opt.AndThen[int, string](opt.Some(1), nil)
+	})
+	var chained opt.Option[string]
+	pinnedNoPanic(t, "AndThen(None, nil)", func() {
+		chained = opt.AndThen[int, string](opt.None[int](), nil)
+	})
+	if chained.IsSome() {
+		t.Fatal("AndThen(None, nil) IsSome = true, want false")
+	}
+}
+
+func TestFilterNilKeepPanicsOnSomeSkipsOnNone(t *testing.T) {
+	pinnedPanics(t, "Filter(Some, nil)", func() {
+		_ = opt.Filter(opt.Some(1), nil)
+	})
+	var filtered opt.Option[int]
+	pinnedNoPanic(t, "Filter(None, nil)", func() {
+		filtered = opt.Filter(opt.None[int](), nil)
+	})
+	if filtered.IsSome() {
+		t.Fatal("Filter(None, nil) IsSome = true, want false")
+	}
+}
+
+func TestValueOrElseNilFallbackPanicsOnNoneSkipsOnSome(t *testing.T) {
+	pinnedPanics(t, "ValueOrElse(None, nil)", func() {
+		_ = opt.ValueOrElse(opt.None[int](), nil)
+	})
+	var got int
+	pinnedNoPanic(t, "ValueOrElse(Some, nil)", func() {
+		got = opt.ValueOrElse(opt.Some(5), nil)
+	})
+	if got != 5 {
+		t.Fatalf("ValueOrElse(Some, nil) = %d, want 5", got)
+	}
+}

@@ -437,3 +437,87 @@ func TestFilterValuesNeverMutatesInputs(t *testing.T) {
 		t.Fatalf("FilterValues = %v, want map[b:2]", kept)
 	}
 }
+
+func pinnedPanics(t *testing.T, label string, call func()) {
+	t.Helper()
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		call()
+		return nil
+	}()
+	if panicked == nil {
+		t.Fatalf("%s did not panic, want panic (nil func runs on a populated input)", label)
+	}
+}
+
+func TestNilFuncPanicsOnPopulatedEntries(t *testing.T) {
+	testCases := []struct {
+		name string
+		call func()
+	}{
+		{name: "KeyBy", call: func() { _ = mapx.KeyBy[int, string]([]int{1, 2}, nil) }},
+		{name: "Filter", call: func() { _ = mapx.Filter(map[string]int{"a": 1}, nil) }},
+		{name: "FilterKeys", call: func() { _ = mapx.FilterKeys(map[string]int{"a": 1}, nil) }},
+		{name: "FilterValues", call: func() { _ = mapx.FilterValues(map[string]int{"a": 1}, nil) }},
+		{name: "MapValues", call: func() { _ = mapx.MapValues[string, int, string](map[string]int{"a": 1}, nil) }},
+		{name: "MapKeys", call: func() { _ = mapx.MapKeys[string, int, string](map[string]int{"a": 1}, nil) }},
+		{
+			name: "GroupByMapped nil keyOf",
+			call: func() {
+				_ = mapx.GroupByMapped[lesson, int, string]([]lesson{{slug: "go", level: 1}}, nil, func(candidate lesson) string { return candidate.slug })
+			},
+		},
+		{
+			name: "GroupByMapped nil valueOf",
+			call: func() {
+				_ = mapx.GroupByMapped[lesson, int, string]([]lesson{{slug: "go", level: 1}}, func(candidate lesson) int { return candidate.level }, nil)
+			},
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			pinnedPanics(t, testCase.name+"(populated, nil)", testCase.call)
+		})
+	}
+}
+
+func TestNilFuncSkipsOnEmptyEntries(t *testing.T) {
+	var numbers []int
+	if got := mapx.KeyBy[int, string](numbers, nil); got == nil || len(got) != 0 {
+		t.Fatalf("KeyBy(nil, nil) = %v, want empty non-nil", got)
+	}
+	var entries map[string]int
+	if got := mapx.Filter(entries, nil); got == nil || len(got) != 0 {
+		t.Fatalf("Filter(nil, nil) = %v, want empty non-nil", got)
+	}
+	if got := mapx.FilterKeys(entries, nil); got == nil || len(got) != 0 {
+		t.Fatalf("FilterKeys(nil, nil) = %v, want empty non-nil", got)
+	}
+	if got := mapx.FilterValues(entries, nil); got == nil || len(got) != 0 {
+		t.Fatalf("FilterValues(nil, nil) = %v, want empty non-nil", got)
+	}
+	if got := mapx.MapValues[string, int, string](entries, nil); got == nil || len(got) != 0 {
+		t.Fatalf("MapValues(nil, nil) = %v, want empty non-nil", got)
+	}
+	if got := mapx.MapKeys[string, int, string](entries, nil); got == nil || len(got) != 0 {
+		t.Fatalf("MapKeys(nil, nil) = %v, want empty non-nil", got)
+	}
+	var courses []lesson
+	if got := mapx.GroupByMapped[lesson, int, string](courses, nil, nil); got == nil || len(got) != 0 {
+		t.Fatalf("GroupByMapped(nil, nil, nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestMergeNilCombinePanicsOnlyOnCollision(t *testing.T) {
+	pinnedPanics(t, "Merge(colliding, nil)", func() {
+		_ = mapx.Merge(map[string]int{"a": 1}, map[string]int{"a": 2}, nil)
+	})
+	combined := mapx.Merge(map[string]int{"a": 1}, map[string]int{"b": 2}, nil)
+	if want := map[string]int{"a": 1, "b": 2}; !reflect.DeepEqual(combined, want) {
+		t.Fatalf("Merge(disjoint, nil) = %v, want %v", combined, want)
+	}
+	var first, second map[string]int
+	if got := mapx.Merge(first, second, nil); got == nil || len(got) != 0 {
+		t.Fatalf("Merge(nil, nil, nil) = %v, want empty non-nil", got)
+	}
+}

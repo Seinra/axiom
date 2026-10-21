@@ -1208,3 +1208,87 @@ func decimalString(candidate int) string {
 	}
 	return string(digits)
 }
+
+func pinnedPanics(t *testing.T, label string, call func()) {
+	t.Helper()
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		call()
+		return nil
+	}()
+	if panicked == nil {
+		t.Fatalf("%s did not panic, want panic (nil func runs when the sequence is ranged)", label)
+	}
+}
+
+func pinnedNoPanic(t *testing.T, label string, call func()) {
+	t.Helper()
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		call()
+		return nil
+	}()
+	if panicked != nil {
+		t.Fatalf("%s panicked with %v, want no panic (lazy: nothing runs before ranging)", label, panicked)
+	}
+}
+
+func TestNilFuncStaysLazyUntilRanged(t *testing.T) {
+	pinnedNoPanic(t, "constructors with nil func", func() {
+		_ = iterx.MapSeq[int, int](naturals(1, 4), nil)
+		_ = iterx.FilterSeq(naturals(1, 4), nil)
+		_ = iterx.FlatMapSeq[int, int](naturals(1, 4), nil)
+		_ = iterx.OnEachSeq(naturals(1, 4), nil)
+		_ = iterx.TakeWhile(naturals(1, 4), nil)
+		_ = iterx.DropWhile(naturals(1, 4), nil)
+		_ = iterx.FilterMapSeq[int, int](naturals(1, 4), nil)
+		_ = iterx.Unfold[int, int](1, nil)
+		_ = iterx.Generate[int](nil)
+	})
+}
+
+func TestNilFuncPanicsWhenRanged(t *testing.T) {
+	testCases := []struct {
+		name string
+		call func()
+	}{
+		{name: "MapSeq", call: func() { _ = slices.Collect(iterx.MapSeq[int, int](naturals(1, 4), nil)) }},
+		{name: "FilterSeq", call: func() { _ = slices.Collect(iterx.FilterSeq(naturals(1, 4), nil)) }},
+		{name: "FlatMapSeq", call: func() { _ = slices.Collect(iterx.FlatMapSeq[int, int](naturals(1, 4), nil)) }},
+		{name: "OnEachSeq", call: func() { _ = slices.Collect(iterx.OnEachSeq(naturals(1, 4), nil)) }},
+		{name: "TakeWhile", call: func() { _ = slices.Collect(iterx.TakeWhile(naturals(1, 4), nil)) }},
+		{name: "DropWhile", call: func() { _ = slices.Collect(iterx.DropWhile(naturals(1, 4), nil)) }},
+		{name: "FilterMapSeq", call: func() { _ = slices.Collect(iterx.FilterMapSeq[int, int](naturals(1, 4), nil)) }},
+		{name: "Unfold", call: func() { _ = slices.Collect(iterx.Unfold[int, int](1, nil)) }},
+		{name: "Generate", call: func() { _ = slices.Collect(iterx.Generate[int](nil)) }},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			pinnedPanics(t, testCase.name+"(ranged, nil)", testCase.call)
+		})
+	}
+}
+
+func TestNilFuncSkipsOnEmptySource(t *testing.T) {
+	if got := slices.Collect(iterx.MapSeq[int, int](naturals(5, 5), nil)); len(got) != 0 {
+		t.Fatalf("MapSeq(empty, nil) = %v, want empty", got)
+	}
+	if got := slices.Collect(iterx.FilterSeq(naturals(5, 5), nil)); len(got) != 0 {
+		t.Fatalf("FilterSeq(empty, nil) = %v, want empty", got)
+	}
+	if got := slices.Collect(iterx.FlatMapSeq[int, int](naturals(5, 5), nil)); len(got) != 0 {
+		t.Fatalf("FlatMapSeq(empty, nil) = %v, want empty", got)
+	}
+	if got := slices.Collect(iterx.OnEachSeq(naturals(5, 5), nil)); len(got) != 0 {
+		t.Fatalf("OnEachSeq(empty, nil) = %v, want empty", got)
+	}
+	if got := slices.Collect(iterx.TakeWhile(naturals(5, 5), nil)); len(got) != 0 {
+		t.Fatalf("TakeWhile(empty, nil) = %v, want empty", got)
+	}
+	if got := slices.Collect(iterx.DropWhile(naturals(5, 5), nil)); len(got) != 0 {
+		t.Fatalf("DropWhile(empty, nil) = %v, want empty", got)
+	}
+	if got := slices.Collect(iterx.FilterMapSeq[int, int](naturals(5, 5), nil)); len(got) != 0 {
+		t.Fatalf("FilterMapSeq(empty, nil) = %v, want empty", got)
+	}
+}

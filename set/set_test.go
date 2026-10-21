@@ -1,6 +1,7 @@
 package set_test
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/seinra/axiom/set"
@@ -330,5 +331,95 @@ func TestIsDisjointTable(t *testing.T) {
 				t.Fatalf("IsDisjoint = %v, want complement of Overlaps %v", got, testCase.first.Overlaps(testCase.second))
 			}
 		})
+	}
+}
+
+func TestEmptySnapshotIsNonNil(t *testing.T) {
+	var zero set.Set[string]
+	if members := zero.Members(); members == nil || len(members) != 0 {
+		t.Fatalf("zero Members() = %v, want empty non-nil", members)
+	}
+	if members := set.New[int]().Members(); members == nil || len(members) != 0 {
+		t.Fatalf("New Members() = %v, want empty non-nil", members)
+	}
+	if members := set.Of[int]().Members(); members == nil || len(members) != 0 {
+		t.Fatalf("Of() Members() = %v, want empty non-nil", members)
+	}
+	cleared := set.Of(1, 2)
+	cleared.Clear()
+	if members := cleared.Members(); members == nil || len(members) != 0 {
+		t.Fatalf("cleared Members() = %v, want empty non-nil", members)
+	}
+}
+
+func TestConcurrentHammerStaysRaceClean(t *testing.T) {
+	const members = 64
+	const workers = 8
+	base := set.New[int]()
+	for candidate := 0; candidate < members; candidate++ {
+		base.Add(candidate)
+	}
+	snapshot := base.Members()
+	if len(snapshot) != members {
+		t.Fatalf("len(base Members) = %d, want %d", len(snapshot), members)
+	}
+	failures := make(chan string, workers)
+	var group sync.WaitGroup
+	for worker := 0; worker < workers; worker++ {
+		group.Add(1)
+		go func(worker int) {
+			defer group.Done()
+			for candidate := 0; candidate < members; candidate++ {
+				if !base.Has(candidate) {
+					failures <- "worker missing member"
+					return
+				}
+			}
+			if base.Len() != members {
+				failures <- "worker observes mutated base"
+				return
+			}
+			if base.IsEmpty() {
+				failures <- "worker sees empty base"
+				return
+			}
+			if got := len(base.Members()); got != members {
+				failures <- "worker snapshot shrank"
+				return
+			}
+			if !base.Equal(set.Of(snapshot...)) {
+				failures <- "worker Equal mismatch"
+				return
+			}
+			local := set.New[int]()
+			for candidate := 0; candidate < members; candidate++ {
+				local.Add(worker*members + candidate)
+			}
+			if local.Len() != members {
+				failures <- "worker local lost members"
+				return
+			}
+			if !local.Has(worker*members) || local.Has(-1) {
+				failures <- "worker local membership wrong"
+				return
+			}
+			local.Remove(worker * members)
+			if local.Has(worker*members) || local.Len() != members-1 {
+				failures <- "worker local remove failed"
+				return
+			}
+			if !local.IsDisjoint(base) && worker > 0 {
+				failures <- "worker local overlaps base, want disjoint offsets"
+				return
+			}
+		}(worker)
+	}
+	group.Wait()
+	close(failures)
+	for failure := range failures {
+		t.Fatal(failure)
+	}
+	if base.Len() != members {
+		t.Fatalf("base Len = %d, want %d (hammer must not mutate the shared set)", base.Len(), members)
 	}
 }

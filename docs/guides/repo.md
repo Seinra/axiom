@@ -5,6 +5,10 @@ them one page at a time. The core is pure generics over the standard
 library: identity extraction stays a caller-supplied `keyOf` function —
 no struct tags, no reflection.
 
+You reach for this shape when records need identity, paging, and a swappable `Repository` behind one contract: the core stays stdlib-only (no GORM, no SQL, no tags, no reflection), and future adapters reuse the same `Page` convention. `MemoryRepository` covers tests and teaching.
+
+When not to use it: data that fits in memory for one call stays simpler as plain slices and maps — reach for this package when identity and paging must survive the call.
+
 **Version:** `github.com/seinra/axiom`, Go 1.27.
 **Prereqs:** `import "github.com/seinra/axiom/repo"`. Define your record
 type plus a `keyOf` extractor; construct with `NewMemoryRepository`.
@@ -43,6 +47,12 @@ fmt.Println(fetched.Title)
 
 Run it: `go test ./repo/ -run ExampleNewMemoryRepository -v`.
 
+> [!WARNING]
+> Pages are 1-based: the first page is `Number: 1`, never `0`. `List` rejects `Number < 1` or `Size < 1` with `ErrInvalidPage`.
+
+> [!WARNING]
+> `MemoryRepository.List` order is unspecified (map iteration randomizes): assert membership, never order. You set deterministic ordering in the adapter — see `docs/guides/repogorm.md`.
+
 ## Contracts and errors
 
 | Contract | What it means for you |
@@ -57,6 +67,9 @@ Run it: `go test ./repo/ -run ExampleNewMemoryRepository -v`.
 The zero `MemoryRepository` is not usable — construct with
 `NewMemoryRepository` (a `nil` `keyOf` panics). Do not copy a repository
 after use: the mutex stays with its map.
+
+> [!WARNING]
+> The zero `MemoryRepository` is not usable and a `nil` `keyOf` panics — always construct with `NewMemoryRepository`. Do not copy a repository after use.
 
 ## Next step
 

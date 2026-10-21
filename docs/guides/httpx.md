@@ -5,6 +5,10 @@ You speak a single JSON envelope: success sets `data`, failure sets
 `WriteJSON` / `WriteError`, and surface rule failures as 422 with
 `ValidationWriteError`.
 
+You reach for this shape when Echo handlers must speak one uniform envelope: `Decode` parses at the edge, `valid` decides at the edge, and this package only renders the outcome (`WriteJSON` / `WriteError` / `ValidationWriteError`). It ships no middleware, router helpers, or validation.
+
+When not to use it: transport, routing, and middleware stay in `net/http` or Echo directly — reach for this package when handlers reply in the shared envelope.
+
 **Version:** `github.com/seinra/axiom`, Go 1.27.
 **Prereqs:** `import "github.com/seinra/axiom/httpx"` plus
 `github.com/labstack/echo/v5`. Validation itself belongs to `valid` at
@@ -44,6 +48,12 @@ fmt.Println(recorder.Body.String())
 ```
 
 Run it: `go test ./httpx/ -run ExampleWriteJSON -v`.
+
+> [!WARNING]
+> Scalar-zero bodies encode keyless: `Data` carries `omitempty`, so `0`, `""`, or `false` encodes as `{}` with no `data` key. Read a keyless `{}` success as "zero value", never as failure — prefer struct, slice, or map bodies.
+
+> [!NOTE]
+> `ValidationWriteError` always writes 422: it joins failure messages with `"; "`, skips `nil` entries, and never writes an empty envelope. Feed it the `Validate` output from `valid`.
 
 ## Contracts and errors
 

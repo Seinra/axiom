@@ -4,6 +4,10 @@ You serve the `repo.Repository` contract from a GORM database with
 deterministic paging. `NewStore` migrates once; `List` always sorts by the
 order column you fix at construction.
 
+You reach for this shape when callers need the `repo.Repository` contract over SQL with deterministic paging: you fix the order column once (usually the primary key) because generic code cannot divine schema, and every `List` sorts by it. Models use normal GORM struct tags; the core's no-tags rule stays core-side.
+
+When not to use it: one-off queries stay simpler in `database/sql` or GORM directly — reach for this store when callers program against the `Repository` contract.
+
 **Version:** `github.com/seinra/axiom`, Go 1.27.
 **Prereqs:** `import "github.com/seinra/axiom/repogorm"` plus
 `gorm.io/gorm` and a driver (tests use `github.com/glebarez/sqlite`).
@@ -44,6 +48,12 @@ fmt.Println(len(listed))
 ```
 
 Run it: `go test ./repogorm/ -run ExampleNewStore -v`.
+
+> [!WARNING]
+> Prefer a unique order column (the primary key): rows tied on the order column have no defined relative order, so pages over ties may shift between calls.
+
+> [!NOTE]
+> The order column is identifier-shaped only (`^[A-Za-z_][A-Za-z0-9_.]*$`, dotted forms like `"lessons.id"` accepted): anything else fails `NewStore` construction instead of reaching SQL.
 
 ## Contracts and errors
 

@@ -4,6 +4,10 @@ You borrow recyclable values instead of rebuilding them on every call.
 The pool hands you a usable buffer — recycled or fresh — and you `Put` it
 back when done.
 
+You reach for this shape for transient buffers callers `Put` back, so hot paths reuse instead of reallocating. The runtime may drop any `Put` item at any GC, so the pool promises usability (a usable recycled or fresh value), never identity.
+
+When not to use it: reuse that buys nothing costs complexity — use a plain value directly; anything you must find again belongs in a map or a `repo.Repository`, never in a pool.
+
 **Version:** `github.com/seinra/axiom`, Go 1.27.
 **Prereqs:** `import "github.com/seinra/axiom/pool"`. Keep the `*Pool`
 from `New` and share it; never copy a `Pool` value after use.
@@ -41,6 +45,12 @@ fmt.Println(len(append(buffers.Get(), 'x')) > 0)
 ```
 
 Run it: `go test ./pool/ -run ExampleNew -v`.
+
+> [!WARNING]
+> The pool is not a cache: items can vanish between `Put` and `Get`. Never assert `Get` returns the exact item you `Put` — assert it is usable (right type, sufficient capacity).
+
+> [!WARNING]
+> Do not copy a `Pool` after use: it embeds a `sync.Pool`, so always share the pointer from `New`.
 
 ## Contracts and errors
 

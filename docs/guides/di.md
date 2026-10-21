@@ -4,6 +4,10 @@ You register a constructor with `Provide` and resolve the shared singleton
 with `Resolve`. The constructor runs once on first `Resolve`; later calls
 get the cached value.
 
+You reach for this shape for one lazy singleton per name: the constructor runs once on first `Resolve`, concurrent callers share the single build, and a failed build discards so the next `Resolve` retries. The container ships no scopes, no eager build, and no struct-tag injection by design.
+
+When not to use it: scoped lifetimes, eager graphs, or struct-tag injection need hand-wired constructors or a full DI framework — not this container.
+
 **Version:** `github.com/seinra/axiom`, Go 1.27.
 **Prereqs:** `import "github.com/seinra/axiom/di"`. Share the `*Injector`
 from `New`; never copy it after use.
@@ -41,6 +45,12 @@ fmt.Println(greeting)
 ```
 
 Run it: `go test ./di/ -run ExampleResolve -v`.
+
+> [!WARNING]
+> Cycles never settle and the container performs no cycle detection: a constructor that (transitively) resolves its own service is a programmer error.
+
+> [!WARNING]
+> `MustResolve` panics on a missing name or failed build — reserve it for tests and static seeds, never for control flow.
 
 ## Contracts and errors
 

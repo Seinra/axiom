@@ -5,6 +5,10 @@ not just the first. Define a `Predicate` per condition, wrap each in a
 `Rule` with a name and message, collect them with `New`, then call
 `Validate` for all failures or `Valid` for the boolean shorthand.
 
+You reach for this shape when callers need the full failure report instead of a fail-fast chain: predicates stay values you combine (`And`/`Or`/`Not`), name (`Rule`), and reuse through one `Validator`. The package ships no domain helpers on purpose — you write your own rules.
+
+When not to use it: a single inline check reads clearer as plain `if`s and errors — skip the `Rule` wrapper.
+
 **Version:** `github.com/seinra/axiom`, Go 1.27.
 **Prereqs:** `import "github.com/seinra/axiom/valid"`. No dependencies
 beyond the standard library.
@@ -50,6 +54,12 @@ fmt.Println(exam.Validate(42))
 ```
 
 Run it: `go test ./valid/ -run ExampleNew -v`.
+
+> [!WARNING]
+> An empty set means "no constraints", never "reject all": `New()` with no rules accepts every candidate (`Validate` returns an empty non-nil slice). Build the rule set first.
+
+> [!NOTE]
+> `And` stops at the first `false` and `Or` at the first `true` — later legs never run. Put cheap checks first.
 
 ## Contracts and errors
 

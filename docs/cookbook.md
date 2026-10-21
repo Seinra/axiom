@@ -59,8 +59,9 @@ nobody
 fallback-lesson
 ```
 
-Rule of thumb: never trust the value without the `bool`; never use
-`Option` for failures with causes; never use `Result` for plain absence.
+> [!WARNING]
+> Climb only as far as the caller needs: never trust the value without the `bool`, never use `Option` for failures with causes, and never use `Result` for plain absence.
+
 See also `docs/guides/valid.md` for what happens after the value arrives.
 
 ## (b) First success wins — Race over mirrors
@@ -109,9 +110,10 @@ Expected output:
 lesson from fast-mirror true
 ```
 
-Note the `select` on `ctx.Done()` in the slow branch: honoring the
-context is what makes sibling shutdown prompt. When every mirror fails,
-`Race` returns the zero value plus the first failure in time. See
+> [!NOTE]
+> The slow branch selects on `ctx.Done()`: honoring the context is what makes sibling shutdown prompt. When every mirror fails, `Race` returns the zero value plus the first failure in time.
+
+See
 `docs/guides/flow.md` for the `Map`/`ForEach` failure-wins contract and
 the latch-first panic policy.
 
@@ -165,7 +167,8 @@ Intro to Generics
 true
 ```
 
-The final `true` proves the singleton: the second `Resolve` returns the
-same store, not a rebuild. Swap the constructor in tests with `Replace`
-(one type per name still applies). See `docs/guides/di.md` and
+> [!NOTE]
+> The final `true` proves the singleton: the second `Resolve` returns the same store, not a rebuild. Swap the constructor in tests with `Replace` (one type per name still applies).
+
+See `docs/guides/di.md` and
 `docs/guides/repo.md` for the contracts behind each half.

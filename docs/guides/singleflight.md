@@ -4,6 +4,10 @@ You collapse concurrent duplicate calls sharing one key into a single run.
 The first caller executes while duplicates wait, then every waiter receives
 the same outcome and failure.
 
+You reach for this shape to suppress duplicate work under concurrency: one execution per key serves every same-key waiter, and entries live only while executing — there is no cache. The package ships no `CallChan`, sharding, or batching by design.
+
+When not to use it: keys that never overlap concurrently carry nothing to deduplicate — call `execute` directly.
+
 **Version:** `github.com/seinra/axiom`, Go 1.27.
 **Prereqs:** `import "github.com/seinra/axiom/singleflight"`. Share one
 `Group` per key space through a pointer; the zero value is ready to use.
@@ -44,6 +48,12 @@ fmt.Println(executions)
 ```
 
 Run it: `go test ./singleflight/ -run ExampleGroup_Call -v`.
+
+> [!WARNING]
+> `isShared` reports sharing, never presence: `false` means you ran `execute`, `true` means you received the broadcast. Check `failure` before touching `outcome`.
+
+> [!WARNING]
+> Deduplication is concurrency-only, not a cache: entries live only while executing, so sequential `Call`s with the same key re-run `execute` every time.
 
 ## Contracts and errors
 

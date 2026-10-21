@@ -5,6 +5,10 @@ runners. `Map` returns every result in input order; `ForEach` runs side
 effects without results; `Race` returns the first success and cancels its
 siblings.
 
+You reach for this shape for bounded parallel work with errgroup parity: `Map` keeps input order while the first failure cancels siblings, and `Race` takes the first success in time when any single win is enough. Worker sizing is a convention, not magic (`workerCount <= 0` falls back to `runtime.NumCPU`).
+
+When not to use it: single-goroutine work stays a plain loop, and unshaped concurrency stays `golang.org/x/sync/errgroup` directly — reach for `flow` when you need bounded runners with ordered results or a first-success race.
+
 **Version:** `github.com/seinra/axiom`, Go 1.27.
 **Prereqs:** `import "github.com/seinra/axiom/flow"`. Transforms receive a
 cancellable context and must honor it, or cancellation stays late.
@@ -42,6 +46,12 @@ fmt.Println(doubled)
 
 Run it: `go test ./flow/ -run ExampleMap -v`. Recipe (b) in
 `docs/cookbook.md` shows the `Race` first-success path end to end.
+
+> [!WARNING]
+> A transform already in flight still runs to completion — Go cannot preempt it, and a transform that ignores the context runs on too. Honor the context inside your transform (the package-doc `select` pattern) for prompt shutdown; extra work stays bounded by the runner count.
+
+> [!WARNING]
+> In `Race`, failures never cancel siblings — runners keep racing until the first success or until every input fails. A latched panic wins over a latched failure and poisons even a claimed championship.
 
 ## Contracts and errors
 

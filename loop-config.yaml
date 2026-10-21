@@ -17,10 +17,11 @@ phases:
     skills: [foundry-requirements, cognitive-doc-design]
     gate: odd/tasks/<feature>.md + mirror + todo reconciled
   - id: IMPLEMENT
-    skills: [foundry, loop-engineering]
+    skills: [foundry, foundry-docs, cognitive-doc-design, loop-engineering]
     gate: >
       verifiable artifact, craft-floor clean;
-      loop-engineering only when deliverable IS loop
+      loop-engineering only when deliverable IS loop;
+      docs units load the foundry + foundry-docs + cognitive-doc-design trio
   - id: VALIDATE
     skills: [foundry-testing, foundry-review]
     gate: go test + vet + gofmt green; Go/No-Go ledger when gated

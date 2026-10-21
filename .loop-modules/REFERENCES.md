@@ -26,6 +26,7 @@ Every design decision cites a stable ID below. A rename/replacement updates the 
 | FOUNDRY-DEBUG | methodology | `foundry-debug` skill v1.0 | reproduce → hypothesise → probe → fix → regression-lock |
 | FOUNDRY-TESTING | methodology | `foundry-testing` skill v1.0 | HOW-to-test per language (Go playbook) |
 | FOUNDRY-REVIEW | methodology | `foundry-review` skill v1.0 | R1–R4 pre-freeze verdict gate |
+| FOUNDRY-DOCS | methodology | `foundry-docs` skill v1.0 | official docs layered over cognitive-doc-design (quickstart/guide/cookbook/API ref) |
 | WORK-UNIT-COMMITS | methodology | `work-unit-commits` skill v1.0 | one purpose per commit; tests + docs travel with unit |
 | BRANCH-PR | methodology | `branch-pr` skill v2.0 | open/prepare PR with approved issue + type label |
 | CHAINED-PR | methodology | `chained-pr` skill v1.0 | PRs over 400 lines split into chained review slices |

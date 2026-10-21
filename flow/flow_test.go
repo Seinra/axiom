@@ -788,3 +788,65 @@ func TestRaceChampionThenPanicPoisons(t *testing.T) {
 	}()
 	assertPanicPayload(panicked, errPanicSentinel, t)
 }
+
+func TestMapNilTransformPanics(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	// Observed contract: a nil transform is a programmer error that panics
+	// (nil function call inside the runner latch), never a skip or an error
+	// return. Empty inputs short-circuit before any transform runs.
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_, _ = flow.Map[int, int](active, []int{1, 2, 3}, 2, nil)
+		return nil
+	}()
+	if panicked == nil {
+		t.Fatal("Map with nil transform did not panic, want panic (programmer error, never silent)")
+	}
+	ordered, mapFailure := flow.Map[int, int](active, []int{}, 2, nil)
+	if mapFailure != nil {
+		t.Fatalf("Map empty with nil transform failure = %v, want nil", mapFailure)
+	}
+	if ordered == nil || len(ordered) != 0 {
+		t.Fatalf("Map empty with nil transform = %v, want empty non-nil slice", ordered)
+	}
+}
+
+func TestForEachNilConsumePanics(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	// Observed contract: ForEach wraps consume in the Map runner, so a nil
+	// consume panics the same way a nil Map transform does. Empty inputs
+	// return nil without running consume.
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_ = flow.ForEach(active, []int{1, 2, 3}, 2, nil)
+		return nil
+	}()
+	if panicked == nil {
+		t.Fatal("ForEach with nil consume did not panic, want panic (programmer error, never silent)")
+	}
+	if forEachFailure := flow.ForEach(active, []int{}, 2, nil); forEachFailure != nil {
+		t.Fatalf("ForEach empty with nil consume failure = %v, want nil", forEachFailure)
+	}
+}
+
+func TestRaceNilTransformPanics(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	// Observed contract: a nil transform panics (latched poison, never a
+	// silent zero). Empty inputs short-circuit to ErrNoRaceInputs before any
+	// transform runs.
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_, _ = flow.Race[int, int](active, []int{1, 2, 3}, 2, nil)
+		return nil
+	}()
+	if panicked == nil {
+		t.Fatal("Race with nil transform did not panic, want panic (programmer error, never silent)")
+	}
+	_, raceFailure := flow.Race[int, int](active, []int{}, 2, nil)
+	if !errors.Is(raceFailure, flow.ErrNoRaceInputs) {
+		t.Fatalf("Race empty with nil transform failure = %v, want ErrNoRaceInputs", raceFailure)
+	}
+}

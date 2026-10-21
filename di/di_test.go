@@ -509,3 +509,72 @@ func TestReplaceGuardsReportErrors(t *testing.T) {
 		t.Fatalf("Replace unknown failure = %v, want ErrServiceNotFound", unknownFailure)
 	}
 }
+
+func TestProvideNilInjectorReportsError(t *testing.T) {
+	var nilInjector *di.Injector
+	provideFailure := di.Provide(nilInjector, "ledger", func(active *di.Injector) (ledgerService, error) {
+		return ledgerService{Balance: 1}, nil
+	})
+	if provideFailure == nil {
+		t.Fatal("Provide on nil Injector failure = nil, want descriptive error")
+	}
+	if got := provideFailure.Error(); !strings.Contains(got, "nil Injector") {
+		t.Fatalf("Provide on nil failure = %q, want message to name nil Injector", got)
+	}
+}
+
+func TestProvideEmptyNameReportsError(t *testing.T) {
+	injector := di.New()
+	provideFailure := di.Provide(injector, "", func(active *di.Injector) (ledgerService, error) {
+		return ledgerService{Balance: 1}, nil
+	})
+	if provideFailure == nil {
+		t.Fatal("Provide empty name failure = nil, want descriptive error")
+	}
+	if got := provideFailure.Error(); !strings.Contains(got, "empty service name") {
+		t.Fatalf("Provide empty name failure = %q, want message to name empty service name", got)
+	}
+	if _, resolveFailure := di.Resolve[ledgerService](injector, ""); !errors.Is(resolveFailure, di.ErrServiceNotFound) {
+		t.Fatalf("Resolve empty name failure = %v, want ErrServiceNotFound (nothing registered)", resolveFailure)
+	}
+}
+
+func TestProvideNilConstructorReportsError(t *testing.T) {
+	injector := di.New()
+	provideFailure := di.Provide[ledgerService](injector, "ledger", nil)
+	if provideFailure == nil {
+		t.Fatal("Provide nil constructor failure = nil, want descriptive error")
+	}
+	if got := provideFailure.Error(); !strings.Contains(got, "nil constructor") {
+		t.Fatalf("Provide nil constructor failure = %q, want message to name nil constructor", got)
+	}
+	if _, resolveFailure := di.Resolve[ledgerService](injector, "ledger"); !errors.Is(resolveFailure, di.ErrServiceNotFound) {
+		t.Fatalf("Resolve after nil Provide failure = %v, want ErrServiceNotFound (nothing registered)", resolveFailure)
+	}
+}
+
+func TestResolveCrossTypeMismatchReportsHoldingTypes(t *testing.T) {
+	injector := di.New()
+	if provideFailure := di.Provide(injector, "shared", func(active *di.Injector) (ledgerService, error) {
+		return ledgerService{Balance: 3}, nil
+	}); provideFailure != nil {
+		t.Fatalf("Provide failure = %v, want nil", provideFailure)
+	}
+	if _, resolveFailure := di.Resolve[ledgerService](injector, "shared"); resolveFailure != nil {
+		t.Fatalf("Resolve ledger failure = %v, want nil", resolveFailure)
+	}
+	_, resolveFailure := di.Resolve[auditService](injector, "shared")
+	if resolveFailure == nil {
+		t.Fatal("Resolve cross-type failure = nil, want descriptive mismatch error")
+	}
+	if errors.Is(resolveFailure, di.ErrServiceNotFound) || errors.Is(resolveFailure, di.ErrDuplicateService) {
+		t.Fatalf("Resolve cross-type failure = %v, want mismatch error, not a sentinel", resolveFailure)
+	}
+	failureText := resolveFailure.Error()
+	if !strings.Contains(failureText, "shared") {
+		t.Fatalf("Resolve cross-type failure = %q, want message to name service %q", failureText, "shared")
+	}
+	if !strings.Contains(failureText, "holds") {
+		t.Fatalf("Resolve cross-type failure = %q, want message to name held vs asked types", failureText)
+	}
+}

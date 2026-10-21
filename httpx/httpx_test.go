@@ -264,3 +264,52 @@ func TestValidationWriteErrorSkipsNilEntries(t *testing.T) {
 		t.Fatalf("ValidationWriteError nil entries: Error = %q, want %q", envelope.Error, "name is required")
 	}
 }
+
+// TestWriteJSONScalarZeroEndToEnd pins the envelope contract over the wire:
+// a scalar zero Body encodes keyless ({}), decodes back as the zero value,
+// and never reads as failure.
+func TestWriteJSONScalarZeroEndToEnd(t *testing.T) {
+	engine := echo.New()
+	httpContext, recorder := newBareContext(engine)
+	if writeFailure := httpx.WriteJSON(httpContext, http.StatusOK, 0); writeFailure != nil {
+		t.Fatalf("WriteJSON scalar zero: unexpected failure: %v", writeFailure)
+	}
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("WriteJSON scalar zero: status = %d, want %d", recorder.Code, http.StatusOK)
+	}
+	rawBody := strings.TrimSpace(recorder.Body.String())
+	if rawBody != "{}" {
+		t.Fatalf("WriteJSON scalar zero: body = %s, want {} (keyless zero value)", rawBody)
+	}
+	var envelope httpx.Response[int]
+	if decodeFailure := json.NewDecoder(strings.NewReader(rawBody)).Decode(&envelope); decodeFailure != nil {
+		t.Fatalf("WriteJSON scalar zero: decode failure: %v", decodeFailure)
+	}
+	if envelope.Data != 0 {
+		t.Fatalf("WriteJSON scalar zero: Data = %d, want 0", envelope.Data)
+	}
+	if envelope.Error != "" {
+		t.Fatalf("WriteJSON scalar zero: Error = %q, want empty (zero value reads as success)", envelope.Error)
+	}
+}
+
+// TestValidationWriteErrorAllNilGuard pins the guard message: an all-nil
+// failures slice carries no message, so the writer reports the descriptive
+// guard instead of an empty envelope.
+func TestValidationWriteErrorAllNilGuard(t *testing.T) {
+	engine := echo.New()
+	httpContext, recorder := newBareContext(engine)
+	if writeFailure := httpx.ValidationWriteError(httpContext, []error{nil, nil}); writeFailure != nil {
+		t.Fatalf("ValidationWriteError all-nil: unexpected failure: %v", writeFailure)
+	}
+	if recorder.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("ValidationWriteError all-nil: status = %d, want %d", recorder.Code, http.StatusUnprocessableEntity)
+	}
+	var envelope httpx.Response[personPayload]
+	if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
+		t.Fatalf("ValidationWriteError all-nil: decode failure: %v", decodeFailure)
+	}
+	if !strings.Contains(envelope.Error, "needs at least one failure") {
+		t.Fatalf("ValidationWriteError all-nil: Error = %q, want guard message", envelope.Error)
+	}
+}

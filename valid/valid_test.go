@@ -341,3 +341,118 @@ func TestComposedAndThroughValidator(t *testing.T) {
 		})
 	}
 }
+
+func TestAndNilLegCountsAsFalse(t *testing.T) {
+	isPassing := buildPassingPredicate()
+	if valid.And[int](nil)(85) {
+		t.Fatal("And(nil)(85) = true, want false (nil leg counts as false)")
+	}
+	if valid.And(isPassing, nil)(85) {
+		t.Fatal("And(passing, nil)(85) = true, want false (nil leg counts as false)")
+	}
+	if valid.And[int](nil, isPassing)(85) {
+		t.Fatal("And(nil, passing)(85) = true, want false (nil leg counts as false)")
+	}
+	secondCalls := 0
+	reached := func(candidateScore int) bool {
+		secondCalls++
+		return true
+	}
+	if valid.And[int](nil, reached)(85) {
+		t.Fatal("And(nil, reached)(85) = true, want false")
+	}
+	if secondCalls != 0 {
+		t.Fatalf("second predicate calls = %d, want 0 (nil leg returns before later legs)", secondCalls)
+	}
+}
+
+func TestOrNilLegIsSkipped(t *testing.T) {
+	isPassing := buildPassingPredicate()
+	if valid.Or[int](nil)(85) {
+		t.Fatal("Or(nil)(85) = true, want false (all-nil disjunction fails)")
+	}
+	if !valid.Or(nil, isPassing)(85) {
+		t.Fatal("Or(nil, passing)(85) = false, want true (nil leg skipped)")
+	}
+	if valid.Or(nil, isPassing)(45) {
+		t.Fatal("Or(nil, passing)(45) = true, want false (no leg holds)")
+	}
+	isFailing := func(candidateScore int) bool { return false }
+	if valid.Or(isFailing, nil)(45) {
+		t.Fatal("Or(failing, nil)(45) = true, want false (nil leg counts as false)")
+	}
+	reachedCalls := 0
+	reached := func(candidateScore int) bool {
+		reachedCalls++
+		return true
+	}
+	if !valid.Or[int](nil, reached)(85) {
+		t.Fatal("Or(nil, reached)(85) = false, want true (nil leg skipped, later leg runs)")
+	}
+	if reachedCalls != 1 {
+		t.Fatalf("reached calls = %d, want 1 (nil leg skipped, not terminal)", reachedCalls)
+	}
+	unreachedCalls := 0
+	unreached := func(candidateScore int) bool {
+		unreachedCalls++
+		return true
+	}
+	if !valid.Or(isPassing, unreached)(85) {
+		t.Fatal("Or(passing, unreached)(85) = false, want true")
+	}
+	if unreachedCalls != 0 {
+		t.Fatalf("unreached calls = %d, want 0 (short-circuited after true)", unreachedCalls)
+	}
+}
+
+func TestNewCopiesRulesSliceIsolation(t *testing.T) {
+	rangeRule := buildRangeRule()
+	rules := []valid.Rule[int]{rangeRule}
+	scoreValidator := valid.New(rules...)
+	// Mutate the caller slice after New: overwrite the slot and grow the
+	// slice. Neither may leak into the Validator.
+	rules[0] = buildPassingRule()
+	grown := append(rules, buildPassingRule())
+	if len(grown) != 2 {
+		t.Fatalf("grown rules = %d, want 2 (append happened, Validator must still hold the original)", len(grown))
+	}
+	// 150 violates the original range rule only, so the isolated Validator
+	// reports exactly one failure carrying the original name and message.
+	validationFailures := scoreValidator.Validate(150)
+	if len(validationFailures) != 1 {
+		t.Fatalf("Validate(150) failures = %d, want 1 (original range rule retained)", len(validationFailures))
+	}
+	if failureText := validationFailures[0].Error(); !strings.Contains(failureText, rangeRule.Name) {
+		t.Fatalf("failure %q does not carry original rule name %q", failureText, rangeRule.Name)
+	}
+	if failureText := validationFailures[0].Error(); !strings.Contains(failureText, rangeRule.Message) {
+		t.Fatalf("failure %q does not carry original rule message %q", failureText, rangeRule.Message)
+	}
+}
+
+func TestValidateFailureOrderFollowsRuleOrder(t *testing.T) {
+	rangeRule := buildRangeRule()
+	passingRule := buildPassingRule()
+	forwardValidator := valid.New(rangeRule, passingRule)
+	forwardFailures := forwardValidator.Validate(-5)
+	if len(forwardFailures) != 2 {
+		t.Fatalf("forward Validate(-5) failures = %d, want 2", len(forwardFailures))
+	}
+	if failureText := forwardFailures[0].Error(); !strings.Contains(failureText, rangeRule.Name) {
+		t.Fatalf("forward failures[0] = %q, want range rule first", failureText)
+	}
+	if failureText := forwardFailures[1].Error(); !strings.Contains(failureText, passingRule.Name) {
+		t.Fatalf("forward failures[1] = %q, want passing rule second", failureText)
+	}
+	reversedValidator := valid.New(passingRule, rangeRule)
+	reversedFailures := reversedValidator.Validate(-5)
+	if len(reversedFailures) != 2 {
+		t.Fatalf("reversed Validate(-5) failures = %d, want 2", len(reversedFailures))
+	}
+	if failureText := reversedFailures[0].Error(); !strings.Contains(failureText, passingRule.Name) {
+		t.Fatalf("reversed failures[0] = %q, want passing rule first", failureText)
+	}
+	if failureText := reversedFailures[1].Error(); !strings.Contains(failureText, rangeRule.Name) {
+		t.Fatalf("reversed failures[1] = %q, want range rule second", failureText)
+	}
+}

@@ -1,8 +1,11 @@
 package slice_test
 
 import (
+	"math"
 	"reflect"
+	"strings"
 	"testing"
+	"unsafe"
 
 	axiomslice "github.com/seinra/axiom/slice"
 )
@@ -294,6 +297,41 @@ func TestFlattenNilYieldsEmpty(t *testing.T) {
 	got := axiomslice.Flatten(nested)
 	if got == nil || len(got) != 0 {
 		t.Fatalf("Flatten(nil) = %v, want empty non-nil", got)
+	}
+}
+
+// TestFlattenLengthTotalOverflowPanics pins the length-total guard: inner
+// lengths summing past math.MaxInt panic with an axiom message before any
+// allocation. Lengths are fabricated via unsafe.Slice (headers only, never
+// dereferenced), so the test is deterministic with no real OOM. result.Flatten
+// needs no such guard (single-level unwrap, no length total) and FlatMap
+// grows incrementally via append (no precomputed total), so the guard lives
+// on slice.Flatten only.
+func TestFlattenLengthTotalOverflowPanics(t *testing.T) {
+	// Overflow by summation: many headers, zero element bytes. Each inner
+	// slice is a header-only fabrication via unsafe.Slice (anchored on a real
+	// base, lengths within runtime bounds, never dereferenced) sized so the
+	// length total exceeds math.MaxInt. No real OOM: only headers allocate.
+	// result.Flatten needs no such guard (single-level unwrap, no length
+	// total) and FlatMap grows incrementally via append (no precomputed
+	// total), so the guard lives on slice.Flatten only.
+	const pieces = 1 << 20
+	each := math.MaxInt/pieces + 1
+	var base [1]int
+	nested := make([][]int, 0, pieces)
+	for range pieces {
+		nested = append(nested, unsafe.Slice(&base[0], each))
+	}
+	panicked := func() (recovered any) {
+		defer func() { recovered = recover() }()
+		_ = axiomslice.Flatten(nested)
+		return nil
+	}()
+	if panicked == nil {
+		t.Fatal("Flatten(length total overflow) did not panic, want axiom panic")
+	}
+	if message, isString := panicked.(string); !isString || !strings.Contains(message, "axiom slice: Flatten") {
+		t.Fatalf("Flatten panic = %v, want message carrying axiom slice: Flatten", panicked)
 	}
 }
 
@@ -835,5 +873,87 @@ func TestRunningFoldNeverMutatesInput(t *testing.T) {
 	actual[0] = 99
 	if !reflect.DeepEqual(numbers, []int{1, 2, 3}) {
 		t.Fatalf("input mutated to %v, want [1 2 3]", numbers)
+	}
+}
+
+func pinnedPanics(t *testing.T, label string, call func()) {
+	t.Helper()
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		call()
+		return nil
+	}()
+	if panicked == nil {
+		t.Fatalf("%s did not panic, want panic (nil func runs on a non-empty input)", label)
+	}
+}
+
+func TestNilFuncPanicsOnNonEmptyInput(t *testing.T) {
+	testCases := []struct {
+		name string
+		call func()
+	}{
+		{name: "MapSlice", call: func() { _ = axiomslice.MapSlice[int, int]([]int{1, 2}, nil) }},
+		{name: "FilterSlice", call: func() { _ = axiomslice.FilterSlice([]int{1, 2}, nil) }},
+		{name: "ReduceSlice", call: func() { _ = axiomslice.ReduceSlice([]int{1, 2}, 0, nil) }},
+		{name: "FindSlice", call: func() { _, _ = axiomslice.FindSlice([]int{1, 2}, nil) }},
+		{name: "GroupBySlice", call: func() { _ = axiomslice.GroupBySlice[int, string]([]int{1, 2}, nil) }},
+		{name: "MinBy", call: func() { _, _ = axiomslice.MinBy[string, int]([]string{"b", "a"}, nil) }},
+		{name: "MaxBy", call: func() { _, _ = axiomslice.MaxBy[string, int]([]string{"b", "a"}, nil) }},
+		{name: "FlatMap", call: func() { _ = axiomslice.FlatMap[int, int]([]int{1, 2}, nil) }},
+		{name: "Partition", call: func() { _, _ = axiomslice.Partition([]int{1, 2}, nil) }},
+		{name: "MapIndexed", call: func() { _ = axiomslice.MapIndexed[int, int]([]int{1, 2}, nil) }},
+		{name: "FilterIndexed", call: func() { _ = axiomslice.FilterIndexed([]int{1, 2}, nil) }},
+		{name: "SortBy", call: func() { _ = axiomslice.SortBy[int, int]([]int{2, 1}, nil) }},
+		{name: "RunningFold", call: func() { _ = axiomslice.RunningFold([]int{1, 2}, 0, nil) }},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			pinnedPanics(t, testCase.name+"(non-empty, nil)", testCase.call)
+		})
+	}
+}
+
+func TestNilFuncSkipsOnEmptyInput(t *testing.T) {
+	var numbers []int
+	if got := axiomslice.MapSlice[int, int](numbers, nil); got == nil || len(got) != 0 {
+		t.Fatalf("MapSlice(nil, nil) = %v, want empty non-nil", got)
+	}
+	if got := axiomslice.FilterSlice(numbers, nil); got == nil || len(got) != 0 {
+		t.Fatalf("FilterSlice(nil, nil) = %v, want empty non-nil", got)
+	}
+	if got := axiomslice.ReduceSlice(numbers, 7, nil); got != 7 {
+		t.Fatalf("ReduceSlice(nil, 7, nil) = %d, want 7", got)
+	}
+	if _, found := axiomslice.FindSlice(numbers, nil); found {
+		t.Fatal("FindSlice(nil, nil) found = true, want false")
+	}
+	if got := axiomslice.GroupBySlice[int, string](numbers, nil); got == nil || len(got) != 0 {
+		t.Fatalf("GroupBySlice(nil, nil) = %v, want empty non-nil", got)
+	}
+	var words []string
+	if _, found := axiomslice.MinBy[string, int](words, nil); found {
+		t.Fatal("MinBy(nil, nil) found = true, want false")
+	}
+	if _, found := axiomslice.MaxBy[string, int](words, nil); found {
+		t.Fatal("MaxBy(nil, nil) found = true, want false")
+	}
+	if got := axiomslice.FlatMap[int, int](numbers, nil); got == nil || len(got) != 0 {
+		t.Fatalf("FlatMap(nil, nil) = %v, want empty non-nil", got)
+	}
+	if matching, rest := axiomslice.Partition(numbers, nil); matching == nil || rest == nil || len(matching) != 0 || len(rest) != 0 {
+		t.Fatalf("Partition(nil, nil) = %v, %v, want two empty non-nil slices", matching, rest)
+	}
+	if got := axiomslice.MapIndexed[int, int](numbers, nil); got == nil || len(got) != 0 {
+		t.Fatalf("MapIndexed(nil, nil) = %v, want empty non-nil", got)
+	}
+	if got := axiomslice.FilterIndexed(numbers, nil); got == nil || len(got) != 0 {
+		t.Fatalf("FilterIndexed(nil, nil) = %v, want empty non-nil", got)
+	}
+	if got := axiomslice.SortBy[int, int](numbers, nil); got == nil || len(got) != 0 {
+		t.Fatalf("SortBy(nil, nil) = %v, want empty non-nil", got)
+	}
+	if got := axiomslice.RunningFold(numbers, 0, nil); got == nil || len(got) != 0 {
+		t.Fatalf("RunningFold(nil, 0, nil) = %v, want empty non-nil", got)
 	}
 }

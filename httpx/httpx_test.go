@@ -264,3 +264,109 @@ func TestValidationWriteErrorSkipsNilEntries(t *testing.T) {
 		t.Fatalf("ValidationWriteError nil entries: Error = %q, want %q", envelope.Error, "name is required")
 	}
 }
+
+// TestWriteJSONScalarZeroEndToEnd pins the envelope contract over the wire:
+// a scalar zero Body encodes keyless ({}), decodes back as the zero value,
+// and never reads as failure.
+func TestWriteJSONScalarZeroEndToEnd(t *testing.T) {
+	engine := echo.New()
+	httpContext, recorder := newBareContext(engine)
+	if writeFailure := httpx.WriteJSON(httpContext, http.StatusOK, 0); writeFailure != nil {
+		t.Fatalf("WriteJSON scalar zero: unexpected failure: %v", writeFailure)
+	}
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("WriteJSON scalar zero: status = %d, want %d", recorder.Code, http.StatusOK)
+	}
+	rawBody := strings.TrimSpace(recorder.Body.String())
+	if rawBody != "{}" {
+		t.Fatalf("WriteJSON scalar zero: body = %s, want {} (keyless zero value)", rawBody)
+	}
+	var envelope httpx.Response[int]
+	if decodeFailure := json.NewDecoder(strings.NewReader(rawBody)).Decode(&envelope); decodeFailure != nil {
+		t.Fatalf("WriteJSON scalar zero: decode failure: %v", decodeFailure)
+	}
+	if envelope.Data != 0 {
+		t.Fatalf("WriteJSON scalar zero: Data = %d, want 0", envelope.Data)
+	}
+	if envelope.Error != "" {
+		t.Fatalf("WriteJSON scalar zero: Error = %q, want empty (zero value reads as success)", envelope.Error)
+	}
+}
+
+// TestValidationWriteErrorAllNilGuard pins the guard message: an all-nil
+// failures slice carries no message, so the writer reports the descriptive
+// guard instead of an empty envelope.
+func TestValidationWriteErrorAllNilGuard(t *testing.T) {
+	engine := echo.New()
+	httpContext, recorder := newBareContext(engine)
+	if writeFailure := httpx.ValidationWriteError(httpContext, []error{nil, nil}); writeFailure != nil {
+		t.Fatalf("ValidationWriteError all-nil: unexpected failure: %v", writeFailure)
+	}
+	if recorder.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("ValidationWriteError all-nil: status = %d, want %d", recorder.Code, http.StatusUnprocessableEntity)
+	}
+	var envelope httpx.Response[personPayload]
+	if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
+		t.Fatalf("ValidationWriteError all-nil: decode failure: %v", decodeFailure)
+	}
+	if !strings.Contains(envelope.Error, "needs at least one failure") {
+		t.Fatalf("ValidationWriteError all-nil: Error = %q, want guard message", envelope.Error)
+	}
+}
+
+// TestFieldFailureMatchesSentinel pins per-field matchability: each field
+// failure wraps ErrValidationFailed, so errors.Is matches the sentinel and
+// errors.As recovers the field in-process (the 422 envelope keeps carrying
+// only text, where the stdlib contract cannot reach).
+func TestFieldFailureMatchesSentinel(t *testing.T) {
+	failure := httpx.FieldFailure{Field: "name", Reason: "name is required"}
+	if !errors.Is(failure, httpx.ErrValidationFailed) {
+		t.Fatalf("errors.Is(%v, ErrValidationFailed) = false, want true", failure)
+	}
+	var matched httpx.FieldFailure
+	if !errors.As(failure, &matched) {
+		t.Fatalf("errors.As(%v) = false, want FieldFailure match", failure)
+	}
+	if matched.Field != "name" || matched.Reason != "name is required" {
+		t.Fatalf("errors.As matched = %+v, want name/name is required", matched)
+	}
+}
+
+// TestFieldFailureWrapsCause pins that an underlying cause stays matchable
+// alongside the sentinel through the multi-unwrap chain.
+func TestFieldFailureWrapsCause(t *testing.T) {
+	cause := errors.New("too short")
+	failure := httpx.FieldFailure{Field: "name", Reason: "name is too short", Cause: cause}
+	if !errors.Is(failure, httpx.ErrValidationFailed) {
+		t.Fatalf("errors.Is(%v, ErrValidationFailed) = false, want true", failure)
+	}
+	if !errors.Is(failure, cause) {
+		t.Fatalf("errors.Is(%v, cause) = false, want true", failure)
+	}
+}
+
+// TestValidationWriteErrorKeepsShapeForFieldFailures pins the HTTP contract:
+// FieldFailure inputs still write 422 with "; "-joined messages, so the
+// envelope shape never changes while failures stay matchable caller-side.
+func TestValidationWriteErrorKeepsShapeForFieldFailures(t *testing.T) {
+	engine := echo.New()
+	httpContext, recorder := newBareContext(engine)
+	failures := []error{
+		httpx.FieldFailure{Field: "name", Reason: "name is required"},
+		httpx.FieldFailure{Field: "age", Reason: "age must be positive"},
+	}
+	if writeFailure := httpx.ValidationWriteError(httpContext, failures); writeFailure != nil {
+		t.Fatalf("ValidationWriteError field failures: unexpected failure: %v", writeFailure)
+	}
+	if recorder.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("ValidationWriteError field failures: status = %d, want %d", recorder.Code, http.StatusUnprocessableEntity)
+	}
+	var envelope httpx.Response[personPayload]
+	if decodeFailure := json.NewDecoder(recorder.Body).Decode(&envelope); decodeFailure != nil {
+		t.Fatalf("ValidationWriteError field failures: decode failure: %v", decodeFailure)
+	}
+	want := failures[0].Error() + "; " + failures[1].Error()
+	if envelope.Error != want {
+		t.Fatalf("ValidationWriteError field failures: Error = %q, want %q", envelope.Error, want)
+	}
+}

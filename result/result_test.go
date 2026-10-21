@@ -325,6 +325,52 @@ func TestTryErrorPayloadBecomesFailure(t *testing.T) {
 	}
 }
 
+// boomPayload is the typed panic payload proving Try carries types: only a
+// %w wrap lets errors.As recover it with its message preserved.
+type boomPayload struct{}
+
+func (payload boomPayload) Error() string { return "typed boom" }
+
+// TestTryTypedPayloadMatchesAs pins %w carriage: an error panic payload stays
+// matchable via errors.As with its message preserved.
+func TestTryTypedPayloadMatchesAs(t *testing.T) {
+	current := result.Try(func() int { panic(boomPayload{}) })
+	if current.IsOk() {
+		t.Fatal("Try typed panic IsOk = true, want false")
+	}
+	_, failure := current.Unwrap()
+	if failure == nil {
+		t.Fatal("Try typed panic failure = nil, want recovered panic")
+	}
+	var matched boomPayload
+	if !errors.As(failure, &matched) {
+		t.Fatalf("Try failure = %v (%T), want errors.As match for boomPayload", failure, failure)
+	}
+	if !strings.Contains(failure.Error(), "axiom result: recovered panic: typed boom") {
+		t.Fatalf("Try failure = %q, want recovered panic with typed message", failure.Error())
+	}
+}
+
+// TestTrySentinelPayloadMatchesIs pins %w carriage for sentinel errors: a
+// panicked sentinel stays matchable via errors.Is.
+func TestTrySentinelPayloadMatchesIs(t *testing.T) {
+	sentinel := errors.New("inner boom")
+	current := result.Try(func() int { panic(sentinel) })
+	if current.IsOk() {
+		t.Fatal("Try sentinel panic IsOk = true, want false")
+	}
+	_, failure := current.Unwrap()
+	if failure == nil {
+		t.Fatal("Try sentinel panic failure = nil, want recovered panic")
+	}
+	if !errors.Is(failure, sentinel) {
+		t.Fatalf("Try failure = %v, want errors.Is match for sentinel", failure)
+	}
+	if !strings.Contains(failure.Error(), "axiom result: recovered panic: inner boom") {
+		t.Fatalf("Try failure = %q, want recovered panic with sentinel message", failure.Error())
+	}
+}
+
 func TestTryNilAttemptRecovers(t *testing.T) {
 	var attempt func() int
 	current := result.Try(attempt)
@@ -517,5 +563,107 @@ func TestFlattenResultZeroNestingTable(t *testing.T) {
 				t.Fatalf("Flatten value = %d, want 0", outcome)
 			}
 		})
+	}
+}
+
+func pinnedPanics(t *testing.T, label string, call func()) {
+	t.Helper()
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		call()
+		return nil
+	}()
+	if panicked == nil {
+		t.Fatalf("%s did not panic, want panic (nil func runs on the held success)", label)
+	}
+}
+
+func pinnedNoPanic(t *testing.T, label string, call func()) {
+	t.Helper()
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		call()
+		return nil
+	}()
+	if panicked != nil {
+		t.Fatalf("%s panicked with %v, want no panic (nil func never runs on the carried failure)", label, panicked)
+	}
+}
+
+func TestMapNilTransformPanicsOnOkCarriesFailure(t *testing.T) {
+	pinnedPanics(t, "Map(Ok, nil)", func() {
+		_ = result.Map[int, string](result.Ok(1), nil)
+	})
+	pinnedPanics(t, "Ok.MapValue(nil)", func() {
+		_ = result.Ok(1).MapValue[string](nil)
+	})
+	sentinel := errors.New("carried")
+	var mappedFunc result.Result[string]
+	pinnedNoPanic(t, "Map(Fail, nil)", func() {
+		mappedFunc = result.Map[int, string](result.Fail[int](sentinel), nil)
+	})
+	if _, failure := mappedFunc.Unwrap(); !errors.Is(failure, sentinel) {
+		t.Fatalf("Map(Fail, nil) failure = %v, want %v", failure, sentinel)
+	}
+	var mappedMethod result.Result[string]
+	pinnedNoPanic(t, "Fail.MapValue(nil)", func() {
+		mappedMethod = result.Fail[int](sentinel).MapValue[string](nil)
+	})
+	if _, failure := mappedMethod.Unwrap(); !errors.Is(failure, sentinel) {
+		t.Fatalf("Fail.MapValue(nil) failure = %v, want %v", failure, sentinel)
+	}
+	var mappedZero result.Result[string]
+	pinnedNoPanic(t, "Map(zero, nil)", func() {
+		mappedZero = result.Map[int, string](result.Result[int]{}, nil)
+	})
+	if _, failure := mappedZero.Unwrap(); failure == nil {
+		t.Fatal("Map(zero, nil) failure = nil, want explicit error")
+	}
+}
+
+func TestAndThenNilTransformPanicsOnOkShortCircuitsOnFailure(t *testing.T) {
+	pinnedPanics(t, "AndThen(Ok, nil)", func() {
+		_ = result.AndThen[int, string](result.Ok(1), nil)
+	})
+	sentinel := errors.New("kept")
+	var chained result.Result[string]
+	pinnedNoPanic(t, "AndThen(Fail, nil)", func() {
+		chained = result.AndThen[int, string](result.Fail[int](sentinel), nil)
+	})
+	if _, failure := chained.Unwrap(); !errors.Is(failure, sentinel) {
+		t.Fatalf("AndThen(Fail, nil) failure = %v, want %v", failure, sentinel)
+	}
+	var chainedZero result.Result[string]
+	pinnedNoPanic(t, "AndThen(zero, nil)", func() {
+		chainedZero = result.AndThen[int, string](result.Result[int]{}, nil)
+	})
+	if _, failure := chainedZero.Unwrap(); failure == nil {
+		t.Fatal("AndThen(zero, nil) failure = nil, want explicit error")
+	}
+}
+
+func TestOrElseNilHandlerPanicsOnFailureSkipsOnSuccess(t *testing.T) {
+	pinnedPanics(t, "OrElse(Fail, nil)", func() {
+		_ = result.OrElse(result.Fail[int](errors.New("broken")), nil)
+	})
+	var recovered result.Result[int]
+	pinnedNoPanic(t, "OrElse(Ok, nil)", func() {
+		recovered = result.OrElse(result.Ok(5), nil)
+	})
+	if got, failure := recovered.Unwrap(); failure != nil || got != 5 {
+		t.Fatalf("OrElse(Ok, nil) = %d, %v, want 5, nil", got, failure)
+	}
+}
+
+func TestUnwrapOrElseNilFallbackPanicsOnFailureSkipsOnSuccess(t *testing.T) {
+	pinnedPanics(t, "UnwrapOrElse(Fail, nil)", func() {
+		_ = result.UnwrapOrElse(result.Fail[int](errors.New("gone")), nil)
+	})
+	var got int
+	pinnedNoPanic(t, "UnwrapOrElse(Ok, nil)", func() {
+		got = result.UnwrapOrElse(result.Ok(4), nil)
+	})
+	if got != 4 {
+		t.Fatalf("UnwrapOrElse(Ok, nil) = %d, want 4", got)
 	}
 }

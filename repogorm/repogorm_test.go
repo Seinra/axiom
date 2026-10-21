@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/glebarez/sqlite"
@@ -187,6 +188,27 @@ func TestListRejectsInvalidPage(t *testing.T) {
 	}
 }
 
+// TestListRejectsOversizedPage pins MaxPageSize: a caller-driven Size beyond
+// the cap is rejected with ErrInvalidPage instead of preallocating an
+// unbounded page (DoS via caller HTTP). The cap boundary itself stays usable.
+func TestListRejectsOversizedPage(t *testing.T) {
+	lessonStore := openLessonStore(t, seedFiveLessons()...)
+	if _, listFailure := lessonStore.List(repo.Page{Number: 1, Size: repogorm.MaxPageSize + 1}); !errors.Is(listFailure, repo.ErrInvalidPage) {
+		t.Fatalf("List(Size MaxPageSize+1): failure = %v, want ErrInvalidPage (cap %d)", listFailure, repogorm.MaxPageSize)
+	}
+	if _, listFailure := lessonStore.List(repo.Page{Number: 1, Size: repogorm.MaxPageSize}); listFailure != nil {
+		t.Fatalf("List(Size MaxPageSize): unexpected failure: %v", listFailure)
+	}
+}
+
+// TestMaxPageSizeValue pins the chosen cap: 1000 bounds the List
+// preallocation while staying generous for legitimate paging.
+func TestMaxPageSizeValue(t *testing.T) {
+	if repogorm.MaxPageSize != 1000 {
+		t.Fatalf("MaxPageSize = %d, want 1000", repogorm.MaxPageSize)
+	}
+}
+
 func TestNewStoreRejectsNilDatabase(t *testing.T) {
 	if _, buildFailure := repogorm.NewStore[Lesson, uint](nil, []any{Lesson{}}, "id"); buildFailure == nil {
 		t.Fatal("NewStore(nil database): expected failure, got nil")
@@ -262,5 +284,170 @@ func TestListFollowsConfiguredOrderColumn(t *testing.T) {
 	}
 	if !slices.Equal(gotSlugs, wantSlugs) {
 		t.Fatalf("List slug order = %v, want %v", gotSlugs, wantSlugs)
+	}
+}
+
+// openClosableLessonStore builds a migrated Lesson store and keeps its
+// database handle so the test can close it and pin the failure branches.
+func openClosableLessonStore(t *testing.T, candidates ...Lesson) (*repogorm.Store[Lesson, uint], *gorm.DB) {
+	t.Helper()
+	database := openTestDatabase(t)
+	lessonStore, buildFailure := repogorm.NewStore[Lesson, uint](database, []any{Lesson{}}, "id")
+	if buildFailure != nil {
+		t.Fatalf("NewStore: unexpected failure: %v", buildFailure)
+	}
+	for _, candidate := range candidates {
+		if storeFailure := lessonStore.Store(candidate); storeFailure != nil {
+			t.Fatalf("seed Store(%q): unexpected failure: %v", candidate.Slug, storeFailure)
+		}
+	}
+	return lessonStore, database
+}
+
+// closeTestDatabase closes the pooled handle so later operations pin the
+// wrapped-driver-error branches instead of the happy path.
+func closeTestDatabase(t *testing.T, database *gorm.DB) {
+	t.Helper()
+	sqlHandle, handleFailure := database.DB()
+	if handleFailure != nil {
+		t.Fatalf("database handle: unexpected failure: %v", handleFailure)
+	}
+	if closeFailure := sqlHandle.Close(); closeFailure != nil {
+		t.Fatalf("close database: unexpected failure: %v", closeFailure)
+	}
+}
+
+func TestStoreOnClosedDatabaseReportsError(t *testing.T) {
+	lessonStore, database := openClosableLessonStore(t)
+	closeTestDatabase(t, database)
+	if storeFailure := lessonStore.Store(Lesson{ID: 1, Slug: "closed", Title: "Closed"}); storeFailure == nil {
+		t.Fatal("Store on closed database: expected failure, got nil")
+	}
+}
+
+func TestFetchOnClosedDatabaseIsNotNotFound(t *testing.T) {
+	lessonStore, database := openClosableLessonStore(t, Lesson{ID: 1, Slug: "kept", Title: "Kept"})
+	closeTestDatabase(t, database)
+	_, fetchFailure := lessonStore.Fetch(1)
+	if fetchFailure == nil {
+		t.Fatal("Fetch on closed database: expected failure, got nil")
+	}
+	if errors.Is(fetchFailure, repo.ErrRecordNotFound) {
+		t.Fatalf("Fetch on closed database: failure = %v, want driver failure, not ErrRecordNotFound", fetchFailure)
+	}
+}
+
+func TestRemoveOnClosedDatabaseReportsError(t *testing.T) {
+	lessonStore, database := openClosableLessonStore(t, Lesson{ID: 1, Slug: "kept", Title: "Kept"})
+	closeTestDatabase(t, database)
+	if removeFailure := lessonStore.Remove(1); removeFailure == nil {
+		t.Fatal("Remove on closed database: expected failure, got nil")
+	}
+}
+
+func TestListOnClosedDatabaseReportsError(t *testing.T) {
+	lessonStore, database := openClosableLessonStore(t, seedFiveLessons()...)
+	closeTestDatabase(t, database)
+	if _, listFailure := lessonStore.List(repo.Page{Number: 1, Size: 2}); listFailure == nil {
+		t.Fatal("List on closed database: expected failure, got nil")
+	}
+}
+
+// TestListWithTiedOrderColumnReturnsFullSet pins the documented tie
+// contract: rows tied on the order column have no defined relative order,
+// so the test sorts before comparing and never asserts a tie sequence.
+func TestListWithTiedOrderColumnReturnsFullSet(t *testing.T) {
+	lessonStore, buildFailure := repogorm.NewStore[Lesson, uint](openTestDatabase(t), []any{Lesson{}}, "title")
+	if buildFailure != nil {
+		t.Fatalf("NewStore(title column): unexpected failure: %v", buildFailure)
+	}
+	tied := []Lesson{
+		{ID: 1, Slug: "slug-a", Title: "same-title"},
+		{ID: 2, Slug: "slug-b", Title: "same-title"},
+		{ID: 3, Slug: "slug-c", Title: "same-title"},
+		{ID: 4, Slug: "slug-d", Title: "same-title"},
+	}
+	for _, candidate := range tied {
+		if storeFailure := lessonStore.Store(candidate); storeFailure != nil {
+			t.Fatalf("seed Store(%q): unexpected failure: %v", candidate.Slug, storeFailure)
+		}
+	}
+	wantIdentities := []uint{1, 2, 3, 4}
+	// One full page is a single query: every tied row appears exactly once
+	// regardless of tie order, so the sorted set is stable across calls.
+	for round := range 2 {
+		listed, listFailure := lessonStore.List(repo.Page{Number: 1, Size: 10})
+		if listFailure != nil {
+			t.Fatalf("round %d List: unexpected failure: %v", round, listFailure)
+		}
+		gotIdentities := lessonIDs(listed)
+		slices.Sort(gotIdentities)
+		if !slices.Equal(gotIdentities, wantIdentities) {
+			t.Fatalf("round %d tied IDs = %v, want %v (set, tie order undefined)", round, gotIdentities, wantIdentities)
+		}
+	}
+}
+
+func TestConcurrentStoreFetchListHammer(t *testing.T) {
+	database := openTestDatabase(t)
+	sqlHandle, handleFailure := database.DB()
+	if handleFailure != nil {
+		t.Fatalf("database handle: unexpected failure: %v", handleFailure)
+	}
+	// Single pooled connection: goroutines still race through Store
+	// concurrently (-race watches), but shared-cache SQLite never trips
+	// table locks between pooled connections.
+	sqlHandle.SetMaxOpenConns(1)
+	lessonStore, buildFailure := repogorm.NewStore[Lesson, uint](database, []any{Lesson{}}, "id")
+	if buildFailure != nil {
+		t.Fatalf("NewStore: unexpected failure: %v", buildFailure)
+	}
+	for _, candidate := range seedFiveLessons() {
+		if storeFailure := lessonStore.Store(candidate); storeFailure != nil {
+			t.Fatalf("seed Store(%q): unexpected failure: %v", candidate.Slug, storeFailure)
+		}
+	}
+	const hammerWorkers = 16
+	failures := make([]error, hammerWorkers)
+	var waitGroup sync.WaitGroup
+	startSignal := make(chan struct{})
+	for workerIdx := range hammerWorkers {
+		waitGroup.Add(1)
+		go func(workerSlot int) {
+			defer waitGroup.Done()
+			<-startSignal
+			identity := uint(100 + workerSlot)
+			candidate := Lesson{ID: identity, Slug: fmt.Sprintf("hammer-%d", workerSlot), Title: "Hammer"}
+			if storeFailure := lessonStore.Store(candidate); storeFailure != nil {
+				failures[workerSlot] = storeFailure
+				return
+			}
+			fetched, fetchFailure := lessonStore.Fetch(identity)
+			if fetchFailure != nil {
+				failures[workerSlot] = fetchFailure
+				return
+			}
+			if fetched != candidate {
+				failures[workerSlot] = fmt.Errorf("Fetch = %+v, want %+v", fetched, candidate)
+				return
+			}
+			if _, listFailure := lessonStore.List(repo.Page{Number: 1, Size: 50}); listFailure != nil {
+				failures[workerSlot] = listFailure
+			}
+		}(workerIdx)
+	}
+	close(startSignal)
+	waitGroup.Wait()
+	for workerIdx, workerFailure := range failures {
+		if workerFailure != nil {
+			t.Fatalf("worker %d failure = %v, want nil", workerIdx, workerFailure)
+		}
+	}
+	listed, listFailure := lessonStore.List(repo.Page{Number: 1, Size: 50})
+	if listFailure != nil {
+		t.Fatalf("final List: unexpected failure: %v", listFailure)
+	}
+	if len(listed) != 5+hammerWorkers {
+		t.Fatalf("final List len = %d, want %d", len(listed), 5+hammerWorkers)
 	}
 }

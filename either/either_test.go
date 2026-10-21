@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/seinra/axiom/either"
+	"github.com/seinra/axiom/result"
 )
 
 func TestLeftHoldsLeftSide(t *testing.T) {
@@ -306,5 +307,94 @@ func TestToResultRightIgnoresFailureOf(t *testing.T) {
 	}
 	if got != 8 {
 		t.Fatalf("ToResult(Right) value = %d, want 8", got)
+	}
+}
+
+func pinnedPanics(t *testing.T, label string, call func()) {
+	t.Helper()
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		call()
+		return nil
+	}()
+	if panicked == nil {
+		t.Fatalf("%s did not panic, want panic (nil func runs on the taken branch)", label)
+	}
+}
+
+func pinnedNoPanic(t *testing.T, label string, call func()) {
+	t.Helper()
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		call()
+		return nil
+	}()
+	if panicked != nil {
+		t.Fatalf("%s panicked with %v, want no panic (nil func never runs on the carried branch)", label, panicked)
+	}
+}
+
+func TestMatchNilFuncPanicsOnTakenBranch(t *testing.T) {
+	describeLeft := func(lockReason string) string { return "locked: " + lockReason }
+	describeRight := func(slotCount int) string { return "ready" }
+	pinnedPanics(t, "Match(Left, nil, onRight)", func() {
+		_ = either.Match[string, int, string](either.Left[string, int]("locked"), nil, describeRight)
+	})
+	pinnedPanics(t, "Match(Right, onLeft, nil)", func() {
+		_ = either.Match[string, int, string](either.Right[string, int](7), describeLeft, nil)
+	})
+}
+
+func TestMatchNilFuncSkipsUntakenBranch(t *testing.T) {
+	if got := either.Match[string, int, string](either.Left[string, int]("locked"),
+		func(lockReason string) string { return "locked: " + lockReason }, nil); got != "locked: locked" {
+		t.Fatalf("Match(Left, onLeft, nil) = %q, want %q", got, "locked: locked")
+	}
+	if got := either.Match[string, int, string](either.Right[string, int](7), nil,
+		func(slotCount int) string { return "ready" }); got != "ready" {
+		t.Fatalf("Match(Right, nil, onRight) = %q, want %q", got, "ready")
+	}
+}
+
+func TestMapRightNilTransformPanicsOnRightSkipsOnLeft(t *testing.T) {
+	pinnedPanics(t, "MapRight(Right, nil)", func() {
+		_ = either.MapRight[string, int, string](either.Right[string, int](1), nil)
+	})
+	var mapped either.Either[string, string]
+	pinnedNoPanic(t, "MapRight(Left, nil)", func() {
+		mapped = either.MapRight[string, int, string](either.Left[string, int]("locked"), nil)
+	})
+	if !mapped.IsLeft() {
+		t.Fatal("MapRight(Left, nil) IsLeft = false, want true")
+	}
+}
+
+func TestMapLeftNilTransformPanicsOnLeftSkipsOnRight(t *testing.T) {
+	pinnedPanics(t, "MapLeft(Left, nil)", func() {
+		_ = either.MapLeft[string, int, string](either.Left[string, int]("locked"), nil)
+	})
+	var mapped either.Either[string, int]
+	pinnedNoPanic(t, "MapLeft(Right, nil)", func() {
+		mapped = either.MapLeft[string, int, string](either.Right[string, int](5), nil)
+	})
+	if !mapped.IsRight() {
+		t.Fatal("MapLeft(Right, nil) IsRight = false, want true")
+	}
+}
+
+func TestToResultNilFailureOfPanicsOnLeftSkipsOnRight(t *testing.T) {
+	pinnedPanics(t, "ToResult(Left, nil)", func() {
+		_ = either.ToResult[string, int](either.Left[string, int]("locked"), nil)
+	})
+	var converted result.Result[int]
+	pinnedNoPanic(t, "ToResult(Right, nil)", func() {
+		converted = either.ToResult[string, int](either.Right[string, int](8), nil)
+	})
+	got, failure := converted.Unwrap()
+	if failure != nil {
+		t.Fatalf("ToResult(Right, nil) failure = %v, want nil", failure)
+	}
+	if got != 8 {
+		t.Fatalf("ToResult(Right, nil) value = %d, want 8", got)
 	}
 }

@@ -35,6 +35,7 @@ package slice
 import (
 	"cmp"
 	"fmt"
+	"math"
 	"slices"
 )
 
@@ -217,9 +218,17 @@ func FlatMap[Element any, Transformed any](elements []Element, transform func(El
 
 // Flatten concatenates nested slices in order.
 // Nil or empty input yields an empty non-nil slice.
+//
+// Length-total overflow panics: inner lengths summing past math.MaxInt are a
+// programmer error, matching the size <= 0 panic policy of Chunked and
+// Windows. result.Flatten needs no such guard (single-level unwrap, no
+// length total); FlatMap grows incrementally via append (no precomputed total).
 func Flatten[Element any](nested [][]Element) []Element {
 	total := 0
 	for _, inner := range nested {
+		if len(inner) > math.MaxInt-total {
+			panic(fmt.Sprintf("axiom slice: Flatten needs total length <= %d, got overflow across %d inner slices", math.MaxInt, len(nested)))
+		}
 		total += len(inner)
 	}
 	flattened := make([]Element, 0, total)

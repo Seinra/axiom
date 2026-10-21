@@ -110,6 +110,8 @@ Expected output:
 lesson from fast-mirror true
 ```
 
+The CI test (`TestRaceFirstSuccess` in `docs/cookbook_test.go`) runs the same shape with immediate work instead of timers, so it stays deterministic — same winner, same output.
+
 > [!NOTE]
 > The slow branch selects on `ctx.Done()`: honoring the context is what makes sibling shutdown prompt. When every mirror fails, `Race` returns the zero value plus the first failure in time.
 

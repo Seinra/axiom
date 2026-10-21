@@ -1,6 +1,7 @@
 # iterx — lazy pipelines over iter.Seq
 
-> Version: Axiom on Go 1.27 · Prereqs: Go toolchain, generics basics (`[T]`), `iter.Seq` familiarity, `go test` green.
+**Version:** Axiom on Go 1.27.
+**Prereqs:** Go toolchain, generics basics (`[T]`), `iter.Seq` familiarity, `go test` green.
 > API source: `go doc ./iterx` ([iterx/iterx.go](../../iterx/iterx.go)). This guide summarizes; the doc comments are the reference.
 
 ## Concept

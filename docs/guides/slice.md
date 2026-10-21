@@ -1,6 +1,7 @@
 # slice — eager helpers over slices, stdlib first
 
-> Version: Axiom on Go 1.27 · Prereqs: Go toolchain, generics basics (`[T]`), `go test` green.
+**Version:** Axiom on Go 1.27.
+**Prereqs:** Go toolchain, generics basics (`[T]`), `go test` green.
 > API source: `go doc ./slice` ([slice/slice.go](../../slice/slice.go)). This guide summarizes; the doc comments are the reference.
 
 ## Concept

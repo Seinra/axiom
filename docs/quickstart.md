@@ -2,8 +2,8 @@
 
 You point a scratch module at Axiom, run one typed pipeline, and watch it print `42` and `[2 4 6]`.
 
-> **Version:** Axiom is unreleased — no tagged version yet; these steps track the working tree.
-> **Prerequisites:** Go 1.27 in your `PATH` (`go version` reports `go1.27.x`).
+**Version:** Axiom is unreleased — no tagged version yet; these steps track the working tree.
+**Prereqs:** Go 1.27 in your `PATH` (`go version` reports `go1.27.x`).
 
 ## Quick path
 

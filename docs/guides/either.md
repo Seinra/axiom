@@ -1,6 +1,7 @@
 # either — one of two typed sides, neither favored
 
-> Version: Axiom on Go 1.27 · Prereqs: Go toolchain, generics basics (`[T]`), `go test` green.
+**Version:** Axiom on Go 1.27.
+**Prereqs:** Go toolchain, generics basics (`[T]`), `go test` green.
 > API source: `go doc ./either` ([either/either.go](../../either/either.go)). This guide summarizes; the doc comments are the reference.
 
 ## Concept

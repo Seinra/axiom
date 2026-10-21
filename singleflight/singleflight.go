@@ -6,7 +6,16 @@
 // waiter receives the same outcome and failure. Sequential calls re-run;
 // entries live only while executing.
 //
-// No CallChan, no sharding, no batching: YAGNI.
+// No CallChan, no sharding, no batching: YAGNI. Reach for a plain call
+// directly when keys never overlap concurrently; there is nothing to deduplicate.
+//
+// Which function?
+//
+// | When you want to ...                          | Reach for ... |
+// |------------------------------------------------|---------------|
+// | Share one execution across same-key callers    | Group.Call    |
+// | Drop the in-flight entry so next Call re-runs  | Group.Forget  |
+// | Hold one key space (zero value ready)          | Group         |
 package singleflight
 
 import "sync"

@@ -21,8 +21,17 @@ Every design decision cites a stable ID below. A rename/replacement updates the 
 | LOOP-ENGINEERING | methodology | `C:\Users\Seinra\.agents\skills\loop-engineering\SKILL.md` v1.9 | loop authoring discipline (this loop complies) |
 | COG-DOC | methodology | `cognitive-doc-design` skill v1.0 | lead-with-answer, progressive disclosure, chunking, signposting |
 | FOUNDRY | methodology | `foundry` skill v1.0 + `references/craft-floor.md` | absolute bans + quality floor (single policy source) |
+| FOUNDRY-EXPLORE | methodology | `foundry-explore` skill v1.0 | read-only mapping, stops before design |
+| FOUNDRY-REQUIREMENTS | methodology | `foundry-requirements` skill v1.0 | verifiable requirements, ask before assuming |
+| FOUNDRY-DEBUG | methodology | `foundry-debug` skill v1.0 | reproduce → hypothesise → probe → fix → regression-lock |
 | FOUNDRY-TESTING | methodology | `foundry-testing` skill v1.0 | HOW-to-test per language (Go playbook) |
 | FOUNDRY-REVIEW | methodology | `foundry-review` skill v1.0 | R1–R4 pre-freeze verdict gate |
+| WORK-UNIT-COMMITS | methodology | `work-unit-commits` skill v1.0 | one purpose per commit; tests + docs travel with unit |
+| BRANCH-PR | methodology | `branch-pr` skill v2.0 | open/prepare PR with approved issue + type label |
+| CHAINED-PR | methodology | `chained-pr` skill v1.0 | PRs over 400 lines split into chained review slices |
+| AGENT-GIT-COMMIT | methodology | `agent-git-commit` skill v1.0 | safe commits under coding-agent runtime gates |
+| RDD-DEFECT | methodology | `rdd-defect-workflow` skill v1.4 | review authority, correction/recovery, delivery gate |
+| ISSUE-CREATION | methodology | `issue-creation` skill v1.4 | triage + create from repo evidence with read-back |
 | ECO-LO | external-docs | `https://github.com/samber/lo` | collections / functional utilities (target coverage) |
 | ECO-MO | external-docs | `https://github.com/samber/mo` | Option / Result / Either / Future / Task (target coverage) |
 | ECO-DO | external-docs | `https://github.com/samber/do` | type-safe DI incl. Echo/Gin/Fiber/Chi (target coverage) |

@@ -3,6 +3,7 @@
 One-line identity: Axiom is a Go generics library (module `github.com/seinra/axiom`, Go 1.27); this loop runs its design and implementation; done means tree green after every iteration with one logical feature per iteration.
 
 > **Changelog**: v0.1 (2026-10-20) — initial hub + modules + VISION + config for skeleton slice.
+> v0.2 (2026-10-21) — loop-engineering v1.9 gap-scan: REVIEW_PACKS five-element pack map, ODD canonical-state + delivery-lifecycle pointers, growth index-table rule, TDD tier-frozen note, session close-out disposition; cognitive-doc-design quick-path pass; foundry craft-floor re-affirmed.
 
 ## 🎯 Objective & Success Metrics
 
@@ -59,18 +60,19 @@ For ODD work orchestrator triggers win; the numeric table is legacy-only for liv
 
 ### Growth
 
-- Hub over budget (~120 + ~10 per content phase; estimates advisory, wc rules) ⇒ split into modules; hub stays an index.
+- Hub over budget (~120 + ~10 per content phase; estimates advisory, wc rules) ⇒ split into modules; hub stays an index. Index tables whose rows all resolve to modules/artifacts don't count toward the budget.
 - Domain knowledge grows ⇒ new domain module + index row, not prose in hub.
 - Governance needed elsewhere ⇒ reference this hub — never copy-paste.
-- State growth: ODD track adds task rows, never phase files.
+- State growth: content loops add `phases[]` / `phase-<ID>.json`; ODD track adds task rows, never phase files.
 
 ### ODD Tracking
 
 Flow: `Authorize → Explore → Resolve uncertainty → Classify (Task Size) → Track → Implement task by task → Close`.
 Track: `odd/tasks/<feature>.md` (header + `## Specs` S# quoted verbatim + `## Tasks` with linked S# + `## Log` with L1 verbatim) + Engram mirror (`odd/<feature>/tasks`) + visible `todo` projection rebuilt from the same tasks before the first write.
-Work units: ~400 authored changed lines heuristic (advisory only), tests + docs alongside behavior, Conventional Commits, Risk line per change.
-Delivery gate: work-unit commit first as review candidate, then `assess` + tiered review; burned approval gates push/PR/merge (owner-commanded HITL), never the commit.
-Every task returns a Result Contract: `status`, `executive_summary`, `artifacts`, `next_recommended`, `risks` — formats ODD Tasks/S#, never parallel `phases/NN`; distinct-validator validates before advancing; `artifacts` carries ≥1 `command: observed result` line per behavior claim.
+Canonical state: feature doc + mirror + `todo` projection; `phase-*.json` is content-loops-only; on mismatch reconcile (preserve both versions, ask on real conflict) — never silent repair; no-human fallback parks in STATUS debt ledger.
+Work units: ~400 authored lines heuristic (advisory only), tests + docs with unit, Conventional Commits, Risk line; full checklist per `references/delivery-lifecycle.md` (never code-golf). Branch/PR/chain/CI per `references/delivery-lifecycle.md`.
+Delivery gate: work-unit first as candidate, then `assess` + tiered review; burned approval gates push/PR/merge (owner HITL), never commit.
+Every task returns a Result Contract: `status`, `executive_summary`, `artifacts`, `next_recommended`, `risks` — formats ODD Tasks/S#, never parallel `phases/NN`; distinct-validator (distinct session where delegation exists; solo: spot-check, re-run one reported command) validates before advancing; `artifacts` carries ≥1 `command: observed result` line per behavior claim.
 Methodology adapter: the harness methodology is named here (today: ODD) and pinned in REFERENCES as a stable ID; a rename/replacement updates the pin + mapping, never rule prose.
 
 ### TDD Scope Matrix
@@ -82,7 +84,7 @@ Methodology adapter: the harness methodology is named here (today: ODD) and pinn
 
 Assertion-quality rules: ban tautological tests, ghost loops, implementation-detail coupling.
 Matrix is default; per-change ODD applicability wins — no RED → state it; proportionate verification; never invent RED/GREEN.
-Review-tier request signals: auth/secrets/guards → risk; public contracts → readability; failure paths/concurrency → resilience.
+Review-tier request signals (tier frozen by controller; a request, never a grant): auth/secrets/guards → risk; public contracts → readability; failure paths/concurrency → resilience.
 
 ### Failure Policy
 
@@ -98,7 +100,7 @@ Typed Engram save per discovery/decision:
 
 **Start**: read this loop → read the task file (file-first resume, never newest global memory) → check active changes/artifacts → preflight if first ODD-tracked work (feature document + mirror + todo reconciled) → resolve current status → verify prior deposit/mirror exists; if missing-deposit, reconstruct from artifacts.
 **During**: confirm the deliverable IS the loop (loops-only guard), follow routing table; distinct-validator validates each phase result before advancing (solo: spot-check, re-run one reported command); each fix retry appends a Log row.
-**End**: memory session summary — Goal, Instructions, Discoveries, Accomplished, Next Steps, Relevant Files — plus update STATUS.md if used; paste one externally-measured check (wc / lens / runtime backstop) as evidence at close-out, never asserted. Report `modules_read: [...]`. Mirror failure never blocks: preserve local, mark `mirror pending` in Log, resync later; explicit `session_id` on ambiguous-session writes. Generated artifacts default to English; never translate or paraphrase quoted user strings.
+**End**: memory session summary — Goal, Instructions, Discoveries, Accomplished, Next Steps, Relevant Files — plus update STATUS.md if used; paste one externally-measured check (wc / lens / runtime backstop) as evidence at close-out, never asserted. Close-out declares per-artifact disposition (UPDATED vs verified-unchanged with reason); a close-out without it is invalid. On drift, flag in STATUS debt ledger — never silently rewrite ratified intent. Report `modules_read: [...]`. Mirror failure never blocks: preserve local, mark `mirror pending` in Log, resync later; explicit `session_id` on ambiguous-session writes. Generated artifacts default to English; never translate or paraphrase quoted user strings.
 
 ## ⚠️ HITL Triggers
 

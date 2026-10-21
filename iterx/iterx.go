@@ -12,6 +12,10 @@
 // and panic on size <= 0 instead of yielding nothing — valid sizes stay
 // fully lazy.
 //
+// Generate, FilterMapSeq, and Unfold take OrNull-shaped callbacks: the bool
+// reports presence — never trust the value without it (see the OrNull
+// definition in the README guide index).
+//
 // Which function?
 //
 // | When you want to ...                               | Reach for ...           |
@@ -275,7 +279,9 @@ func DeduplicateSeq[Element comparable](sequence iter.Seq[Element]) iter.Seq[Ele
 }
 
 // Unfold builds a sequence from evolving state: following maps the current
-// state to an element plus the next state, stopping when ok is false.
+// state to an element plus the next state, stopping when ok is false. The
+// following callback is OrNull-shaped: ok reports presence — never trust the
+// element or next state without it.
 //
 //	Example: Unfold(1, func(current int) (int, int, bool) {
 //	  if current > 3 { return 0, 0, false }
@@ -301,7 +307,8 @@ func Unfold[State any, Element any](initial State, following func(State) (elemen
 }
 
 // Generate builds a sequence by calling produce for each element, stopping
-// when ok is false.
+// when ok is false. The produce callback is OrNull-shaped: ok reports
+// presence — never trust element without it.
 //
 //	Example: with candidate starting at 0, Generate(func() (int, bool) {
 //	  candidate++
@@ -326,7 +333,8 @@ func Generate[Element any](produce func() (element Element, ok bool)) iter.Seq[E
 }
 
 // FilterMapSeq maps each element of sequence and keeps only the mappings
-// where keep is true, preserving order.
+// where keep is true, preserving order. The transform callback is
+// OrNull-shaped: keep reports presence — never trust mapped without it.
 //
 //	Example: FilterMapSeq(values, func(candidate int) (int, bool) {
 //	  if candidate%2 != 0 { return 0, false }

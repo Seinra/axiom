@@ -4,7 +4,17 @@
 // primary-key column List orders by for deterministic pages. Models use
 // normal GORM struct tags: the adapter follows GORM conventions, and the
 // core's no-tags rule stays core-side. YAGNI: no raw SQL strings beyond the
-// order column identifier.
+// order column identifier. Reach for database/sql or GORM directly when the
+// query is one-off; reach for this package when callers need the
+// repo.Repository contract over GORM with deterministic paging.
+//
+// Which function?
+//
+// | When you want to ...                        | Reach for ...              |
+// |----------------------------------------------|----------------------------|
+// | Build a GORM-backed Repository (migrates once) | NewStore                   |
+// | Persist / fetch / drop one row               | Store.Store / Fetch / Remove |
+// | List one deterministic page by order column  | Store.List                 |
 package repogorm
 
 import (

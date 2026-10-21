@@ -75,6 +75,8 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-20 | Docs track: guides+OrNull ODD prepared | PLAN | gaps medidos (7/15 Which-tables, OrNull solo slice+2 callbacks, README rancio) + ODD odd/tasks/axiom-guides-ornull.md + mirror; research web staged para próxima sesión; sin implementación |
 | 2026-10-21 | loop v0.2 gap-scan (loop-engineering v1.9) | IMPLEMENT | hub + REVIEW_PACKS five-element + REFERENCES delivery pins + config governance/validation/docs/state; suite 15 pkgs ok, vet 0, gofmt clean |
 | 2026-10-21 | guides+OrNull T3+T4 done | VALIDATE | README 15-index + canon/ladders + 8 tables + 13 Examples + iterx pointers; verifier Go (1 SUGGESTION applied); suite 15 ok, vet 0, gofmt/lint clean; push/PR owner-gated |
+| 2026-10-21 | official-docs T3+T4 done | VALIDATE | 17 páginas docs/ (quickstart + 15 guides + cookbook); verifier Go (S2 applied, S4 scratch green, S1/S3 parked); suite 15 ok, vet 0, gofmt/lint clean; push/PR owner-gated |
+| 2026-10-21 | official-docs gap-round done | VALIDATE | cookbook CI (3 tests) + fragmentos etiquetados + why-blocks + callouts; verifier Go (S1+S2 applied); suite 16 ok, vet 0, gofmt clean; push/PR owner-gated |
 
 ## Debt ledger
 

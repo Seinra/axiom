@@ -53,7 +53,7 @@ Start there, then `go doc` the package:
 | a loose value that may be missing, your own code | `(T, bool)` |
 | an absence to chain or transform | `opt.Option` |
 | a failure with a cause | `result.Result` |
-| two typed sides | `either` |
+| two typed sides | `either.Either` |
 
 ## Details
 

@@ -74,6 +74,7 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-21 | Delivery: PR #29 mergeado | DELIVERY | merge commit por orden owner; Closes #28 (auto-cerrado); rama feat/axiom-rename-readability |
 | 2026-10-20 | Docs track: guides+OrNull ODD prepared | PLAN | gaps medidos (7/15 Which-tables, OrNull solo slice+2 callbacks, README rancio) + ODD odd/tasks/axiom-guides-ornull.md + mirror; research web staged para próxima sesión; sin implementación |
 | 2026-10-21 | loop v0.2 gap-scan (loop-engineering v1.9) | IMPLEMENT | hub + REVIEW_PACKS five-element + REFERENCES delivery pins + config governance/validation/docs/state; suite 15 pkgs ok, vet 0, gofmt clean |
+| 2026-10-21 | guides+OrNull T3+T4 done | VALIDATE | README 15-index + canon/ladders + 8 tables + 13 Examples + iterx pointers; verifier Go (1 SUGGESTION applied); suite 15 ok, vet 0, gofmt/lint clean; push/PR owner-gated |
 
 ## Debt ledger
 

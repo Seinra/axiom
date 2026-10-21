@@ -84,5 +84,9 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 
 | Item | Phase | Ceiling | Upgrade Path |
 | --- | --- | --- | --- |
-| gap slices P0/P1 (issues #8-12) + P2 re-gated stdlib-gap + teachable (#13) | future slices | coverage-gap survey in ARCHITECTURE | one worker slice per group, verifier before review; P2 needs lesson sketch + stdlib-gap proof |
+| P2 combinations/permutations (#36, approved, next slice) | future slice | stdlib-gap + teachable gate met | one bounded worker slice (godoc + Which-table + Example), verifier, then PR |
+| v0 maturity bar + release checklist (#4) | decision + authoring | owner decision pending | define bar (freeze policy, gates, semver, checklist: tag/notes/go proxy), then ratify |
+| Branch protection on main (#3) | blocked | needs GitHub Pro or public repo | owner infra decision; meanwhile PR-gated merges by discipline |
+| #6 R3 verbatim advisories | parked (closed with scope note) | verbatim unrecoverable (no Engram/git/ODD record) | reopen only if verbatim text appears; triage coverage (8de4842) stands |
+| Axiom-1 clone + chore/delivery-infra | kept | owner order | do not touch without new order |
 | Catalyst replace-directive pilot | T5 | scratch only | versioned release + pin before any Catalyst commit |

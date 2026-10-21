@@ -1,4 +1,7 @@
-# Axiom loop state (machine-readable). ODD-track canonical is odd/tasks/*.md + Engram mirror + todo projection; phase-*.json is content-loops-only and NOT used here.
+---
+# Axiom loop state (machine-readable). ODD-track canonical is
+# odd/tasks/*.md + Engram mirror + todo projection;
+# phase-*.json is content-loops-only and NOT used here.
 schemaVersion: 1
 loop: AXIOM_LOOP.md
 vision: VISION.md
@@ -14,13 +17,15 @@ phases:
     skills: [foundry-requirements, cognitive-doc-design]
     gate: odd/tasks/<feature>.md + mirror + todo reconciled
   - id: IMPLEMENT
-    skills: [foundry]
-    gate: verifiable artifact, craft-floor clean
+    skills: [foundry, loop-engineering]
+    gate: >
+      verifiable artifact, craft-floor clean;
+      loop-engineering only when deliverable IS loop
   - id: VALIDATE
     skills: [foundry-testing, foundry-review]
     gate: go test + vet + gofmt green; Go/No-Go ledger when gated
   - id: FIX
-    skills: [bounded-writer]
+    skills: [bounded-writer, foundry-debug]
     gate: fix ≤ 3 attempts, then STOP to HITL
   - id: DEPOSIT
     skills: [engram]
@@ -29,4 +34,31 @@ dependencies:
   go: "1.27"
   module: github.com/seinra/axiom
   consumer: catalyst
-currentFeature: odd/tasks/axiom-skeleton-loop.md
+governance:
+  max_fix_attempts: 3
+  hitl_triggers:
+    - structural_schema_change
+    - security_finding
+    - unreproducible_divergence
+    - external_policy_interpretation
+    - fix_limit_exceeded
+  tdd_scope: {library_logic: true, prose_config: false}
+  routing:
+    inline_direct_max_files: 3
+    delegate_scout_min_files: 4
+    single_writer_min_files: 2
+    pause_delegate_calls: 20
+    pause_delegate_reads: 5
+  budget_guard: {max_changed_lines_before_chained_pr: 400}
+validation:
+  pre_phase: ["go vet ./..."]
+  post_phase:
+    - "go test ./..."
+    - "golangci-lint run --timeout=5m ./..."
+    - "gofmt -l ."
+docs:
+  style: cognitive-doc-design
+state:
+  dir: ".loop-modules"
+  files: {status: "STATUS.md", success_metrics: "SUCCESS_METRICS.md"}
+currentFeature: odd/tasks/axiom-guides-ornull.md

@@ -1,6 +1,14 @@
 # REVIEW_PACKS
 
-Skills-per-phase pack map. Five elements per phase: phase, skill, trigger, inputs, outputs. Never the skill table alone. Evaluate the skill trigger every phase; loop-engineering only when the deliverable IS the loop, never domain scouts/writers/verifiers.
+Phase → skill routing with load triggers. `loop-engineering` fires only when the deliverable IS the loop, never for domain scouts/writers/verifiers.
+
+## Quick path
+
+1. Match the current phase below.
+2. Evaluate its trigger — load the skill only when the trigger holds.
+3. Report `packs_loaded`, `code_intel`, `modules_read` on return.
+
+## Core map
 
 | Phase | Skill | Trigger (evaluate each time) | Inputs | Outputs |
 | --- | --- | --- | --- | --- |
@@ -16,3 +24,24 @@ Skills-per-phase pack map. Five elements per phase: phase, skill, trigger, input
 | DEPOSIT | Engram memory (`mem_save`, `mem_session_summary`) | every cycle end | discoveries/decisions | typed deposits + session summary |
 
 Loop-engineering guard: domain scouts/writers/verifiers NEVER use loop-engineering; it fires only for loop artifacts (`AXIOM_LOOP.md`, `.loop-modules/*`, `loop-config.yaml`, `VISION.md`).
+
+## Five elements (pack-map spec)
+
+| Element | Rule in this loop |
+| --- | --- |
+| Tiers | core-per-phase: `foundry-explore`, `foundry-requirements`, `cognitive-doc-design`, `foundry`, `foundry-testing`, `foundry-review`, Engram. conditional-trigger: external-evidence (INVESTIGATE only), `loop-engineering` (IMPLEMENT only when deliverable IS loop), bounded writer + `foundry-debug`-class (FIX only). future-roadmap: none — lean loop declares none-mapped with reason when a phase needs no skill. |
+| Capability block | compact descriptors (name + one-line trigger + contract pointer) advertised INTO every child envelope — children don't inherit ambient tools. |
+| Reporting contract | `packs_loaded`, `code_intel`, `modules_read` lines on return — instruction without reporting evaporates; standing code-intel default (structure-first, honest fallback). |
+| Fail-closed | resolution always runs, LOAD stays conditional — absence declares itself (`none-mapped` + reason), never silent. A phase that touched code or docs without loading its mapped packs has an invalid Result Contract. |
+| Reference IDs | pack maps cite REFERENCES IDs, never raw versions or URLs: `FOUNDRY`, `FOUNDRY-EXPLORE`, `FOUNDRY-REQUIREMENTS`, `FOUNDRY-DEBUG`, `FOUNDRY-TESTING`, `FOUNDRY-REVIEW`, `COG-DOC`, `LOOP-ENGINEERING`, `ODD-HARNESS`. |
+
+## Checklist
+
+- [ ] Trigger evaluated before loading — no ambient skill inheritance.
+- [ ] Exactly one `foundry` Decision Gate playbook per IMPLEMENT task.
+- [ ] `loop-engineering` only for loop artifacts — never domain work.
+- [ ] Return carries `packs_loaded`, `code_intel`, `modules_read`.
+
+## Next step
+
+Load VALIDATION_GATES for commands and evidence rules before claiming behavior.

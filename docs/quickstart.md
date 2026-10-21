@@ -24,7 +24,10 @@ require github.com/seinra/axiom v0.0.0
 replace github.com/seinra/axiom => ../Axiom
 ```
 
-Adjust `../Axiom` to the path where you cloned Axiom.
+> [!NOTE]
+> Point the `replace` at your local Axiom checkout — Axiom is unreleased, so
+> there is no tagged version to `go get`. Adjust `../Axiom` to the path where
+> you cloned it.
 
 ### 2. Run your first typed pipeline
 

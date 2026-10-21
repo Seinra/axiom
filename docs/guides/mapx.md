@@ -12,6 +12,15 @@ builtin maps everywhere (tallies, envelopes), and interop beats chaining here.
 All helpers are pure — inputs are never mutated, and nil inputs yield empty
 non-nil maps.
 
+> [!NOTE]
+> Collisions resolve last-wins: `KeyBy` keeps the last element per key and
+> `MapKeys` keeps the last write. When every key must survive a flip, reach for
+> `Invert` — it groups keys by shared value so nothing is silently dropped.
+
+> [!NOTE]
+> Helpers are pure and nil-tolerant: inputs are never mutated, and nil inputs
+> yield empty non-nil maps you can read immediately.
+
 **When to use the stdlib directly:** for `Keys`, `Values`, `Collect`, and
 `Clone`, reach for the stdlib `maps` package — this package does not repeat
 them. Reach for `mapx` for the reshape shapes: indexing a slice by key,

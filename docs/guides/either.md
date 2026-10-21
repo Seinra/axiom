@@ -10,8 +10,11 @@
 success. That neutrality is the whole point: for success-or-failure use
 `result`, for maybe-present use `opt`. Reach for `either` when both outcomes
 are ordinary values, e.g. a check that yields either a lock reason or granted
-content. Note the zero value reads as a `Left` holding the zero `LeftT`, so
-always construct with `Left` or `Right`.
+content.
+
+> [!WARNING]
+> The zero value reads as a `Left` holding the zero `LeftT` — always construct
+> with `Left` or `Right`, never declare a bare `Either`.
 
 **When to use the stdlib directly:** two-value returns, a small struct with a
 discriminant field, or an interface cover most branching. Reach for `either`

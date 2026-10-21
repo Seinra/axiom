@@ -17,9 +17,17 @@ propagates upstream, and re-ranging re-runs the whole pipeline from the source.
 the middle — transform, filter, take/drop, zip, chunk — when the pipeline
 should stay lazy instead of allocating each stage.
 
-One fail-fast exception: `ChunkedSeq` and `WindowsSeq` validate size at call
-time and panic on size <= 0 (a programmer error, matching `slices.Chunk`);
-valid sizes stay fully lazy.
+One fail-fast exception, called out below: `ChunkedSeq` and `WindowsSeq`
+validate size at call time and panic on size <= 0 (a programmer error, matching
+`slices.Chunk`); valid sizes stay fully lazy.
+
+> [!WARNING]
+> `ChunkedSeq` and `WindowsSeq` panic on size <= 0 at call time — the fail-fast
+> check runs before any laziness kicks in. Validate sizes up front.
+
+> [!WARNING]
+> `Repeat` and `Cycle` are infinite. Realize them only through a bounded
+> consumer such as `Take` — ranging one directly never terminates.
 
 ## Steps
 
@@ -36,6 +44,16 @@ valid sizes stay fully lazy.
 5. Window: `ChunkedSeq` (last may be short, mirrors `slice.Chunked`),
    `WindowsSeq` (mirrors `slice.Windows`), `IntersperseSeq` slots separators,
    `DeduplicateSeq` collapses adjacent duplicates only.
+
+> [!NOTE]
+> Ranging re-runs the whole pipeline from the source, and early termination
+> (`break`, `Take`) propagates upstream. Nothing runs until you range or
+> collect — a built pipeline is inert.
+
+> [!NOTE]
+> `TakeWhile` consumes its boundary element from the source without yielding
+> it, and `DeduplicateSeq` collapses adjacent duplicates only — distant
+> duplicates still pass through.
 
 ## Which function?
 

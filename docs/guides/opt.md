@@ -28,6 +28,11 @@ want the plumbing — map, chain, filter, fall back — without an `if` at each 
 5. Bridge: `ToResult` converts absence into a `result.Result` failure when the
    caller needs a cause.
 
+> [!NOTE]
+> Pass a non-nil cause to `ToResult`: a nil failure flows into `result.Fail`,
+> whose nil guard replaces it with a generic descriptive error. Name the
+> absence at the moment you bridge.
+
 ## Which function?
 
 Resumed from the package table — see `go doc ./opt` for the full version.

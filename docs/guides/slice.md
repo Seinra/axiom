@@ -24,10 +24,17 @@ folding shapes the stdlib leaves to you.
 3. Find and compare: `FindSlice`, `Min` / `Max`, `MinBy` / `MaxBy` return the
    OrNull shape — check the `bool` before trusting the value (see below).
 4. Reshape: `GroupBySlice` / `Tally` bucket elements; `FlatMap` / `Flatten`
-   join; `Chunked` / `Windows` cut fixed pieces (`Chunked`/`Windows` panic on
-   size <= 0 — a programmer error, matching `slices.Chunk`).
+   join; `Chunked` / `Windows` cut fixed pieces (see the size callout below).
 5. Combine and order: `Zip` / `Unzip` (see `Pair`), `Distinct`, `Partition`,
    `Intersperse`, `SortBy` (stable copy, input untouched), `RunningFold`.
+
+> [!WARNING]
+> `Chunked` and `Windows` panic on size <= 0 — a non-positive size is a
+> programmer error, matching `slices.Chunk`. Validate sizes at the call site.
+
+> [!NOTE]
+> `MapSlice`, `FilterSlice`, and friends never return nil: empty input yields
+> an empty slice, so you range the outcome directly without a nil check.
 
 ## Which function?
 

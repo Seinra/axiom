@@ -12,6 +12,15 @@ and `Clear` mutate through a pointer; queries (`Has`, `Len`, `IsEmpty`,
 `SymmetricDifference`, `MapValue`) never mutate. `Members` snapshots come back
 unordered — assert membership, never order.
 
+> [!WARNING]
+> `Members` snapshots come back in unspecified order. Assert membership, never
+> order — any test or render that depends on position is broken by definition.
+
+> [!NOTE]
+> `Add`, `Remove`, and `Clear` mutate through a pointer; queries and
+> combinations (`Union`, `Intersection`, `Difference`, `MapValue`, …) never
+> mutate. The zero value is an empty set ready to use.
+
 **When to use the stdlib directly:** a one-off `map[T]struct{}` with inline
 add/check/delete is fine for a single function. Reach for `set` when membership
 is combined (`Union`/`Intersection`/`Difference`), compared (`Equal`/

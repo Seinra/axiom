@@ -8,8 +8,12 @@
 `result.Result[T]` holds either a success (`Ok`) or a failure (`Fail`, always
 with a non-nil cause — a nil failure is replaced with a descriptive error).
 Transform the success side while the failure carries through untouched; split
-both paths explicitly with `Unwrap`. Never construct the zero value — use `Ok`
-or `Fail`.
+both paths explicitly with `Unwrap`.
+
+> [!WARNING]
+> Never construct the zero value — build with `Ok` or `Fail`. `Unwrap` on a zero
+> `Result` reports an error instead of a nil failure, so a bypassed constructor
+> surfaces as a failure you did not write.
 
 **When to use the stdlib directly:** plain `(T, error)` returns at function
 boundaries are idiomatic Go and stay that way. Reach for `result` when a success
@@ -21,13 +25,21 @@ crosses a boundary where panicking code must become a value (`Try`).
 1. Wrap: `Ok(value)` holds success; `Fail(err)` holds failure.
 2. Ask or read: `IsOk` checks; `Unwrap` splits both paths; `UnwrapOr` /
    `UnwrapOrElse` read with a fallback; `Must` reads a *known* success
-   (tests, static seeds — it panics otherwise, never use it for control flow).
+   (tests, static seeds — never use it for control flow).
+
+> [!WARNING]
+> `Must` panics on failure. Use it only for values known at construction time
+> (tests, static seeds) — never to steer branches.
 3. Transform: `Map` / `MapValue` convert the success side; `MapFailure`
    converts the failure side; failures carry through untouched either way.
 4. Chain and recover: `AndThen` feeds success into the next `Result`;
    `Flatten` collapses one nesting level; `OrElse` recovers from failure.
 5. Boundaries: `Try` converts panicking code (parsers, callbacks, legacy
    calls) into a `Result` at the boundary — never for steering branches.
+
+> [!NOTE]
+> `Try` turns a panic into `Fail`, and a nil attempt panics when called —
+> recovered like any other panic. Use it for boundary conversion only.
 
 ## Which function?
 

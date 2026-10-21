@@ -19,6 +19,17 @@
 // leaks through the public API — every crossing is gated by a generic Resolve
 // returning T or an error. This is the single sanctioned exception to the
 // no-any rule, and it stays inside this package.
+//
+// Which function?
+//
+// | When you want to ...                          | Reach for ...                                              |
+// |------------------------------------------------|----------------------------------------------------------------|
+// | Create an empty container                      | New (Injector)                                             |
+// | Register a lazy constructor                    | Provide                                                    |
+// | Resolve the shared singleton (retries on fail) | Resolve                                                    |
+// | Resolve or panic (tests, static seeds)         | MustResolve                                                |
+// | Swap the constructor and drop the cache        | Replace                                                    |
+// | Match duplicate / missing / in-flight          | ErrDuplicateService / ErrServiceNotFound / ErrBuildInFlight |
 package di
 
 import (

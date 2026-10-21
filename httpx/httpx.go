@@ -1,7 +1,18 @@
 // Package httpx provides typed Echo adapters over a single JSON envelope.
 //
 // No middleware, router helpers, or validation here — validation is the valid
-// package's job at the handler edge.
+// package's job at the handler edge. Reach for net/http or Echo directly for
+// transport; reach for this package when handlers speak the single JSON envelope.
+//
+// Which function?
+//
+// | When you want to ...                | Reach for ...       |
+// |--------------------------------------|---------------------|
+// | Parse the request body               | Decode              |
+// | Reply with a success envelope        | WriteJSON (Response) |
+// | Reply with a failure envelope        | WriteError (Response) |
+// | Reply validation failures as 422     | ValidationWriteError |
+// | Shape a paged listing payload        | ListResponse        |
 package httpx
 
 import (

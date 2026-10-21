@@ -7,6 +7,16 @@
 //
 // Use New to build a pool with a maker, or declare a zero Pool and Get from
 // it directly: the zero value returns the zero Item and never panics.
+// Reach for a plain value directly when reuse buys nothing; the pool only
+// pays off for transient buffers callers Put back.
+//
+// Which function?
+//
+// | When you want to ...             | Reach for ... |
+// |-----------------------------------|---------------|
+// | Hold recyclables; build with maker | Pool / New    |
+// | Borrow a value (or zero Item)     | Pool.Get      |
+// | Return a value for reuse          | Pool.Put      |
 package pool
 
 import "sync"

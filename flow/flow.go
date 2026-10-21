@@ -27,7 +27,17 @@
 //	}
 //
 // Out of scope (YAGNI): no FanIn/FanOut channels, no pipelines, no
-// Retry/backoff; those are later slices if ever.
+// Retry/backoff; those are later slices if ever. Reach for plain loops or
+// golang.org/x/sync/errgroup directly for single-goroutine or unshaped work.
+//
+// Which function?
+//
+// | When you want to ...                  | Reach for ...     |
+// |----------------------------------------|-------------------|
+// | Transform every input, keep input order | Map               |
+// | Run side effects without results        | ForEach           |
+// | Take the first success, cancel siblings | Race              |
+// | Match the empty-Race sentinel           | ErrNoRaceInputs   |
 package flow
 
 import (

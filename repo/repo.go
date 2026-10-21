@@ -6,6 +6,20 @@
 // struct tags, and no reflection (YAGNI — identity extraction stays a
 // caller-supplied keyOf function, never tags or scanners). A GORM adapter
 // will arrive as its own slice and reuse the Page convention defined here.
+// Reach for slices and maps directly when the data fits in memory for one
+// call; reach for this package when records need identity, paging, and a
+// swappable Repository behind the contract.
+//
+// Which function?
+//
+// | When you want to ...                 | Reach for ...                         |
+// |---------------------------------------|---------------------------------------|
+// | Persist / fetch / drop one record     | Repository.Store / Fetch / Remove     |
+// | List one page                         | Repository.List                       |
+// | In-memory Repository for tests        | NewMemoryRepository (MemoryRepository) |
+// | Select a page; count skipped records  | Page / Page.Offset                    |
+// | Count pages; check for a next page    | TotalPages / HasNextPage              |
+// | Match missing record / bad page       | ErrRecordNotFound / ErrInvalidPage    |
 package repo
 
 import (

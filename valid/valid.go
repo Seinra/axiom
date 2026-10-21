@@ -4,7 +4,19 @@
 // and a message, then collect Rules in a Validator. Validator.Validate runs
 // every Rule and reports all failures; Validator.Valid answers the boolean
 // shorthand. The package ships no domain helpers: learners write their own
-// Rules, and that restraint is the lesson.
+// Rules, and that restraint is the lesson. Reach for plain ifs and errors
+// directly when a single inline check reads clearer than a Rule.
+//
+// Which function?
+//
+// | When you want to ...                 | Reach for ...      |
+// |---------------------------------------|--------------------|
+// | Express one check as a value          | Predicate          |
+// | Combine checks                        | And / Or / Not     |
+// | Name one check with its message       | Rule (+ Apply)     |
+// | Collect rules into a set              | New                |
+// | Run every rule, collect all failures  | Validator.Validate |
+// | Boolean shorthand for one candidate   | Validator.Valid    |
 package valid
 
 import "fmt"

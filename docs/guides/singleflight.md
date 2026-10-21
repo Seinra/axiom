@@ -29,7 +29,7 @@ its "Which function?" table:
 
 From `singleflight/example_test.go` (`ExampleGroup_Call`):
 
-```go
+```go fragment: excerpt of ExampleGroup_Call — full runnable at singleflight/example_test.go
 var flight singleflight.Group[string, string]
 executions := 0
 outcome, _, _ := flight.Call("greeting", func() (string, error) {

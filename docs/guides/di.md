@@ -32,7 +32,7 @@ The package doc (`go doc ./di`) is the source; this table mirrors its
 
 From `di/example_test.go` (`ExampleResolve`):
 
-```go
+```go fragment: excerpt of ExampleResolve — full runnable at di/example_test.go
 injector := di.New()
 _ = di.Provide(injector, "greeting", func(*di.Injector) (string, error) { return "hello", nil })
 greeting, _ := di.Resolve[string](injector, "greeting")

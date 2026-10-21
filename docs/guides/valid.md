@@ -33,7 +33,7 @@ The package doc (`go doc ./valid`) is the source; this table mirrors its
 
 From `valid/example_test.go` (`ExampleNew` — the exam-score path):
 
-```go
+```go fragment: excerpt of ExampleNew — full runnable at valid/example_test.go
 passing := valid.Rule[int]{
 	Name:    "passing score",
 	Check:   func(score int) bool { return score >= 60 },

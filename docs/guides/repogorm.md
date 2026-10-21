@@ -30,7 +30,7 @@ The package doc (`go doc ./repogorm`) is the source; this table mirrors its
 
 From `repogorm/example_test.go` (`ExampleNewStore`):
 
-```go
+```go fragment: excerpt of ExampleNewStore — full runnable at repogorm/example_test.go
 database, _ := gorm.Open(sqlite.Open("file:example?mode=memory&cache=shared"), &gorm.Config{})
 lessonStore, _ := repogorm.NewStore[Lesson, uint](database, []any{Lesson{}}, "id")
 _ = lessonStore.Store(Lesson{ID: 1, Slug: "lesson-a", Title: "Lesson A"})

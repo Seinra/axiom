@@ -32,7 +32,7 @@ The package doc (`go doc ./flow`) is the source; this table mirrors its
 
 From `flow/example_test.go` (`ExampleMap` — the ordered transform):
 
-```go
+```go fragment: excerpt of ExampleMap — full runnable at flow/example_test.go
 doubled, _ := flow.Map(context.Background(), []int{1, 2, 3}, 2, func(_ context.Context, candidate int) (int, error) {
 	return candidate * 2, nil
 })

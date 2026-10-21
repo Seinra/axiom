@@ -33,7 +33,7 @@ The package doc (`go doc ./httpx`) is the source; this table mirrors its
 
 From `httpx/example_test.go` (`ExampleWriteJSON`):
 
-```go
+```go fragment: excerpt of ExampleWriteJSON — full runnable at httpx/example_test.go
 engine := echo.New()
 httpRequest := httptest.NewRequest(http.MethodGet, "/", nil)
 recorder := httptest.NewRecorder()

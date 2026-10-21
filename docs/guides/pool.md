@@ -29,7 +29,7 @@ The package doc (`go doc ./pool`) is the source; this table mirrors its
 
 From `pool/example_test.go` (`ExampleNew` — the typed Get/Put path):
 
-```go
+```go fragment: excerpt of ExampleNew — full runnable at pool/example_test.go
 buffers := pool.New(func() []byte { return make([]byte, 0, 4) })
 buffer := append(buffers.Get(), "ok"...)
 fmt.Println(string(buffer))

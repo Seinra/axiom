@@ -33,7 +33,7 @@ The package doc (`go doc ./repo`) is the source; this table mirrors its
 
 From `repo/example_test.go` (`ExampleNewMemoryRepository`):
 
-```go
+```go fragment: excerpt of ExampleNewMemoryRepository — full runnable at repo/example_test.go
 lessonStore := repo.NewMemoryRepository(lessonKeyOf)
 _ = lessonStore.Store(lesson{Slug: "lesson-a", Title: "Lesson A"})
 fetched, _ := lessonStore.Fetch("lesson-a")

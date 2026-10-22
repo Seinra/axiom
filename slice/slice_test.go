@@ -1,6 +1,7 @@
 package slice_test
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -920,5 +921,256 @@ func TestNilFuncSkipsOnEmptyInput(t *testing.T) {
 	}
 	if got := axiomslice.RunningFold(numbers, 0, nil); got == nil || len(got) != 0 {
 		t.Fatalf("RunningFold(nil, 0, nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestCombinationsTwoOfThreeOrdersLexicographic(t *testing.T) {
+	got := axiomslice.Combinations([]int{1, 2, 3}, 2)
+	want := [][]int{{1, 2}, {1, 3}, {2, 3}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Combinations = %v, want %v", got, want)
+	}
+}
+
+func TestCombinationsTableDriven(t *testing.T) {
+	testCases := []struct {
+		scenario    string
+		input       []int
+		selectCount int
+		expected    [][]int
+	}{
+		{scenario: "one of three yields singletons in order", input: []int{1, 2, 3}, selectCount: 1, expected: [][]int{{1}, {2}, {3}}},
+		{scenario: "three of three yields singleton input order", input: []int{1, 2, 3}, selectCount: 3, expected: [][]int{{1, 2, 3}}},
+		{scenario: "two of four yields six in index order", input: []int{1, 2, 3, 4}, selectCount: 2, expected: [][]int{{1, 2}, {1, 3}, {1, 4}, {2, 3}, {2, 4}, {3, 4}}},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.scenario, func(t *testing.T) {
+			got := axiomslice.Combinations(testCase.input, testCase.selectCount)
+			if !reflect.DeepEqual(got, testCase.expected) {
+				t.Fatalf("Combinations(%v, %d) = %v, want %v", testCase.input, testCase.selectCount, got, testCase.expected)
+			}
+		})
+	}
+}
+
+func TestCombinationsStringsPreserveInputOrder(t *testing.T) {
+	got := axiomslice.Combinations([]string{"a", "b", "c"}, 2)
+	want := [][]string{{"a", "b"}, {"a", "c"}, {"b", "c"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Combinations strings = %v, want %v", got, want)
+	}
+}
+
+func TestCombinationsZeroYieldsOneEmpty(t *testing.T) {
+	got := axiomslice.Combinations([]int{1, 2, 3}, 0)
+	if got == nil || len(got) != 1 {
+		t.Fatalf("Combinations(k 0) = %v, want one empty combination", got)
+	}
+	if got[0] == nil || len(got[0]) != 0 {
+		t.Fatalf("Combinations(k 0)[0] = %v, want empty non-nil", got[0])
+	}
+	var numbers []int
+	gotNil := axiomslice.Combinations(numbers, 0)
+	if gotNil == nil || len(gotNil) != 1 || gotNil[0] == nil || len(gotNil[0]) != 0 {
+		t.Fatalf("Combinations(nil, 0) = %v, want one empty non-nil combination", gotNil)
+	}
+}
+
+func TestCombinationsOversizeYieldsEmpty(t *testing.T) {
+	got := axiomslice.Combinations([]int{1, 2, 3}, 5)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Combinations(k 5) = %v, want empty non-nil", got)
+	}
+}
+
+func TestCombinationsNilYieldsEmpty(t *testing.T) {
+	var numbers []int
+	got := axiomslice.Combinations(numbers, 2)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Combinations(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestCombinationsEmptyYieldsEmpty(t *testing.T) {
+	got := axiomslice.Combinations([]int{}, 1)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Combinations(empty) = %v, want empty non-nil", got)
+	}
+}
+
+func TestCombinationsNegativePanics(t *testing.T) {
+	for _, selectCount := range []int{-1, -5} {
+		panicked := func() (didPanic any) {
+			defer func() { didPanic = recover() }()
+			_ = axiomslice.Combinations([]int{1, 2}, selectCount)
+			return nil
+		}()
+		if panicked == nil {
+			t.Fatalf("Combinations(k %d) did not panic, want panic", selectCount)
+		}
+		want := fmt.Sprintf("axiom slice: Combinations needs k >= 0, got %d", selectCount)
+		if fmt.Sprintf("%v", panicked) != want {
+			t.Fatalf("Combinations panic = %v, want %q", panicked, want)
+		}
+	}
+}
+
+func TestCombinationsCopiesNotAliased(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	combos := axiomslice.Combinations(numbers, 2)
+	if len(combos) == 0 {
+		t.Fatal("Combinations returned empty, want non-empty seed for alias pin")
+	}
+	combos[0][0] = 99
+	if !reflect.DeepEqual(numbers, []int{1, 2, 3}) {
+		t.Fatalf("source mutated to %v, want [1 2 3]", numbers)
+	}
+	if !reflect.DeepEqual(combos[1], []int{1, 3}) {
+		t.Fatalf("sibling combo mutated to %v, want [1 3]", combos[1])
+	}
+}
+
+func TestCombinationsInputMutationStaysDetached(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	combos := axiomslice.Combinations(numbers, 2)
+	if len(combos) == 0 {
+		t.Fatal("Combinations returned empty, want non-empty seed for detach pin")
+	}
+	numbers[0] = 99
+	if reflect.DeepEqual(combos[0], []int{99, 2}) {
+		t.Fatalf("combo aliases input, got %v after input mutation", combos[0])
+	}
+}
+
+func TestCombinationsNeverMutatesInput(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	_ = axiomslice.Combinations(numbers, 2)
+	if !reflect.DeepEqual(numbers, []int{1, 2, 3}) {
+		t.Fatalf("input mutated to %v, want [1 2 3]", numbers)
+	}
+}
+
+func TestPermutationsTwoOfThreeOrdersLexicographic(t *testing.T) {
+	got := axiomslice.Permutations([]int{1, 2, 3}, 2)
+	want := [][]int{{1, 2}, {1, 3}, {2, 1}, {2, 3}, {3, 1}, {3, 2}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Permutations = %v, want %v", got, want)
+	}
+}
+
+func TestPermutationsTableDriven(t *testing.T) {
+	testCases := []struct {
+		scenario    string
+		input       []int
+		selectCount int
+		expected    [][]int
+	}{
+		{scenario: "one of three yields singletons in input order", input: []int{1, 2, 3}, selectCount: 1, expected: [][]int{{1}, {2}, {3}}},
+		{scenario: "three of three yields six in index order", input: []int{1, 2, 3}, selectCount: 3, expected: [][]int{{1, 2, 3}, {1, 3, 2}, {2, 1, 3}, {2, 3, 1}, {3, 1, 2}, {3, 2, 1}}},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.scenario, func(t *testing.T) {
+			got := axiomslice.Permutations(testCase.input, testCase.selectCount)
+			if !reflect.DeepEqual(got, testCase.expected) {
+				t.Fatalf("Permutations(%v, %d) = %v, want %v", testCase.input, testCase.selectCount, got, testCase.expected)
+			}
+		})
+	}
+}
+
+func TestPermutationsStringsStartWithInputOrder(t *testing.T) {
+	got := axiomslice.Permutations([]string{"a", "b", "c"}, 2)
+	want := [][]string{{"a", "b"}, {"a", "c"}, {"b", "a"}, {"b", "c"}, {"c", "a"}, {"c", "b"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Permutations strings = %v, want %v", got, want)
+	}
+}
+
+func TestPermutationsZeroYieldsOneEmpty(t *testing.T) {
+	got := axiomslice.Permutations([]int{1, 2, 3}, 0)
+	if got == nil || len(got) != 1 {
+		t.Fatalf("Permutations(k 0) = %v, want one empty arrangement", got)
+	}
+	if got[0] == nil || len(got[0]) != 0 {
+		t.Fatalf("Permutations(k 0)[0] = %v, want empty non-nil", got[0])
+	}
+	var numbers []int
+	gotNil := axiomslice.Permutations(numbers, 0)
+	if gotNil == nil || len(gotNil) != 1 || gotNil[0] == nil || len(gotNil[0]) != 0 {
+		t.Fatalf("Permutations(nil, 0) = %v, want one empty non-nil arrangement", gotNil)
+	}
+}
+
+func TestPermutationsOversizeYieldsEmpty(t *testing.T) {
+	got := axiomslice.Permutations([]int{1, 2, 3}, 5)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Permutations(k 5) = %v, want empty non-nil", got)
+	}
+}
+
+func TestPermutationsNilYieldsEmpty(t *testing.T) {
+	var numbers []int
+	got := axiomslice.Permutations(numbers, 2)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Permutations(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestPermutationsEmptyYieldsEmpty(t *testing.T) {
+	got := axiomslice.Permutations([]int{}, 1)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Permutations(empty) = %v, want empty non-nil", got)
+	}
+}
+
+func TestPermutationsNegativePanics(t *testing.T) {
+	for _, selectCount := range []int{-1, -5} {
+		panicked := func() (didPanic any) {
+			defer func() { didPanic = recover() }()
+			_ = axiomslice.Permutations([]int{1, 2}, selectCount)
+			return nil
+		}()
+		if panicked == nil {
+			t.Fatalf("Permutations(k %d) did not panic, want panic", selectCount)
+		}
+		want := fmt.Sprintf("axiom slice: Permutations needs k >= 0, got %d", selectCount)
+		if fmt.Sprintf("%v", panicked) != want {
+			t.Fatalf("Permutations panic = %v, want %q", panicked, want)
+		}
+	}
+}
+
+func TestPermutationsCopiesNotAliased(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	orders := axiomslice.Permutations(numbers, 2)
+	if len(orders) == 0 {
+		t.Fatal("Permutations returned empty, want non-empty seed for alias pin")
+	}
+	orders[0][0] = 99
+	if !reflect.DeepEqual(numbers, []int{1, 2, 3}) {
+		t.Fatalf("source mutated to %v, want [1 2 3]", numbers)
+	}
+	if !reflect.DeepEqual(orders[1], []int{1, 3}) {
+		t.Fatalf("sibling order mutated to %v, want [1 3]", orders[1])
+	}
+}
+
+func TestPermutationsInputMutationStaysDetached(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	orders := axiomslice.Permutations(numbers, 2)
+	if len(orders) == 0 {
+		t.Fatal("Permutations returned empty, want non-empty seed for detach pin")
+	}
+	numbers[0] = 99
+	if reflect.DeepEqual(orders[0], []int{99, 2}) {
+		t.Fatalf("order aliases input, got %v after input mutation", orders[0])
+	}
+}
+
+func TestPermutationsNeverMutatesInput(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	_ = axiomslice.Permutations(numbers, 2)
+	if !reflect.DeepEqual(numbers, []int{1, 2, 3}) {
+		t.Fatalf("input mutated to %v, want [1 2 3]", numbers)
 	}
 }

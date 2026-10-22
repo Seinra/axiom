@@ -19,3 +19,19 @@ func ExampleMapSlice() {
 	// [4]
 	// 12
 }
+
+// ExampleCombinations shows all 2-subsets of three options in index order.
+func ExampleCombinations() {
+	combos := slice.Combinations([]string{"a", "b", "c"}, 2)
+	fmt.Println(combos)
+	// Output:
+	// [[a b] [a c] [b c]]
+}
+
+// ExamplePermutations shows all 2-arrangements of three options in index order.
+func ExamplePermutations() {
+	orders := slice.Permutations([]string{"a", "b", "c"}, 2)
+	fmt.Println(orders)
+	// Output:
+	// [[a b] [a c] [b a] [b c] [c a] [c b]]
+}

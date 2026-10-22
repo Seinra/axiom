@@ -23,7 +23,7 @@ v0 is the first public promise of Axiom: what stays stable, what ships, and how 
 | Lint gate | `golangci-lint run --timeout=5m ./...` reports 0 issues (minimal enforcing set: `govet`, `staticcheck`, `errcheck`, `revive:var-naming`, `gocyclo≤10` per TECH_STACK). |
 | Versioning | Semver. First public tag proposed `v0.1.0` on module `github.com/seinra/axiom` (`go 1.27`). v0 allows additive growth; breaking exports require v1 or an owner-signed exception. |
 | Release checklist | 1) Bar ratified by owner. 2) Tree green on gates above at the release commit. 3) Tag `v0.1.0` pushed. 4) Release notes (freeze scope, package list, gate evidence). 5) Go proxy availability: `GOPROXY=proxy.golang.org go list -m -versions github.com/seinra/axiom` shows the tag; `go get github.com/seinra/axiom@v0.1.0` resolves from a scratch module. 6) Quickstart verified <5 minutes by a fresh reader. |
-| License | Open: MIT vs BSD pending owner decision (VISION inv 6 says MIT/BSD). No publish before this lands. |
+| License | Decided MIT (owner 2026-10-22, verbatim "Ok, vamos con MIT"). No publish before the LICENSE file + tag land (both owner-gated). |
 | Branch protection | Desired (issue #3) but blocked: needs GitHub Pro or a public repo. Until then, PR-gated merges by discipline. |
 | Out of scope | Publishing the repo, pushing the tag, opening PRs, Catalyst commits, and #36 implementation. This track only defines the bar. |
 

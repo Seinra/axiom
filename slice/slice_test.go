@@ -872,6 +872,11 @@ func TestNilFuncPanicsOnNonEmptyInput(t *testing.T) {
 		{name: "FilterIndexed", call: func() { _ = axiomslice.FilterIndexed([]int{1, 2}, nil) }},
 		{name: "SortBy", call: func() { _ = axiomslice.SortBy[int, int]([]int{2, 1}, nil) }},
 		{name: "RunningFold", call: func() { _ = axiomslice.RunningFold([]int{1, 2}, 0, nil) }},
+		{name: "FindOrElse", call: func() { _ = axiomslice.FindOrElse([]int{1, 2}, nil, 0) }},
+		{name: "Every", call: func() { _ = axiomslice.Every([]int{1, 2}, nil) }},
+		{name: "Some", call: func() { _ = axiomslice.Some([]int{1, 2}, nil) }},
+		{name: "None", call: func() { _ = axiomslice.None([]int{1, 2}, nil) }},
+		{name: "FindIndexes", call: func() { _ = axiomslice.FindIndexes([]int{1, 2}, nil) }},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -921,6 +926,21 @@ func TestNilFuncSkipsOnEmptyInput(t *testing.T) {
 	}
 	if got := axiomslice.RunningFold(numbers, 0, nil); got == nil || len(got) != 0 {
 		t.Fatalf("RunningFold(nil, 0, nil) = %v, want empty non-nil", got)
+	}
+	if got := axiomslice.FindOrElse(numbers, nil, 7); got != 7 {
+		t.Fatalf("FindOrElse(nil, nil, 7) = %d, want 7", got)
+	}
+	if axiomslice.Every(numbers, nil) != true {
+		t.Fatal("Every(nil, nil) = false, want true")
+	}
+	if axiomslice.Some(numbers, nil) != false {
+		t.Fatal("Some(nil, nil) = true, want false")
+	}
+	if axiomslice.None(numbers, nil) != true {
+		t.Fatal("None(nil, nil) = false, want true")
+	}
+	if got := axiomslice.FindIndexes(numbers, nil); got == nil || len(got) != 0 {
+		t.Fatalf("FindIndexes(nil, nil) = %v, want empty non-nil", got)
 	}
 }
 
@@ -1172,5 +1192,584 @@ func TestPermutationsNeverMutatesInput(t *testing.T) {
 	_ = axiomslice.Permutations(numbers, 2)
 	if !reflect.DeepEqual(numbers, []int{1, 2, 3}) {
 		t.Fatalf("input mutated to %v, want [1 2 3]", numbers)
+	}
+}
+
+func TestFindOrElseReturnsFirstMatch(t *testing.T) {
+	got := axiomslice.FindOrElse([]int{1, 2, 3, 4}, func(element int) bool { return element%2 == 0 }, -1)
+	if got != 2 {
+		t.Fatalf("FindOrElse = %d, want 2", got)
+	}
+}
+
+func TestFindOrElseFallsBackOnNoMatch(t *testing.T) {
+	numbers := []int{1, 3, 5}
+	if len(numbers) == 0 {
+		t.Fatal("seed is empty, want non-empty input for the no-match pin")
+	}
+	got := axiomslice.FindOrElse(numbers, func(element int) bool { return element%2 == 0 }, -1)
+	if got != -1 {
+		t.Fatalf("FindOrElse(no match) = %d, want -1", got)
+	}
+}
+
+func TestFindOrElseEmptyYieldsFallback(t *testing.T) {
+	got := axiomslice.FindOrElse([]int{}, func(element int) bool { return true }, 7)
+	if got != 7 {
+		t.Fatalf("FindOrElse(empty) = %d, want 7", got)
+	}
+}
+
+func TestFindOrElseNilYieldsFallback(t *testing.T) {
+	var numbers []int
+	got := axiomslice.FindOrElse(numbers, func(element int) bool { return true }, 7)
+	if got != 7 {
+		t.Fatalf("FindOrElse(nil) = %d, want 7", got)
+	}
+}
+
+func TestFirstOrReturnsFirst(t *testing.T) {
+	got := axiomslice.FirstOr([]string{"go", "rust", "zig"}, "fallback")
+	if got != "go" {
+		t.Fatalf("FirstOr = %q, want %q", got, "go")
+	}
+}
+
+func TestFirstOrEmptyYieldsFallback(t *testing.T) {
+	got := axiomslice.FirstOr([]string{}, "fallback")
+	if got != "fallback" {
+		t.Fatalf("FirstOr(empty) = %q, want %q", got, "fallback")
+	}
+}
+
+func TestFirstOrNilYieldsFallback(t *testing.T) {
+	var words []string
+	got := axiomslice.FirstOr(words, "fallback")
+	if got != "fallback" {
+		t.Fatalf("FirstOr(nil) = %q, want %q", got, "fallback")
+	}
+}
+
+func TestLastOrReturnsLast(t *testing.T) {
+	got := axiomslice.LastOr([]string{"go", "rust", "zig"}, "fallback")
+	if got != "zig" {
+		t.Fatalf("LastOr = %q, want %q", got, "zig")
+	}
+}
+
+func TestLastOrEmptyYieldsFallback(t *testing.T) {
+	got := axiomslice.LastOr([]string{}, "fallback")
+	if got != "fallback" {
+		t.Fatalf("LastOr(empty) = %q, want %q", got, "fallback")
+	}
+}
+
+func TestLastOrNilYieldsFallback(t *testing.T) {
+	var words []string
+	got := axiomslice.LastOr(words, "fallback")
+	if got != "fallback" {
+		t.Fatalf("LastOr(nil) = %q, want %q", got, "fallback")
+	}
+}
+
+func TestEveryAllMatchSucceeds(t *testing.T) {
+	numbers := []int{2, 4, 6}
+	if len(numbers) == 0 {
+		t.Fatal("seed is empty, want non-empty input for the all-match pin")
+	}
+	if !axiomslice.Every(numbers, func(element int) bool { return element%2 == 0 }) {
+		t.Fatalf("Every(%v) = false, want true", numbers)
+	}
+}
+
+func TestEveryOneMismatchFails(t *testing.T) {
+	numbers := []int{2, 3, 6}
+	if len(numbers) == 0 {
+		t.Fatal("seed is empty, want non-empty input for the mismatch pin")
+	}
+	if axiomslice.Every(numbers, func(element int) bool { return element%2 == 0 }) {
+		t.Fatalf("Every(%v) = true, want false", numbers)
+	}
+}
+
+func TestEveryEmptyIsTrue(t *testing.T) {
+	if !axiomslice.Every([]int{}, func(element int) bool { return false }) {
+		t.Fatal("Every(empty) = false, want true")
+	}
+}
+
+func TestEveryNilIsTrue(t *testing.T) {
+	var numbers []int
+	if !axiomslice.Every(numbers, func(element int) bool { return false }) {
+		t.Fatal("Every(nil) = false, want true")
+	}
+}
+
+func TestSomeOneMatchSucceeds(t *testing.T) {
+	numbers := []int{1, 3, 4}
+	if len(numbers) == 0 {
+		t.Fatal("seed is empty, want non-empty input for the one-match pin")
+	}
+	if !axiomslice.Some(numbers, func(element int) bool { return element%2 == 0 }) {
+		t.Fatalf("Some(%v) = false, want true", numbers)
+	}
+}
+
+func TestSomeNoMatchFails(t *testing.T) {
+	numbers := []int{1, 3, 5}
+	if len(numbers) == 0 {
+		t.Fatal("seed is empty, want non-empty input for the no-match pin")
+	}
+	if axiomslice.Some(numbers, func(element int) bool { return element%2 == 0 }) {
+		t.Fatalf("Some(%v) = true, want false", numbers)
+	}
+}
+
+func TestSomeEmptyIsFalse(t *testing.T) {
+	if axiomslice.Some([]int{}, func(element int) bool { return true }) {
+		t.Fatal("Some(empty) = true, want false")
+	}
+}
+
+func TestSomeNilIsFalse(t *testing.T) {
+	var numbers []int
+	if axiomslice.Some(numbers, func(element int) bool { return true }) {
+		t.Fatal("Some(nil) = true, want false")
+	}
+}
+
+func TestNoneNoMatchSucceeds(t *testing.T) {
+	numbers := []int{1, 3, 5}
+	if len(numbers) == 0 {
+		t.Fatal("seed is empty, want non-empty input for the no-match pin")
+	}
+	if !axiomslice.None(numbers, func(element int) bool { return element%2 == 0 }) {
+		t.Fatalf("None(%v) = false, want true", numbers)
+	}
+}
+
+func TestNoneOneMatchFails(t *testing.T) {
+	numbers := []int{1, 2, 5}
+	if len(numbers) == 0 {
+		t.Fatal("seed is empty, want non-empty input for the one-match pin")
+	}
+	if axiomslice.None(numbers, func(element int) bool { return element%2 == 0 }) {
+		t.Fatalf("None(%v) = true, want false", numbers)
+	}
+}
+
+func TestNoneEmptyIsTrue(t *testing.T) {
+	if !axiomslice.None([]int{}, func(element int) bool { return true }) {
+		t.Fatal("None(empty) = false, want true")
+	}
+}
+
+func TestNoneNilIsTrue(t *testing.T) {
+	var numbers []int
+	if !axiomslice.None(numbers, func(element int) bool { return true }) {
+		t.Fatal("None(nil) = false, want true")
+	}
+}
+
+func TestNoneComplementsSome(t *testing.T) {
+	inputs := [][]int{{1, 3, 5}, {1, 2, 5}, {}}
+	isEven := func(element int) bool { return element%2 == 0 }
+	for _, input := range inputs {
+		if axiomslice.None(input, isEven) == axiomslice.Some(input, isEven) {
+			t.Fatalf("None(%v) == Some(%v), want complements", input, input)
+		}
+	}
+}
+
+func TestFindDuplicatesRepeatsInFirstOccurrenceOrder(t *testing.T) {
+	numbers := []int{2, 1, 2, 3, 1, 2}
+	if len(numbers) == 0 {
+		t.Fatal("seed is empty, want non-empty input for the duplicates pin")
+	}
+	got := axiomslice.FindDuplicates(numbers)
+	want := []int{2, 1}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("FindDuplicates(%v) = %v, want %v", numbers, got, want)
+	}
+}
+
+func TestFindDuplicatesEachValueOnce(t *testing.T) {
+	got := axiomslice.FindDuplicates([]int{1, 1, 1, 2, 2, 3})
+	want := []int{1, 2}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("FindDuplicates = %v, want %v", got, want)
+	}
+	if len(got) != 2 {
+		t.Fatalf("FindDuplicates len = %d, want 2", len(got))
+	}
+}
+
+func TestFindDuplicatesNoRepeatsYieldsEmpty(t *testing.T) {
+	got := axiomslice.FindDuplicates([]int{1, 2, 3})
+	if got == nil || len(got) != 0 {
+		t.Fatalf("FindDuplicates(unique) = %v, want empty non-nil", got)
+	}
+}
+
+func TestFindDuplicatesNilYieldsEmpty(t *testing.T) {
+	var numbers []int
+	got := axiomslice.FindDuplicates(numbers)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("FindDuplicates(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestFindDuplicatesEmptyYieldsEmpty(t *testing.T) {
+	got := axiomslice.FindDuplicates([]int{})
+	if got == nil || len(got) != 0 {
+		t.Fatalf("FindDuplicates(empty) = %v, want empty non-nil", got)
+	}
+}
+
+func TestFindUniquesSinglesInInputOrder(t *testing.T) {
+	numbers := []int{2, 1, 2, 3, 1, 4}
+	if len(numbers) == 0 {
+		t.Fatal("seed is empty, want non-empty input for the uniques pin")
+	}
+	got := axiomslice.FindUniques(numbers)
+	want := []int{3, 4}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("FindUniques(%v) = %v, want %v", numbers, got, want)
+	}
+}
+
+func TestFindUniquesAllRepeatedYieldsEmpty(t *testing.T) {
+	got := axiomslice.FindUniques([]int{1, 1, 2, 2})
+	if got == nil || len(got) != 0 {
+		t.Fatalf("FindUniques(all repeated) = %v, want empty non-nil", got)
+	}
+}
+
+func TestFindUniquesNilYieldsEmpty(t *testing.T) {
+	var numbers []int
+	got := axiomslice.FindUniques(numbers)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("FindUniques(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestFindUniquesEmptyYieldsEmpty(t *testing.T) {
+	got := axiomslice.FindUniques([]int{})
+	if got == nil || len(got) != 0 {
+		t.Fatalf("FindUniques(empty) = %v, want empty non-nil", got)
+	}
+}
+
+func TestFindIndexesAscending(t *testing.T) {
+	numbers := []int{1, 2, 3, 2, 4, 2}
+	if len(numbers) == 0 {
+		t.Fatal("seed is empty, want non-empty input for the indexes pin")
+	}
+	got := axiomslice.FindIndexes(numbers, func(element int) bool { return element == 2 })
+	want := []int{1, 3, 5}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("FindIndexes(%v) = %v, want %v", numbers, got, want)
+	}
+}
+
+func TestFindIndexesNoMatchYieldsEmpty(t *testing.T) {
+	got := axiomslice.FindIndexes([]int{1, 3, 5}, func(element int) bool { return element%2 == 0 })
+	if got == nil || len(got) != 0 {
+		t.Fatalf("FindIndexes(no match) = %v, want empty non-nil", got)
+	}
+}
+
+func TestFindIndexesNilYieldsEmpty(t *testing.T) {
+	var numbers []int
+	got := axiomslice.FindIndexes(numbers, func(element int) bool { return true })
+	if got == nil || len(got) != 0 {
+		t.Fatalf("FindIndexes(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestFindIndexesEmptyYieldsEmpty(t *testing.T) {
+	got := axiomslice.FindIndexes([]int{}, func(element int) bool { return true })
+	if got == nil || len(got) != 0 {
+		t.Fatalf("FindIndexes(empty) = %v, want empty non-nil", got)
+	}
+}
+
+func TestTakePrefixesMiddle(t *testing.T) {
+	got := axiomslice.Take([]int{1, 2, 3, 4}, 2)
+	want := []int{1, 2}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Take = %v, want %v", got, want)
+	}
+}
+
+func TestTakeZeroYieldsEmpty(t *testing.T) {
+	got := axiomslice.Take([]int{1, 2, 3}, 0)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Take(0) = %v, want empty non-nil", got)
+	}
+}
+
+func TestTakeBeyondLengthCopiesAll(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	got := axiomslice.Take(numbers, 9)
+	if !reflect.DeepEqual(got, numbers) {
+		t.Fatalf("Take(9) = %v, want %v", got, numbers)
+	}
+	if len(got) != len(numbers) {
+		t.Fatalf("Take(9) len = %d, want %d", len(got), len(numbers))
+	}
+}
+
+func TestTakeExactLengthCopiesAll(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	got := axiomslice.Take(numbers, len(numbers))
+	if !reflect.DeepEqual(got, numbers) {
+		t.Fatalf("Take(len) = %v, want %v", got, numbers)
+	}
+}
+
+func TestTakeNegativePanics(t *testing.T) {
+	for _, takeCount := range []int{-1, -5} {
+		panicked := func() (didPanic any) {
+			defer func() { didPanic = recover() }()
+			_ = axiomslice.Take([]int{1, 2}, takeCount)
+			return nil
+		}()
+		if panicked == nil {
+			t.Fatalf("Take(%d) did not panic, want panic", takeCount)
+		}
+		want := fmt.Sprintf("axiom slice: Take needs count >= 0, got %d", takeCount)
+		if fmt.Sprintf("%v", panicked) != want {
+			t.Fatalf("Take panic = %v, want %q", panicked, want)
+		}
+	}
+}
+
+func TestTakeCopiesNotAliased(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	got := axiomslice.Take(numbers, 2)
+	if len(got) == 0 {
+		t.Fatal("Take returned empty, want non-empty seed for alias pin")
+	}
+	got[0] = 99
+	if !reflect.DeepEqual(numbers, []int{1, 2, 3}) {
+		t.Fatalf("source mutated to %v, want [1 2 3]", numbers)
+	}
+}
+
+func TestTakeInputMutationStaysDetached(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	got := axiomslice.Take(numbers, 2)
+	if len(got) == 0 {
+		t.Fatal("Take returned empty, want non-empty seed for detach pin")
+	}
+	numbers[0] = 99
+	if reflect.DeepEqual(got, []int{99, 2}) {
+		t.Fatalf("Take aliases input, got %v after input mutation", got)
+	}
+}
+
+func TestDropRemovesPrefix(t *testing.T) {
+	got := axiomslice.Drop([]int{1, 2, 3, 4}, 2)
+	want := []int{3, 4}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Drop = %v, want %v", got, want)
+	}
+}
+
+func TestDropZeroCopiesAll(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	got := axiomslice.Drop(numbers, 0)
+	if !reflect.DeepEqual(got, numbers) {
+		t.Fatalf("Drop(0) = %v, want %v", got, numbers)
+	}
+}
+
+func TestDropBeyondLengthYieldsEmpty(t *testing.T) {
+	got := axiomslice.Drop([]int{1, 2, 3}, 9)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Drop(9) = %v, want empty non-nil", got)
+	}
+}
+
+func TestDropExactLengthYieldsEmpty(t *testing.T) {
+	got := axiomslice.Drop([]int{1, 2, 3}, 3)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Drop(len) = %v, want empty non-nil", got)
+	}
+}
+
+func TestDropNegativePanics(t *testing.T) {
+	for _, dropCount := range []int{-1, -5} {
+		panicked := func() (didPanic any) {
+			defer func() { didPanic = recover() }()
+			_ = axiomslice.Drop([]int{1, 2}, dropCount)
+			return nil
+		}()
+		if panicked == nil {
+			t.Fatalf("Drop(%d) did not panic, want panic", dropCount)
+		}
+		want := fmt.Sprintf("axiom slice: Drop needs count >= 0, got %d", dropCount)
+		if fmt.Sprintf("%v", panicked) != want {
+			t.Fatalf("Drop panic = %v, want %q", panicked, want)
+		}
+	}
+}
+
+func TestDropCopiesNotAliased(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	got := axiomslice.Drop(numbers, 1)
+	if len(got) == 0 {
+		t.Fatal("Drop returned empty, want non-empty seed for alias pin")
+	}
+	got[0] = 99
+	if !reflect.DeepEqual(numbers, []int{1, 2, 3}) {
+		t.Fatalf("source mutated to %v, want [1 2 3]", numbers)
+	}
+}
+
+func TestTakeLastSuffixesMiddle(t *testing.T) {
+	got := axiomslice.TakeLast([]int{1, 2, 3, 4}, 2)
+	want := []int{3, 4}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("TakeLast = %v, want %v", got, want)
+	}
+}
+
+func TestTakeLastZeroYieldsEmpty(t *testing.T) {
+	got := axiomslice.TakeLast([]int{1, 2, 3}, 0)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("TakeLast(0) = %v, want empty non-nil", got)
+	}
+}
+
+func TestTakeLastBeyondLengthCopiesAll(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	got := axiomslice.TakeLast(numbers, 9)
+	if !reflect.DeepEqual(got, numbers) {
+		t.Fatalf("TakeLast(9) = %v, want %v", got, numbers)
+	}
+}
+
+func TestTakeLastExactLengthCopiesAll(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	got := axiomslice.TakeLast(numbers, len(numbers))
+	if !reflect.DeepEqual(got, numbers) {
+		t.Fatalf("TakeLast(len) = %v, want %v", got, numbers)
+	}
+}
+
+func TestTakeLastNegativePanics(t *testing.T) {
+	for _, takeCount := range []int{-1, -5} {
+		panicked := func() (didPanic any) {
+			defer func() { didPanic = recover() }()
+			_ = axiomslice.TakeLast([]int{1, 2}, takeCount)
+			return nil
+		}()
+		if panicked == nil {
+			t.Fatalf("TakeLast(%d) did not panic, want panic", takeCount)
+		}
+		want := fmt.Sprintf("axiom slice: TakeLast needs count >= 0, got %d", takeCount)
+		if fmt.Sprintf("%v", panicked) != want {
+			t.Fatalf("TakeLast panic = %v, want %q", panicked, want)
+		}
+	}
+}
+
+func TestTakeLastCopiesNotAliased(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	got := axiomslice.TakeLast(numbers, 2)
+	if len(got) == 0 {
+		t.Fatal("TakeLast returned empty, want non-empty seed for alias pin")
+	}
+	got[0] = 99
+	if !reflect.DeepEqual(numbers, []int{1, 2, 3}) {
+		t.Fatalf("source mutated to %v, want [1 2 3]", numbers)
+	}
+}
+
+func TestSkipLastRemovesSuffix(t *testing.T) {
+	got := axiomslice.SkipLast([]int{1, 2, 3, 4}, 2)
+	want := []int{1, 2}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("SkipLast = %v, want %v", got, want)
+	}
+}
+
+func TestSkipLastZeroCopiesAll(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	got := axiomslice.SkipLast(numbers, 0)
+	if !reflect.DeepEqual(got, numbers) {
+		t.Fatalf("SkipLast(0) = %v, want %v", got, numbers)
+	}
+}
+
+func TestSkipLastBeyondLengthYieldsEmpty(t *testing.T) {
+	got := axiomslice.SkipLast([]int{1, 2, 3}, 9)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("SkipLast(9) = %v, want empty non-nil", got)
+	}
+}
+
+func TestSkipLastExactLengthYieldsEmpty(t *testing.T) {
+	got := axiomslice.SkipLast([]int{1, 2, 3}, 3)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("SkipLast(len) = %v, want empty non-nil", got)
+	}
+}
+
+func TestSkipLastNegativePanics(t *testing.T) {
+	for _, skipCount := range []int{-1, -5} {
+		panicked := func() (didPanic any) {
+			defer func() { didPanic = recover() }()
+			_ = axiomslice.SkipLast([]int{1, 2}, skipCount)
+			return nil
+		}()
+		if panicked == nil {
+			t.Fatalf("SkipLast(%d) did not panic, want panic", skipCount)
+		}
+		want := fmt.Sprintf("axiom slice: SkipLast needs count >= 0, got %d", skipCount)
+		if fmt.Sprintf("%v", panicked) != want {
+			t.Fatalf("SkipLast panic = %v, want %q", panicked, want)
+		}
+	}
+}
+
+func TestSkipLastCopiesNotAliased(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	got := axiomslice.SkipLast(numbers, 1)
+	if len(got) == 0 {
+		t.Fatal("SkipLast returned empty, want non-empty seed for alias pin")
+	}
+	got[0] = 99
+	if !reflect.DeepEqual(numbers, []int{1, 2, 3}) {
+		t.Fatalf("source mutated to %v, want [1 2 3]", numbers)
+	}
+}
+
+func TestTakeDropFamilyNeverMutatesInput(t *testing.T) {
+	numbers := []int{1, 2, 3, 4}
+	_ = axiomslice.Take(numbers, 2)
+	_ = axiomslice.Drop(numbers, 2)
+	_ = axiomslice.TakeLast(numbers, 2)
+	_ = axiomslice.SkipLast(numbers, 2)
+	if !reflect.DeepEqual(numbers, []int{1, 2, 3, 4}) {
+		t.Fatalf("input mutated to %v, want [1 2 3 4]", numbers)
+	}
+}
+
+func TestAdoptSliceHelpersNeverMutateInput(t *testing.T) {
+	numbers := []int{2, 1, 2, 3}
+	_ = axiomslice.FindOrElse(numbers, func(element int) bool { return element == 1 }, 0)
+	_ = axiomslice.FirstOr(numbers, 0)
+	_ = axiomslice.LastOr(numbers, 0)
+	_ = axiomslice.Every(numbers, func(element int) bool { return element > 0 })
+	_ = axiomslice.Some(numbers, func(element int) bool { return element == 1 })
+	_ = axiomslice.None(numbers, func(element int) bool { return element == 9 })
+	_ = axiomslice.FindDuplicates(numbers)
+	_ = axiomslice.FindUniques(numbers)
+	_ = axiomslice.FindIndexes(numbers, func(element int) bool { return element == 2 })
+	if !reflect.DeepEqual(numbers, []int{2, 1, 2, 3}) {
+		t.Fatalf("input mutated to %v, want [2 1 2 3]", numbers)
 	}
 }

@@ -3,6 +3,7 @@ package slice_test
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"reflect"
 	"testing"
 
@@ -878,6 +879,7 @@ func TestNilFuncPanicsOnNonEmptyInput(t *testing.T) {
 		{name: "Some", call: func() { _ = axiomslice.Some([]int{1, 2}, nil) }},
 		{name: "None", call: func() { _ = axiomslice.None([]int{1, 2}, nil) }},
 		{name: "FindIndexes", call: func() { _ = axiomslice.FindIndexes([]int{1, 2}, nil) }},
+		{name: "Pluck", call: func() { _ = axiomslice.Pluck[pluckMember, string]([]pluckMember{{name: "ana"}}, nil) }},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -942,6 +944,10 @@ func TestNilFuncSkipsOnEmptyInput(t *testing.T) {
 	}
 	if got := axiomslice.FindIndexes(numbers, nil); got == nil || len(got) != 0 {
 		t.Fatalf("FindIndexes(nil, nil) = %v, want empty non-nil", got)
+	}
+	var members []pluckMember
+	if got := axiomslice.Pluck[pluckMember, string](members, nil); got == nil || len(got) != 0 {
+		t.Fatalf("Pluck(nil, nil) = %v, want empty non-nil", got)
 	}
 }
 
@@ -1814,5 +1820,577 @@ func TestAdoptSliceHelpersNeverMutateInput(t *testing.T) {
 	_ = axiomslice.FindIndexes(numbers, func(element int) bool { return element == 2 })
 	if !reflect.DeepEqual(numbers, []int{2, 1, 2, 3}) {
 		t.Fatalf("input mutated to %v, want [2 1 2 3]", numbers)
+	}
+}
+
+func TestProductMultipliesIntegers(t *testing.T) {
+	if got := axiomslice.Product([]int{2, 3, 4}); got != 24 {
+		t.Fatalf("Product = %d, want 24", got)
+	}
+}
+
+func TestProductEmptyYieldsOne(t *testing.T) {
+	if got := axiomslice.Product([]int{}); got != 1 {
+		t.Fatalf("Product(empty) = %d, want 1", got)
+	}
+}
+
+func TestProductNilYieldsOne(t *testing.T) {
+	var numbers []int
+	if got := axiomslice.Product(numbers); got != 1 {
+		t.Fatalf("Product(nil) = %d, want 1", got)
+	}
+}
+
+func TestProductSingletonReturnsElement(t *testing.T) {
+	if got := axiomslice.Product([]int{7}); got != 7 {
+		t.Fatalf("Product(singleton) = %d, want 7", got)
+	}
+}
+
+func TestProductZeroAbsorbs(t *testing.T) {
+	numbers := []int{5, 0, 3}
+	if len(numbers) == 0 {
+		t.Fatal("seed is empty, want non-empty input for the zero pin")
+	}
+	if got := axiomslice.Product(numbers); got != 0 {
+		t.Fatalf("Product(%v) = %d, want 0", numbers, got)
+	}
+}
+
+func TestProductNegativeMixSigns(t *testing.T) {
+	if got := axiomslice.Product([]int{-2, 3}); got != -6 {
+		t.Fatalf("Product = %d, want -6", got)
+	}
+}
+
+func TestProductFloatsMultiply(t *testing.T) {
+	if got := axiomslice.Product([]float64{1.5, 2.0}); got != 3.0 {
+		t.Fatalf("Product = %v, want 3", got)
+	}
+}
+
+func TestProductNamedNumberType(t *testing.T) {
+	type customCount int
+	if got := axiomslice.Product([]customCount{1, 2, 3}); got != 6 {
+		t.Fatalf("Product = %d, want 6", got)
+	}
+}
+
+func TestProductFloatOverflowYieldsInf(t *testing.T) {
+	got := axiomslice.Product([]float64{math.MaxFloat64, 2})
+	if !math.IsInf(got, 1) {
+		t.Fatalf("Product(float overflow) = %v, want +Inf (floats follow Go arithmetic, never panic)", got)
+	}
+}
+
+func TestProductOverflowPanics(t *testing.T) {
+	testCases := []struct {
+		scenario string
+		factors  []int
+		running  int
+		factor   int
+	}{
+		{scenario: "doubling max overflows", factors: []int{math.MaxInt, 2}, running: math.MaxInt, factor: 2},
+		{scenario: "max squared overflows", factors: []int{math.MaxInt, math.MaxInt}, running: math.MaxInt, factor: math.MaxInt},
+		{scenario: "min times negative one overflows", factors: []int{math.MinInt, -1}, running: math.MinInt, factor: -1},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.scenario, func(t *testing.T) {
+			panicked := func() (didPanic any) {
+				defer func() { didPanic = recover() }()
+				_ = axiomslice.Product(testCase.factors)
+				return nil
+			}()
+			if panicked == nil {
+				t.Fatalf("Product(%v) did not panic, want panic", testCase.factors)
+			}
+			want := fmt.Sprintf("axiom slice: Product overflows the element range: %v * %v", testCase.running, testCase.factor)
+			if fmt.Sprintf("%v", panicked) != want {
+				t.Fatalf("Product panic = %v, want %q", panicked, want)
+			}
+		})
+	}
+}
+
+func TestProductNeverMutatesInput(t *testing.T) {
+	numbers := []int{2, 3, 4}
+	_ = axiomslice.Product(numbers)
+	if !reflect.DeepEqual(numbers, []int{2, 3, 4}) {
+		t.Fatalf("input mutated to %v, want [2 3 4]", numbers)
+	}
+}
+
+func TestModeMostFrequentWins(t *testing.T) {
+	words := []string{"a", "b", "a", "c", "b", "a"}
+	if len(words) == 0 {
+		t.Fatal("seed is empty, want non-empty input for the frequent pin")
+	}
+	frequent, found := axiomslice.Mode(words)
+	if !found {
+		t.Fatal("Mode found = false, want true")
+	}
+	if frequent != "a" {
+		t.Fatalf("Mode(%v) = %q, want %q", words, frequent, "a")
+	}
+}
+
+func TestModeEmptyYieldsNotFound(t *testing.T) {
+	frequent, found := axiomslice.Mode([]string{})
+	if found {
+		t.Fatal("Mode(empty) found = true, want false")
+	}
+	if frequent != "" {
+		t.Fatalf("Mode(empty) = %q, want zero value", frequent)
+	}
+}
+
+func TestModeNilYieldsNotFound(t *testing.T) {
+	var words []string
+	frequent, found := axiomslice.Mode(words)
+	if found {
+		t.Fatal("Mode(nil) found = true, want false")
+	}
+	if frequent != "" {
+		t.Fatalf("Mode(nil) = %q, want zero value", frequent)
+	}
+}
+
+func TestModeSingletonReturnsElement(t *testing.T) {
+	frequent, found := axiomslice.Mode([]string{"only"})
+	if !found || frequent != "only" {
+		t.Fatalf("Mode(singleton) = %q, %v, want %q, true", frequent, found, "only")
+	}
+}
+
+func TestModeTieKeepsFirst(t *testing.T) {
+	words := []string{"b", "a", "b", "a"}
+	if len(words) == 0 {
+		t.Fatal("seed is empty, want non-empty input for the tie pin")
+	}
+	frequent, found := axiomslice.Mode(words)
+	if !found || frequent != "b" {
+		t.Fatalf("Mode tie = %q, %v, want %q, true (first occurrence wins)", frequent, found, "b")
+	}
+}
+
+func TestModeIntsCountsValues(t *testing.T) {
+	frequent, found := axiomslice.Mode([]int{3, 1, 3, 2, 3, 1})
+	if !found || frequent != 3 {
+		t.Fatalf("Mode = %d, %v, want 3, true", frequent, found)
+	}
+}
+
+func TestModeNeverMutatesInput(t *testing.T) {
+	words := []string{"b", "a", "b"}
+	_, _ = axiomslice.Mode(words)
+	if !reflect.DeepEqual(words, []string{"b", "a", "b"}) {
+		t.Fatalf("input mutated to %v, want [b a b]", words)
+	}
+}
+
+type pluckMember struct {
+	name string
+	age  int
+}
+
+func TestPluckProjectsField(t *testing.T) {
+	members := []pluckMember{{name: "ana", age: 30}, {name: "bea", age: 25}}
+	if len(members) == 0 {
+		t.Fatal("seed is empty, want non-empty input for the projection pin")
+	}
+	got := axiomslice.Pluck(members, func(member pluckMember) string { return member.name })
+	want := []string{"ana", "bea"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Pluck names = %v, want %v", got, want)
+	}
+}
+
+func TestPluckProjectsOtherField(t *testing.T) {
+	members := []pluckMember{{name: "ana", age: 30}, {name: "bea", age: 25}}
+	got := axiomslice.Pluck(members, func(member pluckMember) int { return member.age })
+	want := []int{30, 25}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Pluck ages = %v, want %v", got, want)
+	}
+}
+
+func TestPluckNilYieldsEmpty(t *testing.T) {
+	var members []pluckMember
+	got := axiomslice.Pluck(members, func(member pluckMember) string { return member.name })
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Pluck(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestPluckEmptyYieldsEmpty(t *testing.T) {
+	got := axiomslice.Pluck([]pluckMember{}, func(member pluckMember) string { return member.name })
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Pluck(empty) = %v, want empty non-nil", got)
+	}
+}
+
+func TestPluckNeverMutatesInput(t *testing.T) {
+	members := []pluckMember{{name: "ana", age: 30}, {name: "bea", age: 25}}
+	got := axiomslice.Pluck(members, func(member pluckMember) string { return member.name })
+	got[0] = "changed"
+	if !reflect.DeepEqual(members, []pluckMember{{name: "ana", age: 30}, {name: "bea", age: 25}}) {
+		t.Fatalf("input mutated to %v", members)
+	}
+}
+
+func TestEnsureUniqueAndAppendAppendsWhenAbsent(t *testing.T) {
+	got := axiomslice.EnsureUniqueAndAppend([]int{1, 2}, 3)
+	want := []int{1, 2, 3}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("EnsureUniqueAndAppend = %v, want %v", got, want)
+	}
+}
+
+func TestEnsureUniqueAndAppendKeepsWhenPresent(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	if len(numbers) == 0 {
+		t.Fatal("seed is empty, want non-empty input for the present pin")
+	}
+	got := axiomslice.EnsureUniqueAndAppend(numbers, 2)
+	if !reflect.DeepEqual(got, []int{1, 2, 3}) {
+		t.Fatalf("EnsureUniqueAndAppend(present) = %v, want [1 2 3]", got)
+	}
+}
+
+func TestEnsureUniqueAndAppendPresentReturnsFreshCopy(t *testing.T) {
+	numbers := []int{1, 2, 3}
+	got := axiomslice.EnsureUniqueAndAppend(numbers, 2)
+	if len(got) == 0 {
+		t.Fatal("EnsureUniqueAndAppend returned empty, want non-empty seed for alias pin")
+	}
+	got[0] = 99
+	if !reflect.DeepEqual(numbers, []int{1, 2, 3}) {
+		t.Fatalf("source mutated to %v, want [1 2 3]", numbers)
+	}
+}
+
+func TestEnsureUniqueAndAppendAbsentReturnsFreshCopy(t *testing.T) {
+	numbers := []int{1, 2}
+	got := axiomslice.EnsureUniqueAndAppend(numbers, 3)
+	if len(got) == 0 {
+		t.Fatal("EnsureUniqueAndAppend returned empty, want non-empty seed for detach pin")
+	}
+	numbers[0] = 99
+	if reflect.DeepEqual(got, []int{99, 2, 3}) {
+		t.Fatalf("result aliases input, got %v after input mutation", got)
+	}
+	if !reflect.DeepEqual(got, []int{1, 2, 3}) {
+		t.Fatalf("result = %v, want [1 2 3]", got)
+	}
+}
+
+func TestEnsureUniqueAndAppendNilAppends(t *testing.T) {
+	var numbers []int
+	got := axiomslice.EnsureUniqueAndAppend(numbers, 5)
+	if !reflect.DeepEqual(got, []int{5}) {
+		t.Fatalf("EnsureUniqueAndAppend(nil, 5) = %v, want [5]", got)
+	}
+}
+
+func TestEnsureUniqueAndAppendEmptyAppends(t *testing.T) {
+	got := axiomslice.EnsureUniqueAndAppend([]int{}, 5)
+	if !reflect.DeepEqual(got, []int{5}) {
+		t.Fatalf("EnsureUniqueAndAppend(empty, 5) = %v, want [5]", got)
+	}
+}
+
+func TestEnsureUniqueAndAppendStrings(t *testing.T) {
+	got := axiomslice.EnsureUniqueAndAppend([]string{"go", "rust"}, "zig")
+	if !reflect.DeepEqual(got, []string{"go", "rust", "zig"}) {
+		t.Fatalf("EnsureUniqueAndAppend = %v, want [go rust zig]", got)
+	}
+	if kept := axiomslice.EnsureUniqueAndAppend([]string{"go", "rust"}, "go"); !reflect.DeepEqual(kept, []string{"go", "rust"}) {
+		t.Fatalf("EnsureUniqueAndAppend(present) = %v, want [go rust]", kept)
+	}
+}
+
+func TestCrossJoinOuterFirstMajor(t *testing.T) {
+	first := []int{1, 2}
+	second := []string{"a", "b"}
+	if len(first) == 0 || len(second) == 0 {
+		t.Fatal("seeds are empty, want non-empty inputs for the order pin")
+	}
+	got := axiomslice.CrossJoin(first, second)
+	want := []axiomslice.Pair[int, string]{
+		{First: 1, Second: "a"}, {First: 1, Second: "b"},
+		{First: 2, Second: "a"}, {First: 2, Second: "b"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("CrossJoin = %v, want %v", got, want)
+	}
+}
+
+func TestCrossJoinSingletonPair(t *testing.T) {
+	got := axiomslice.CrossJoin([]int{7}, []string{"x"})
+	want := []axiomslice.Pair[int, string]{{First: 7, Second: "x"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("CrossJoin = %v, want %v", got, want)
+	}
+}
+
+func TestCrossJoinEmptyEitherYieldsEmpty(t *testing.T) {
+	testCases := []struct {
+		scenario string
+		first    []int
+		second   []string
+	}{
+		{scenario: "empty first", first: []int{}, second: []string{"a"}},
+		{scenario: "empty second", first: []int{1}, second: []string{}},
+		{scenario: "both empty", first: []int{}, second: []string{}},
+		{scenario: "nil first", first: nil, second: []string{"a"}},
+		{scenario: "nil second", first: []int{1}, second: nil},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.scenario, func(t *testing.T) {
+			got := axiomslice.CrossJoin(testCase.first, testCase.second)
+			if got == nil || len(got) != 0 {
+				t.Fatalf("CrossJoin(%s) = %v, want empty non-nil", testCase.scenario, got)
+			}
+		})
+	}
+}
+
+func TestCrossJoinNeverMutatesInputs(t *testing.T) {
+	first := []int{1, 2}
+	second := []string{"a", "b"}
+	got := axiomslice.CrossJoin(first, second)
+	got[0] = axiomslice.Pair[int, string]{First: 99, Second: "z"}
+	if !reflect.DeepEqual(first, []int{1, 2}) {
+		t.Fatalf("first mutated to %v, want [1 2]", first)
+	}
+	if !reflect.DeepEqual(second, []string{"a", "b"}) {
+		t.Fatalf("second mutated to %v, want [a b]", second)
+	}
+}
+
+func seededSource(seed int64) *rand.Rand {
+	return rand.New(rand.NewSource(seed))
+}
+
+func TestShuffleSeededIsPermutation(t *testing.T) {
+	numbers := []int{1, 2, 3, 4, 5, 6}
+	if len(numbers) == 0 {
+		t.Fatal("seed is empty, want non-empty input for the permutation pin")
+	}
+	got := axiomslice.Shuffle(numbers, seededSource(42))
+	if !reflect.DeepEqual(axiomslice.Tally(got), axiomslice.Tally(numbers)) {
+		t.Fatalf("Shuffle(%v) = %v, want same multiset", numbers, got)
+	}
+}
+
+func TestShuffleSeededIsDeterministic(t *testing.T) {
+	numbers := []int{1, 2, 3, 4, 5, 6}
+	first := axiomslice.Shuffle(numbers, seededSource(42))
+	second := axiomslice.Shuffle(numbers, seededSource(42))
+	if !reflect.DeepEqual(first, second) {
+		t.Fatalf("Shuffle same seed = %v vs %v, want identical order", first, second)
+	}
+}
+
+func TestShuffleSeededChangesOrder(t *testing.T) {
+	numbers := []int{1, 2, 3, 4, 5, 6}
+	got := axiomslice.Shuffle(numbers, seededSource(42))
+	if reflect.DeepEqual(got, numbers) {
+		t.Fatalf("Shuffle(seed 42) = %v, want a moved order (seed must witness movement)", got)
+	}
+}
+
+func TestShuffleNilSourcePanics(t *testing.T) {
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_ = axiomslice.Shuffle([]int{1, 2}, nil)
+		return nil
+	}()
+	if panicked == nil {
+		t.Fatal("Shuffle(nil source) did not panic, want panic")
+	}
+	want := "axiom slice: Shuffle needs a non-nil *rand.Rand source, got nil"
+	if fmt.Sprintf("%v", panicked) != want {
+		t.Fatalf("Shuffle panic = %v, want %q", panicked, want)
+	}
+}
+
+func TestShuffleNilYieldsEmpty(t *testing.T) {
+	var numbers []int
+	got := axiomslice.Shuffle(numbers, seededSource(7))
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Shuffle(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestShuffleEmptyYieldsEmpty(t *testing.T) {
+	got := axiomslice.Shuffle([]int{}, seededSource(7))
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Shuffle(empty) = %v, want empty non-nil", got)
+	}
+}
+
+func TestShuffleSingletonStaysPut(t *testing.T) {
+	got := axiomslice.Shuffle([]int{7}, seededSource(7))
+	if !reflect.DeepEqual(got, []int{7}) {
+		t.Fatalf("Shuffle(singleton) = %v, want [7]", got)
+	}
+}
+
+func TestShuffleNeverMutatesInput(t *testing.T) {
+	numbers := []int{1, 2, 3, 4, 5, 6}
+	got := axiomslice.Shuffle(numbers, seededSource(42))
+	if len(got) == 0 {
+		t.Fatal("Shuffle returned empty, want non-empty seed for alias pin")
+	}
+	got[0] = 99
+	if !reflect.DeepEqual(numbers, []int{1, 2, 3, 4, 5, 6}) {
+		t.Fatalf("source mutated to %v, want [1 2 3 4 5 6]", numbers)
+	}
+}
+
+func TestRangeCountsFromZero(t *testing.T) {
+	got := axiomslice.Range(5)
+	want := []int{0, 1, 2, 3, 4}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Range(5) = %v, want %v", got, want)
+	}
+}
+
+func TestRangeOneYieldsZero(t *testing.T) {
+	got := axiomslice.Range(1)
+	if !reflect.DeepEqual(got, []int{0}) {
+		t.Fatalf("Range(1) = %v, want [0]", got)
+	}
+}
+
+func TestRangeZeroYieldsEmpty(t *testing.T) {
+	got := axiomslice.Range(0)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Range(0) = %v, want empty non-nil", got)
+	}
+}
+
+func TestRangeNegativePanics(t *testing.T) {
+	for _, count := range []int{-1, -5} {
+		panicked := func() (didPanic any) {
+			defer func() { didPanic = recover() }()
+			_ = axiomslice.Range(count)
+			return nil
+		}()
+		if panicked == nil {
+			t.Fatalf("Range(%d) did not panic, want panic", count)
+		}
+		want := fmt.Sprintf("axiom slice: Range needs count >= 0, got %d", count)
+		if fmt.Sprintf("%v", panicked) != want {
+			t.Fatalf("Range panic = %v, want %q", panicked, want)
+		}
+	}
+}
+
+func TestRangeFromOffsetsStart(t *testing.T) {
+	got := axiomslice.RangeFrom(5, 3)
+	want := []int{5, 6, 7}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("RangeFrom(5, 3) = %v, want %v", got, want)
+	}
+}
+
+func TestRangeFromZeroStartMatchesRange(t *testing.T) {
+	if got := axiomslice.RangeFrom(0, 4); !reflect.DeepEqual(got, axiomslice.Range(4)) {
+		t.Fatalf("RangeFrom(0, 4) = %v, want Range(4)", got)
+	}
+}
+
+func TestRangeFromZeroCountYieldsEmpty(t *testing.T) {
+	got := axiomslice.RangeFrom(5, 0)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("RangeFrom(5, 0) = %v, want empty non-nil", got)
+	}
+}
+
+func TestRangeFromNegativeStartCountsUp(t *testing.T) {
+	got := axiomslice.RangeFrom(-2, 3)
+	want := []int{-2, -1, 0}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("RangeFrom(-2, 3) = %v, want %v", got, want)
+	}
+}
+
+func TestRangeFromNegativeCountPanics(t *testing.T) {
+	for _, count := range []int{-1, -5} {
+		panicked := func() (didPanic any) {
+			defer func() { didPanic = recover() }()
+			_ = axiomslice.RangeFrom(3, count)
+			return nil
+		}()
+		if panicked == nil {
+			t.Fatalf("RangeFrom(3, %d) did not panic, want panic", count)
+		}
+		want := fmt.Sprintf("axiom slice: RangeFrom needs count >= 0, got %d", count)
+		if fmt.Sprintf("%v", panicked) != want {
+			t.Fatalf("RangeFrom panic = %v, want %q", panicked, want)
+		}
+	}
+}
+
+func TestClampBelowYieldsLow(t *testing.T) {
+	if got := axiomslice.Clamp(-5, 0, 10); got != 0 {
+		t.Fatalf("Clamp(-5, 0, 10) = %d, want 0", got)
+	}
+}
+
+func TestClampAboveYieldsHigh(t *testing.T) {
+	if got := axiomslice.Clamp(99, 0, 10); got != 10 {
+		t.Fatalf("Clamp(99, 0, 10) = %d, want 10", got)
+	}
+}
+
+func TestClampInsideYieldsValue(t *testing.T) {
+	if got := axiomslice.Clamp(4, 0, 10); got != 4 {
+		t.Fatalf("Clamp(4, 0, 10) = %d, want 4", got)
+	}
+}
+
+func TestClampAtBoundsYieldsBound(t *testing.T) {
+	if got := axiomslice.Clamp(0, 0, 10); got != 0 {
+		t.Fatalf("Clamp(low) = %d, want 0", got)
+	}
+	if got := axiomslice.Clamp(10, 0, 10); got != 10 {
+		t.Fatalf("Clamp(high) = %d, want 10", got)
+	}
+}
+
+func TestClampEqualBoundsYieldsBound(t *testing.T) {
+	if got := axiomslice.Clamp(99, 5, 5); got != 5 {
+		t.Fatalf("Clamp(99, 5, 5) = %d, want 5", got)
+	}
+}
+
+func TestClampFloatsAndStrings(t *testing.T) {
+	if got := axiomslice.Clamp(1.5, 0.0, 1.0); got != 1.0 {
+		t.Fatalf("Clamp(1.5, 0, 1) = %v, want 1", got)
+	}
+	if got := axiomslice.Clamp("m", "a", "z"); got != "m" {
+		t.Fatalf("Clamp(m, a, z) = %q, want %q", got, "m")
+	}
+	if got := axiomslice.Clamp("~", "a", "z"); got != "z" {
+		t.Fatalf("Clamp(~, a, z) = %q, want %q", got, "z")
+	}
+}
+
+func TestClampLowAboveHighPanics(t *testing.T) {
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		_ = axiomslice.Clamp(5, 10, 0)
+		return nil
+	}()
+	if panicked == nil {
+		t.Fatal("Clamp(5, 10, 0) did not panic, want panic")
+	}
+	want := "axiom slice: Clamp needs low <= high, got 10 > 0"
+	if fmt.Sprintf("%v", panicked) != want {
+		t.Fatalf("Clamp panic = %v, want %q", panicked, want)
 	}
 }

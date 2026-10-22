@@ -31,8 +31,16 @@
 // | Running folds element by element          | RunningFold                 |
 // | All k-subsets in index order              | Combinations                |
 // | All k-arrangements in index order         | Permutations                |
+// | Multiply every number                     | Product                     |
+// | Most frequent value                       | Mode                        |
+// | Project one field per element             | Pluck                       |
+// | Append only when absent                   | EnsureUniqueAndAppend       |
+// | Every pair across two slices              | CrossJoin (see Pair)        |
+// | Shuffled copy from an explicit source     | Shuffle                     |
+// | Integer sequences                         | Range / RangeFrom           |
+// | Bound a value into a range                | Clamp                       |
 //
-// The (value, bool) return on FindSlice, Min, Max, MinBy, MaxBy, and
+// The (value, bool) return on FindSlice, Min, Max, MinBy, MaxBy, Mode, and
 // Average is this package's OrNull: the bool reports presence and the
 // value is the zero value when absent. Empty input or no match is a normal
 // outcome here, never an error; for failures with causes, see the result
@@ -43,6 +51,7 @@ import (
 	"cmp"
 	"fmt"
 	"math"
+	"math/rand"
 	"slices"
 )
 
@@ -211,6 +220,219 @@ func Average[Number number](numbers []Number) (float64, bool) {
 		total += float64(element)
 	}
 	return total / float64(len(numbers)), true
+}
+
+// Product multiplies every number, pairing with Sum and Average for
+// sum-grade arithmetic over the number constraint.
+//
+// Empty or nil input yields 1, the multiplicative identity, so Product over
+// nothing composes with Reduce-style folds the way Sum yields 0.
+//
+// Integer overflow panics: a wrapped product is programmer-error data,
+// matching the checkedAdd guard behind Flatten. The guard is exact integer
+// arithmetic, so named number types are covered without reflection: the 1/2
+// probe tells truncating integers from floats, and the wrap probe spots the
+// signed minimum whose product with -1 has no representable result (plain
+// division would trap there instead of failing the check). Float factors
+// skip the check and keep Go semantics: overflow yields ±Inf, never a panic.
+//
+// slices has no product fold; hand-rolled loops are the only stdlib route.
+func Product[Number number](numbers []Number) Number {
+	var product Number = 1
+	for _, element := range numbers {
+		product = checkedMul(product, element)
+	}
+	return product
+}
+
+// checkedMul returns running*factor, panicking when the product overflows
+// the element range. See Product for the guard policy.
+func checkedMul[Number number](running, factor Number) Number {
+	if running == 0 || factor == 0 {
+		return running * factor
+	}
+	if running-1 > running && factor+1 == 0 {
+		panic(fmt.Sprintf("axiom slice: Product overflows the element range: %v * %v", running, factor))
+	}
+	var one, two Number = 1, 2
+	if one/two == 0 {
+		if product := running * factor; product/factor != running {
+			panic(fmt.Sprintf("axiom slice: Product overflows the element range: %v * %v", running, factor))
+		}
+	}
+	return running * factor
+}
+
+// Mode returns the most frequent value.
+// Empty or nil input yields the zero value and false, consistent with Min
+// and Max. Ties keep the first occurrence in input order, matching the
+// MaxBy tie precedent.
+// The (frequent, ok) pair is the OrNull shape: check ok before trusting the value.
+//
+// slices has no most-frequent helper; Tally plus a loop is the only stdlib route.
+func Mode[Element comparable](elements []Element) (frequent Element, ok bool) {
+	if len(elements) == 0 {
+		var empty Element
+		return empty, false
+	}
+	counts := Tally(elements)
+	frequent = elements[0]
+	frequentCount := counts[frequent]
+	for _, element := range elements[1:] {
+		if counts[element] > frequentCount {
+			frequent = element
+			frequentCount = counts[element]
+		}
+	}
+	return frequent, true
+}
+
+// Pluck projects one field per element, preserving order.
+// The field callback sees the element only: indexed variants are explicit
+// elsewhere in this package (MapIndexed, FilterIndexed), never (value,
+// index, slice) triples.
+//
+// Nil or empty input yields an empty non-nil slice.
+//
+// Go generics have no field projection: struct reflection is the only
+// language route, and this package never reflects (see the VISION non-goal
+// carried by the future program). lo calls the same shape Pluck.
+func Pluck[Element any, Field any](elements []Element, field func(Element) Field) []Field {
+	plucked := make([]Field, len(elements))
+	for index, element := range elements {
+		plucked[index] = field(element)
+	}
+	return plucked
+}
+
+// EnsureUniqueAndAppend appends candidate only when no element equals it,
+// building a set on top of a slice. The result always holds distinct
+// values only when the input already does: duplicates already present stay
+// untouched, and only the candidate is deduplicated.
+//
+// The result is always a fresh slice: present candidates return a copy of
+// the input, absent candidates return the input plus the candidate. The
+// input is never mutated and neither path aliases it.
+//
+// Nil input plus a candidate yields a one-element slice.
+//
+// slices has Contains but no append-if-absent: Contains plus append need a
+// manual length check, which this folds into one call.
+func EnsureUniqueAndAppend[Element comparable](elements []Element, candidate Element) []Element {
+	for _, element := range elements {
+		if element == candidate {
+			present := make([]Element, len(elements))
+			copy(present, elements)
+			return present
+		}
+	}
+	grown := make([]Element, len(elements)+1)
+	copy(grown, elements)
+	grown[len(elements)] = candidate
+	return grown
+}
+
+// CrossJoin returns every pair across first and second in outer-first-major
+// order: for each first element, every second element in order. It pairs
+// with Zip (positional pairing) and Combinations (k-subsets of one slice):
+// the exam use-case cousin of Combinations in the future program.
+//
+// Either side nil or empty yields an empty non-nil slice.
+//
+// The stdlib has no cartesian helper; nested loops are the only route,
+// and hand-rolled nests rarely document their order. The Pair element type
+// is shared with Zip and Unzip.
+func CrossJoin[First any, Second any](first []First, second []Second) []Pair[First, Second] {
+	joined := make([]Pair[First, Second], 0, len(first)*len(second))
+	for _, outer := range first {
+		for _, inner := range second {
+			joined = append(joined, Pair[First, Second]{First: outer, Second: inner})
+		}
+	}
+	return joined
+}
+
+// Shuffle returns a Fisher-Yates shuffled copy of elements, driven by an
+// explicit random source.
+//
+// The source is explicit so shuffles stay deterministic under test: seed it
+// with rand.New(rand.NewSource(seed)) and the order replays. A nil source
+// panics: silently falling back to the global rand would hide shared state
+// behind a pure signature. The input is never mutated; nil or empty input
+// yields an empty non-nil slice.
+//
+// math/rand.Shuffle mutates in place behind an untyped swap closure; this
+// wrapper is the purity-compatible shape (frozen decision 8): fresh copy in,
+// fresh copy out, source in hand.
+func Shuffle[Element any](elements []Element, source *rand.Rand) []Element {
+	if source == nil {
+		panic("axiom slice: Shuffle needs a non-nil *rand.Rand source, got nil")
+	}
+	shuffled := make([]Element, len(elements))
+	copy(shuffled, elements)
+	source.Shuffle(len(shuffled), func(first, second int) {
+		shuffled[first], shuffled[second] = shuffled[second], shuffled[first]
+	})
+	return shuffled
+}
+
+// Range returns the integers 0..count-1 in order: generate, don't allocate
+// by hand. Negative counts panic: a negative length is a programmer error,
+// matching the size <= 0 panic policy of Chunked and Windows.
+//
+// Zero yields an empty non-nil slice.
+//
+// The stdlib has no int range: a counting loop is the only route, and the
+// loop rarely documents its bounds. lo calls the same shape Range.
+func Range(count int) []int {
+	if count < 0 {
+		panic(fmt.Sprintf("axiom slice: Range needs count >= 0, got %d", count))
+	}
+	counted := make([]int, count)
+	for index := range counted {
+		counted[index] = index
+	}
+	return counted
+}
+
+// RangeFrom returns the integers start..start+count-1 in order, the offset
+// cousin of Range. Negative counts panic like Range; a negative start is
+// fine and counts up through zero.
+//
+// Zero counts yield an empty non-nil slice.
+//
+// The stdlib has no offset range either; RangeFrom(0, count) equals Range(count).
+func RangeFrom(start, count int) []int {
+	if count < 0 {
+		panic(fmt.Sprintf("axiom slice: RangeFrom needs count >= 0, got %d", count))
+	}
+	ranged := make([]int, count)
+	for index := range ranged {
+		ranged[index] = start + index
+	}
+	return ranged
+}
+
+// Clamp bounds value into the low..high range: below yields low, above
+// yields high, inside passes through. Equal bounds always yield that bound.
+//
+// Low above high panics: an inverted range is a programmer error, matching
+// the negative-count panic policy of Range.
+//
+// The stdlib has no clamp: min/max builtins need a two-call nest
+// (min(max(value, low), high)) that hides the intent and never checks the
+// range. lo calls the same shape Clamp.
+func Clamp[Number cmp.Ordered](value, low, high Number) Number {
+	if low > high {
+		panic(fmt.Sprintf("axiom slice: Clamp needs low <= high, got %v > %v", low, high))
+	}
+	if value < low {
+		return low
+	}
+	if value > high {
+		return high
+	}
+	return value
 }
 
 // FlatMap maps each element to a slice and concatenates the pieces in order.

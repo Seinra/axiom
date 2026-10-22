@@ -20,10 +20,23 @@
 // | Fall back to another Option      | OrElse                |
 // | Keep the value only when it fits | Filter                |
 // | Convert absence into a failure   | ToResult (see result) |
+// | Render to JSON or database values | MarshalJSON/Value       |
+// | Restore from JSON or database     | UnmarshalJSON/Scan      |
 package opt
 
 import (
+	"bytes"
+	"database/sql"
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
+
 	"github.com/seinra/axiom/result"
+)
+
+var (
+	_ driver.Valuer = Option[int64]{}
+	_ sql.Scanner   = (*Option[int64])(nil)
 )
 
 // Option holds either a success of type T or no success.
@@ -125,4 +138,63 @@ func ToResult[T any](current Option[T], failure error) result.Result[T] {
 		return result.Ok(current.success)
 	}
 	return result.Fail[T](failure)
+}
+
+// MarshalJSON renders Some as its held value and None as null.
+// encoding/json has no Option type; the codec edge lives here (with
+// database/sql below), where `any` is allowed and wrapped in typed
+// conversions at the boundary.
+func (current Option[T]) MarshalJSON() ([]byte, error) {
+	if !current.isSome {
+		return []byte("null"), nil
+	}
+	return json.Marshal(current.success)
+}
+
+// UnmarshalJSON restores Some from a JSON value and None from null.
+// Anything else unmarshalable into T yields the encoding/json error, never
+// a panic; a failed unmarshal leaves the receiver untouched. Decoding
+// follows the standard rules for T: no reflection beyond what
+// encoding/json itself performs.
+func (current *Option[T]) UnmarshalJSON(payload []byte) error {
+	if string(bytes.TrimSpace(payload)) == "null" {
+		*current = None[T]()
+		return nil
+	}
+	var success T
+	if failure := json.Unmarshal(payload, &success); failure != nil {
+		return failure
+	}
+	*current = Some(success)
+	return nil
+}
+
+// Value stores the held success as-is, or NULL when absent.
+// database/sql accepts driver values (int64, float64, bool, []byte,
+// string, time.Time) at the driver: other element types need an explicit
+// conversion at the call site. None yields (nil, nil): NULL is absence
+// here, never an error.
+func (current Option[T]) Value() (driver.Value, error) {
+	if !current.isSome {
+		return nil, nil
+	}
+	return any(current.success), nil
+}
+
+// Scan restores None from NULL and Some from sources directly assignable
+// to T. The assignment is a type assertion, never reflection or
+// conversion: database integer columns arrive as int64, so scanning into
+// Option[int] fails unless the driver already yields int. A mismatch
+// yields a descriptive error and leaves the receiver untouched.
+func (current *Option[T]) Scan(source any) error {
+	if source == nil {
+		*current = None[T]()
+		return nil
+	}
+	if success, assignable := source.(T); assignable {
+		*current = Some(success)
+		return nil
+	}
+	var empty T
+	return fmt.Errorf("axiom opt: cannot scan %T into Option[%T]; source must be directly assignable to T", source, empty)
 }

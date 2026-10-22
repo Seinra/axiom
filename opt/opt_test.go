@@ -1,6 +1,7 @@
 package opt_test
 
 import (
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -352,5 +353,149 @@ func TestValueOrElseNilFallbackPanicsOnNoneSkipsOnSome(t *testing.T) {
 	})
 	if got != 5 {
 		t.Fatalf("ValueOrElse(Some, nil) = %d, want 5", got)
+	}
+}
+
+func TestOptionMarshalJSONSomeRendersValue(t *testing.T) {
+	payload, failure := json.Marshal(opt.Some(4))
+	if failure != nil {
+		t.Fatalf("Marshal(Some) failure = %v, want nil", failure)
+	}
+	if string(payload) != "4" {
+		t.Fatalf("Marshal(Some(4)) = %s, want 4", payload)
+	}
+}
+
+func TestOptionMarshalJSONStringRendersQuoted(t *testing.T) {
+	payload, failure := json.Marshal(opt.Some("gopher"))
+	if failure != nil {
+		t.Fatalf("Marshal(Some) failure = %v, want nil", failure)
+	}
+	if string(payload) != `"gopher"` {
+		t.Fatalf("Marshal(Some(gopher)) = %s, want quoted gopher", payload)
+	}
+}
+
+func TestOptionMarshalJSONNoneRendersNull(t *testing.T) {
+	payload, failure := json.Marshal(opt.None[int]())
+	if failure != nil {
+		t.Fatalf("Marshal(None) failure = %v, want nil", failure)
+	}
+	if string(payload) != "null" {
+		t.Fatalf("Marshal(None) = %s, want null", payload)
+	}
+}
+
+func TestOptionUnmarshalJSONValueYieldsSome(t *testing.T) {
+	var current opt.Option[int]
+	if failure := json.Unmarshal([]byte("4"), &current); failure != nil {
+		t.Fatalf("Unmarshal(4) failure = %v, want nil", failure)
+	}
+	if got := current.ValueOr(0); got != 4 {
+		t.Fatalf("Unmarshal(4) = %d, want 4", got)
+	}
+}
+
+func TestOptionUnmarshalJSONNullYieldsNone(t *testing.T) {
+	for _, payload := range []string{"null", " null "} {
+		current := opt.Some(7)
+		if failure := json.Unmarshal([]byte(payload), &current); failure != nil {
+			t.Fatalf("Unmarshal(%q) failure = %v, want nil", payload, failure)
+		}
+		if current.IsSome() {
+			t.Fatalf("Unmarshal(%q) IsSome = true, want false", payload)
+		}
+	}
+}
+
+func TestOptionUnmarshalJSONInvalidYieldsError(t *testing.T) {
+	current := opt.Some(7)
+	if failure := json.Unmarshal([]byte("{bad}"), &current); failure == nil {
+		t.Fatal("Unmarshal({bad}) failure = nil, want error")
+	}
+	if got := current.ValueOr(0); got != 7 {
+		t.Fatalf("Unmarshal({bad}) clobbered receiver to %d, want untouched 7", got)
+	}
+}
+
+func TestOptionUnmarshalJSONTrailingGarbageYieldsError(t *testing.T) {
+	var current opt.Option[int]
+	if failure := json.Unmarshal([]byte("4 x"), &current); failure == nil {
+		t.Fatal("Unmarshal(4 x) failure = nil, want error for trailing bytes")
+	}
+}
+
+func TestOptionJSONRoundTrip(t *testing.T) {
+	payload, failure := json.Marshal(opt.Some("gopher"))
+	if failure != nil {
+		t.Fatalf("Marshal failure = %v, want nil", failure)
+	}
+	var restored opt.Option[string]
+	if failure := json.Unmarshal(payload, &restored); failure != nil {
+		t.Fatalf("Unmarshal failure = %v, want nil", failure)
+	}
+	if got := restored.ValueOr("nobody"); got != "gopher" {
+		t.Fatalf("round trip = %q, want %q", got, "gopher")
+	}
+	nullPayload, failure := json.Marshal(opt.None[string]())
+	if failure != nil {
+		t.Fatalf("Marshal(None) failure = %v, want nil", failure)
+	}
+	var restoredNone opt.Option[string]
+	if failure := json.Unmarshal(nullPayload, &restoredNone); failure != nil {
+		t.Fatalf("Unmarshal(null) failure = %v, want nil", failure)
+	}
+	if restoredNone.IsSome() {
+		t.Fatal("round trip None IsSome = true, want false")
+	}
+}
+
+func TestOptionValueSomeReturnsHeld(t *testing.T) {
+	stored, failure := opt.Some(int64(7)).Value()
+	if failure != nil {
+		t.Fatalf("Value(Some) failure = %v, want nil", failure)
+	}
+	if stored != int64(7) {
+		t.Fatalf("Value(Some(7)) = %v, want 7", stored)
+	}
+}
+
+func TestOptionValueNoneYieldsNull(t *testing.T) {
+	stored, failure := opt.None[int64]().Value()
+	if failure != nil {
+		t.Fatalf("Value(None) failure = %v, want nil", failure)
+	}
+	if stored != nil {
+		t.Fatalf("Value(None) = %v, want nil (NULL)", stored)
+	}
+}
+
+func TestOptionScanNullYieldsNone(t *testing.T) {
+	current := opt.Some("seed")
+	if failure := current.Scan(nil); failure != nil {
+		t.Fatalf("Scan(NULL) failure = %v, want nil", failure)
+	}
+	if current.IsSome() {
+		t.Fatal("Scan(NULL) IsSome = true, want false")
+	}
+}
+
+func TestOptionScanAssignableYieldsSome(t *testing.T) {
+	var current opt.Option[string]
+	if failure := current.Scan("gopher"); failure != nil {
+		t.Fatalf("Scan(gopher) failure = %v, want nil", failure)
+	}
+	if got := current.ValueOr("nobody"); got != "gopher" {
+		t.Fatalf("Scan(gopher) = %q, want %q", got, "gopher")
+	}
+}
+
+func TestOptionScanMismatchYieldsError(t *testing.T) {
+	current := opt.Some("kept")
+	if failure := current.Scan(int64(1)); failure == nil {
+		t.Fatal("Scan(int64 into Option[string]) failure = nil, want error (assertion only, no conversion)")
+	}
+	if got := current.ValueOr("nobody"); got != "kept" {
+		t.Fatalf("Scan(mismatch) clobbered receiver to %q, want untouched kept", got)
 	}
 }

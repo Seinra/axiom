@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/seinra/axiom/mapx"
+	axiomslice "github.com/seinra/axiom/slice"
 )
 
 type lesson struct {
@@ -519,5 +520,149 @@ func TestMergeNilCombinePanicsOnlyOnCollision(t *testing.T) {
 	var first, second map[string]int
 	if got := mapx.Merge(first, second, nil); got == nil || len(got) != 0 {
 		t.Fatalf("Merge(nil, nil, nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestFromEntriesBuildsMap(t *testing.T) {
+	pairs := []axiomslice.Pair[string, int]{{First: "a", Second: 1}, {First: "b", Second: 2}}
+	if len(pairs) == 0 {
+		t.Fatal("seed is empty, want non-empty pairs for the bridge pin")
+	}
+	got := mapx.FromEntries(pairs)
+	want := map[string]int{"a": 1, "b": 2}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("FromEntries = %v, want %v", got, want)
+	}
+}
+
+func TestFromEntriesLaterWins(t *testing.T) {
+	pairs := []axiomslice.Pair[string, int]{{First: "a", Second: 1}, {First: "a", Second: 2}}
+	got := mapx.FromEntries(pairs)
+	if len(got) != 1 || got["a"] != 2 {
+		t.Fatalf("FromEntries duplicate = %v, want map[a:2] (later wins)", got)
+	}
+}
+
+func TestFromEntriesZipsIntoMap(t *testing.T) {
+	got := mapx.FromEntries(axiomslice.Zip([]string{"a", "b"}, []int{1, 2}))
+	want := map[string]int{"a": 1, "b": 2}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("FromEntries(Zip) = %v, want %v", got, want)
+	}
+}
+
+func TestFromEntriesNilYieldsEmpty(t *testing.T) {
+	var pairs []axiomslice.Pair[string, int]
+	got := mapx.FromEntries(pairs)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("FromEntries(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestFromEntriesEmptyYieldsEmpty(t *testing.T) {
+	got := mapx.FromEntries([]axiomslice.Pair[string, int]{})
+	if got == nil || len(got) != 0 {
+		t.Fatalf("FromEntries(empty) = %v, want empty non-nil", got)
+	}
+}
+
+func TestFromEntriesNeverMutatesInputs(t *testing.T) {
+	pairs := []axiomslice.Pair[string, int]{{First: "a", Second: 1}}
+	_ = mapx.FromEntries(pairs)
+	want := []axiomslice.Pair[string, int]{{First: "a", Second: 1}}
+	if !reflect.DeepEqual(pairs, want) {
+		t.Fatalf("inputs mutated: pairs = %v, want %v", pairs, want)
+	}
+}
+
+func TestToEntriesRoundTrips(t *testing.T) {
+	entries := map[string]int{"a": 1, "b": 2, "c": 3}
+	if len(entries) == 0 {
+		t.Fatal("seed is empty, want non-empty entries for the round-trip pin")
+	}
+	bridged := mapx.ToEntries(entries)
+	if bridged == nil || len(bridged) != len(entries) {
+		t.Fatalf("ToEntries = %v, want %d pairs non-nil", bridged, len(entries))
+	}
+	if got := mapx.FromEntries(bridged); !reflect.DeepEqual(got, entries) {
+		t.Fatalf("FromEntries(ToEntries) = %v, want %v (membership, order unspecified)", got, entries)
+	}
+}
+
+func TestToEntriesNilYieldsEmpty(t *testing.T) {
+	var entries map[string]int
+	got := mapx.ToEntries(entries)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("ToEntries(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestToEntriesEmptyYieldsEmpty(t *testing.T) {
+	got := mapx.ToEntries(map[string]int{})
+	if got == nil || len(got) != 0 {
+		t.Fatalf("ToEntries(empty) = %v, want empty non-nil", got)
+	}
+}
+
+func TestToEntriesNeverMutatesInputs(t *testing.T) {
+	entries := map[string]int{"a": 1, "b": 2}
+	snapshot := map[string]int{"a": 1, "b": 2}
+	_ = mapx.ToEntries(entries)
+	if !reflect.DeepEqual(entries, snapshot) {
+		t.Fatalf("inputs mutated: entries = %v, want %v", entries, snapshot)
+	}
+}
+
+func TestPickByValuesKeepsMatching(t *testing.T) {
+	entries := map[string]int{"a": 1, "b": 2, "c": 3}
+	if len(entries) == 0 {
+		t.Fatal("seed is empty, want non-empty entries for the values pin")
+	}
+	got := mapx.PickByValues(entries, 1, 3)
+	want := map[string]int{"a": 1, "c": 3}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("PickByValues = %v, want %v", got, want)
+	}
+}
+
+func TestPickByValuesNoMatchYieldsEmpty(t *testing.T) {
+	got := mapx.PickByValues(map[string]int{"a": 1}, 9)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("PickByValues(no match) = %v, want empty non-nil", got)
+	}
+}
+
+func TestPickByValuesNilYieldsEmpty(t *testing.T) {
+	var entries map[string]int
+	got := mapx.PickByValues(entries, 1)
+	if got == nil || len(got) != 0 {
+		t.Fatalf("PickByValues(nil) = %v, want empty non-nil", got)
+	}
+}
+
+func TestPickByValuesNoValuesYieldsEmpty(t *testing.T) {
+	got := mapx.PickByValues(map[string]int{"a": 1})
+	if got == nil || len(got) != 0 {
+		t.Fatalf("PickByValues(no values) = %v, want empty non-nil", got)
+	}
+}
+
+func TestPickByValuesDuplicateValuesCollapse(t *testing.T) {
+	got := mapx.PickByValues(map[string]int{"a": 1, "b": 2, "c": 3}, 1, 1, 3)
+	want := map[string]int{"a": 1, "c": 3}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("PickByValues duplicates = %v, want %v", got, want)
+	}
+}
+
+func TestPickByValuesNeverMutatesInputs(t *testing.T) {
+	entries := map[string]int{"a": 1, "b": 2}
+	snapshot := map[string]int{"a": 1, "b": 2}
+	picked := mapx.PickByValues(entries, 1)
+	if !reflect.DeepEqual(entries, snapshot) {
+		t.Fatalf("inputs mutated: entries = %v, want %v", entries, snapshot)
+	}
+	if !reflect.DeepEqual(picked, map[string]int{"a": 1}) {
+		t.Fatalf("PickByValues = %v, want map[a:1]", picked)
 	}
 }

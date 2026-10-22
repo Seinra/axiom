@@ -24,7 +24,12 @@
 // | Drop listed keys               | Omit          |
 // | Flip values into key groups    | Invert        |
 // | Read with an explicit fallback | ValueOr       |
+// | Bridge pairs into a map          | FromEntries |
+// | Split a map into pairs           | ToEntries   |
+// | Keep only listed values          | PickByValues |
 package mapx
+
+import "github.com/seinra/axiom/slice"
 
 // KeyBy indexes elements by keyOf. On key collision the last element wins.
 func KeyBy[Element any, Key comparable](elements []Element, keyOf func(Element) Key) map[Key]Element {
@@ -169,4 +174,63 @@ func GroupByMapped[Element any, Key comparable, Value any](elements []Element, k
 		grouped[key] = append(grouped[key], valueOf(element))
 	}
 	return grouped
+}
+
+// FromEntries builds a map from pairs, the inverse of ToEntries and the
+// map-side cousin of KeyBy. Zip output feeds it directly:
+// FromEntries(Zip(keys, values)) indexes two slices the way KeyBy indexes one.
+//
+// Later pairs win on duplicate keys, mirroring the KeyBy last-wins rule.
+// Nil or empty input yields an empty non-nil map.
+//
+// The stdlib has no pairs-to-map bridge (maps has Collect for iter.Seq2,
+// slices has no pair type of its own); Zip plus a loop is the only route.
+// mapx imports slice for Pair; the dependency is acyclic (either imports
+// result by the same precedent).
+func FromEntries[Key comparable, Value any](pairs []slice.Pair[Key, Value]) map[Key]Value {
+	entries := make(map[Key]Value, len(pairs))
+	for _, pair := range pairs {
+		entries[pair.First] = pair.Second
+	}
+	return entries
+}
+
+// ToEntries splits a map back into pairs, the inverse of FromEntries.
+// Pair order is unspecified: maps iterate in random order, so callers assert
+// membership (or round-trip through FromEntries), never order.
+//
+// Nil or empty input yields an empty non-nil slice.
+//
+// The stdlib has no map-to-pairs helper; maps.All plus append is the only
+// route, and it leaves the Pair element type to the caller.
+func ToEntries[Key comparable, Value any](entries map[Key]Value) []slice.Pair[Key, Value] {
+	bridged := make([]slice.Pair[Key, Value], 0, len(entries))
+	for key, value := range entries {
+		bridged = append(bridged, slice.Pair[Key, Value]{First: key, Second: value})
+	}
+	return bridged
+}
+
+// PickByValues returns a new map holding only the entries whose value is
+// one of the listed values. It is the value-channel complement of Pick
+// (which selects by key); duplicate listed values collapse into one
+// membership test. Missing values are ignored.
+//
+// Nil input, or no listed values, yields an empty non-nil map. The input is
+// never mutated.
+//
+// The stdlib has no value-membership helper; maps plus a wanted-set is the
+// only route, which this folds into one call.
+func PickByValues[Key comparable, Value comparable](entries map[Key]Value, values ...Value) map[Key]Value {
+	wanted := make(map[Value]struct{}, len(values))
+	for _, value := range values {
+		wanted[value] = struct{}{}
+	}
+	picked := make(map[Key]Value)
+	for key, value := range entries {
+		if _, keep := wanted[value]; keep {
+			picked[key] = value
+		}
+	}
+	return picked
 }

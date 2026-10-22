@@ -128,3 +128,25 @@ func BenchmarkPermutations(b *testing.B) {
 		benchSink += len(orders)
 	}
 }
+
+// BenchmarkTake pins the copy cost of taking the leading half of n=1000.
+func BenchmarkTake(b *testing.B) {
+	elements := makeBenchRange(benchMapFilterSize)
+	b.ResetTimer()
+	b.ReportAllocs()
+	for iteration := 0; iteration < b.N; iteration++ {
+		taken := axiomslice.Take(elements, benchMapFilterSize/2)
+		benchSink += len(taken)
+	}
+}
+
+// BenchmarkDrop pins the copy cost of dropping the leading half of n=1000.
+func BenchmarkDrop(b *testing.B) {
+	elements := makeBenchRange(benchMapFilterSize)
+	b.ResetTimer()
+	b.ReportAllocs()
+	for iteration := 0; iteration < b.N; iteration++ {
+		rest := axiomslice.Drop(elements, benchMapFilterSize/2)
+		benchSink += len(rest)
+	}
+}

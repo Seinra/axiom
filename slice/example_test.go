@@ -49,9 +49,11 @@ func ExampleFirstOr() {
 func ExampleEvery() {
 	fmt.Println(slice.Every([]int{2, 4, 6}, func(value int) bool { return value%2 == 0 }))
 	fmt.Println(slice.Every([]int{2, 3, 6}, func(value int) bool { return value%2 == 0 }))
+	fmt.Println(slice.Every([]int{}, func(value int) bool { return value%2 == 0 }))
 	// Output:
 	// true
 	// false
+	// true
 }
 
 // ExampleFindDuplicates shows repeats in order of first occurrence.

@@ -79,6 +79,7 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-21 | official-docs gap-round done | VALIDATE | cookbook CI (3 tests) + fragmentos etiquetados + why-blocks + callouts; verifier Go (S1+S2 applied); suite 16 ok, vet 0, gofmt clean; push/PR owner-gated |
 | 2026-10-21 | audit closeouts T1-T4 done | VALIDATE | 42 tests #22 + 4 bounds fixes #23 (RED→GREEN) + close-doc #24; verifier Go, 0 BLOCKER/WARNING; suite 16/16 ok, -race hammers, vet 0, gofmt clean, lint 0; push/PR owner-gated, merge needs approved on #22/#23/#24 |
 | 2026-10-21 | naming round done (#26/#13/#6) | VALIDATE | Map duplicados fuera; Stats aditivo; mapping notes + delta Flatten; re-triage #6 ledger; verifier Go 0B/0W + 4 findings aplicadas; suite 16/16, -race, vet 0, gofmt/lint 0; push/PR owner-gated |
+| 2026-10-22 | P2 combos done (#36) | IMPLEMENT | Combinations + Permutations en slice (k-subsets/k-arrangements, orden índice, bordes L3); writer + parent verify + verifier Go 0B/0W; work-unit 553e2e7 (362+/0); suite verde -count=1, vet 0, gofmt vacío, lint 0; push/PR owner-gated |
 
 ## Debt ledger
 

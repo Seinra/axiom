@@ -86,6 +86,9 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-22 | slice perf pilot done | VALIDATE | 8 benchmarks + 3 fuzz targets en slice (solo tests nuevos, +423/-0); writer + parent verify + verifier Go 0B/0W; suite 16/16 -count=1 ok, vet 0, gofmt vacío, bench smoke PASS, seeds PASS; push/PR owner-gated |
 | 2026-10-22 | adopt slice round done (#36 follow-up program) | IMPLEMENT | 13 helpers (OrElse trio, quantifiers, find ext, Take/Drop) +879/-0 aditivo; writer + parent verify + verifier Go 0B/0W + 2 SUGGESTIONs rollout; suite 16/16 -count=1 ok 0 FAIL, vet 0, gofmt vacío, bench smoke PASS; push/PR owner-gated |
 | 2026-10-22 | findings slice done (all open parked) | VALIDATE | F1/F4/F5 pineados en tests (ExampleEvery vacío, nil MaxInt, BenchmarkTake/Drop), F2/F3 dismissed con evidencia (godoc por símbolo), rancios cerrados/parkeados con razón; writer + parent verify, suite 16/16 ok 0 FAIL, vet 0, gofmt vacío; push/PR owner-gated (issue nuevo + aprobación) |
+| 2026-10-22 | future program delivered (#47 + PR #48) | DELIVERY | issue #47 approved + PR #48 merged babfaa9 (docs-only, 2 files +62/-0); suite 16/16 -count=1 ok, vet 0, gofmt vacío on feat branch; CI validate+verify pass; no native review per docs rule |
+| 2026-10-22 | slice-2 round T1 launched (worker) | IMPLEMENT | branch feat/axiom-slice2-round from main post-#48; ODD odd/tasks/axiom-slice2-round.md + Engram mirror 5085; writer surfaces slice/mapx/opt/result (12 files); delivery needs new issue + approval |
+| 2026-10-22 | slice-2 round T1 done + verifier Go | VALIDATE | writer + parent verify (suite 16/16 -count=1, vet 0, gofmt empty, lint 0); verifier Go 0B/0W + 2 test-only findings applied inline (result untouched-pin + Scan errors.Is); work-unit 1768a5c; push/PR owner-gated |
 
 ## Debt ledger
 

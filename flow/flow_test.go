@@ -5,6 +5,7 @@ import (
 	"errors"
 	"iter"
 	"reflect"
+	"runtime"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -1293,4 +1294,432 @@ func TestEachSeqPanicPropagatesPayload(t *testing.T) {
 		return nil
 	}()
 	assertPanicPayload(panicked, errPanicSentinel, t)
+}
+
+func TestMapSeqResultsLazyUntilPulled(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	var transformCalls atomic.Int64
+	var generatorPulls atomic.Int64
+	sequence := func(yield func(int) bool) {
+		generatorPulls.Add(1)
+		if !yield(1) {
+			return
+		}
+		if !yield(2) {
+			return
+		}
+	}
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		transformCalls.Add(1)
+		return candidate * outputFactor, nil
+	}
+	streamed := flow.MapSeqResults(active, sequence, 2, transform)
+	if observed := transformCalls.Load(); observed != 0 {
+		t.Fatalf("MapSeqResults transform calls = %d, want 0 before first pull", observed)
+	}
+	if observed := generatorPulls.Load(); observed != 0 {
+		t.Fatalf("MapSeqResults generator pulls = %d, want 0 before first pull", observed)
+	}
+	collected := slices.Collect(streamed)
+	if len(collected) != 2 {
+		t.Fatalf("MapSeqResults collected count = %d, want 2", len(collected))
+	}
+	for _, outcome := range collected {
+		if _, failure := outcome.Unwrap(); failure != nil {
+			t.Fatalf("MapSeqResults outcome failure = %v, want nil", failure)
+		}
+	}
+	if observed := transformCalls.Load(); observed != 2 {
+		t.Fatalf("MapSeqResults transform calls = %d, want 2 after collect", observed)
+	}
+}
+
+func TestMapSeqResultsKeepsOrderUnderSkew(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	inputs := []int{0, 1, 2, 3, 4, 5}
+	lastPosition := len(inputs) - 1
+	sequence := slices.Values(inputs)
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		stagger := time.Duration(lastPosition-candidate) * staggerStep
+		staggerTimer := time.NewTimer(stagger)
+		defer staggerTimer.Stop()
+		select {
+		case <-taskContext.Done():
+			return 0, taskContext.Err()
+		case <-staggerTimer.C:
+			return candidate * outputFactor, nil
+		}
+	}
+	position := 0
+	for outcome := range flow.MapSeqResults(active, sequence, 3, transform) {
+		candidate, failure := outcome.Unwrap()
+		if failure != nil {
+			t.Fatalf("MapSeqResults outcome %d failure = %v, want nil", position, failure)
+		}
+		expected := position * outputFactor
+		if candidate != expected {
+			t.Fatalf("MapSeqResults outcome %d = %d, want %d", position, candidate, expected)
+		}
+		position++
+	}
+	if position != len(inputs) {
+		t.Fatalf("MapSeqResults yielded = %d, want %d", position, len(inputs))
+	}
+}
+
+func TestMapSeqResultsCollectAllContinuesAfterFail(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	inputs := []int{0, 1, 2, 3, 4}
+	sequence := slices.Values(inputs)
+	var completed atomic.Int64
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		defer completed.Add(1)
+		if candidate == 2 {
+			return 0, errFastFailure
+		}
+		return candidate * outputFactor, nil
+	}
+	collected := slices.Collect(flow.MapSeqResults(active, sequence, 3, transform))
+	if len(collected) != len(inputs) {
+		t.Fatalf("MapSeqResults collected = %d, want %d (every input yields one Result)", len(collected), len(inputs))
+	}
+	if observed := completed.Load(); observed != int64(len(inputs)) {
+		t.Fatalf("MapSeqResults completed = %d, want %d (Fail never cancels siblings)", observed, len(inputs))
+	}
+	for position, outcome := range collected {
+		candidate, failure := outcome.Unwrap()
+		if inputs[position] == 2 {
+			if !errors.Is(failure, errFastFailure) {
+				t.Fatalf("MapSeqResults outcome %d failure = %v, want %v", position, failure, errFastFailure)
+			}
+			continue
+		}
+		if failure != nil {
+			t.Fatalf("MapSeqResults outcome %d failure = %v, want nil", position, failure)
+		}
+		if expected := inputs[position] * outputFactor; candidate != expected {
+			t.Fatalf("MapSeqResults outcome %d = %d, want %d", position, candidate, expected)
+		}
+	}
+}
+
+func TestMapSeqResultsPreCanceledYieldsEmpty(t *testing.T) {
+	active, cancelTask := context.WithCancel(context.Background())
+	cancelTask()
+	var started atomic.Int64
+	counting := func(taskContext context.Context, candidate int) (int, error) {
+		started.Add(1)
+		return candidate, nil
+	}
+	baseline := runtime.NumGoroutine()
+	count := 0
+	for range flow.MapSeqResults(active, slices.Values([]int{1, 2, 3}), 2, counting) {
+		count++
+	}
+	if count != 0 {
+		t.Fatalf("MapSeqResults pre-canceled yielded = %d, want 0", count)
+	}
+	if observed := started.Load(); observed != 0 {
+		t.Fatalf("MapSeqResults pre-canceled started = %d, want 0", observed)
+	}
+	// Without spawning, the goroutine count must not grow: poll briefly to
+	// rule out a slow spawn racing the range above.
+	deadline := time.Now().Add(2 * time.Second)
+	for runtime.NumGoroutine() > baseline && time.Now().Before(deadline) {
+		runtime.Gosched()
+	}
+	if observed := runtime.NumGoroutine(); observed > baseline {
+		t.Fatalf("MapSeqResults pre-canceled goroutines = %d, want <= baseline %d", observed, baseline)
+	}
+}
+
+func TestMapSeqResultsNilSequenceYieldsEmpty(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	var nilSequence iter.Seq[int]
+	if nilSequence != nil {
+		t.Fatal("test setup: sequence is not nil, want nil seq guard pin")
+	}
+	neverRuns := func(taskContext context.Context, candidate int) (int, error) {
+		t.Error("MapSeqResults transform ran on nil sequence")
+		return candidate, nil
+	}
+	baseline := runtime.NumGoroutine()
+	count := 0
+	for range flow.MapSeqResults(active, nilSequence, 2, neverRuns) {
+		count++
+	}
+	if count != 0 {
+		t.Fatalf("MapSeqResults nil yielded = %d, want 0", count)
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for runtime.NumGoroutine() > baseline && time.Now().Before(deadline) {
+		runtime.Gosched()
+	}
+	if observed := runtime.NumGoroutine(); observed > baseline {
+		t.Fatalf("MapSeqResults nil goroutines = %d, want <= baseline %d", observed, baseline)
+	}
+}
+
+func TestMapSeqResultsEarlyBreakJoinsWorkers(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	gate := make(chan struct{})
+	var started atomic.Int64
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		started.Add(1)
+		if candidate < 2 {
+			return candidate, nil
+		}
+		select {
+		case <-gate:
+			return candidate, nil
+		case <-taskContext.Done():
+			return 0, taskContext.Err()
+		}
+	}
+	longSequence := func(yield func(int) bool) {
+		for candidate := 0; candidate < 500; candidate++ {
+			if !yield(candidate) {
+				return
+			}
+		}
+	}
+	baseline := runtime.NumGoroutine()
+	consumed := 0
+	for outcome := range flow.MapSeqResults(active, longSequence, 4, transform) {
+		_ = outcome
+		consumed++
+		if consumed == 2 {
+			break
+		}
+	}
+	close(gate)
+	if consumed != 2 {
+		t.Fatalf("MapSeqResults consumed = %d, want 2 before break", consumed)
+	}
+	// Workers blocked in transform observe cancellation (break cancels the
+	// run) and join: poll until the baseline returns, fail on deadline.
+	deadline := time.Now().Add(5 * time.Second)
+	for runtime.NumGoroutine() > baseline && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if observed := runtime.NumGoroutine(); observed > baseline {
+		t.Fatalf("MapSeqResults goroutines = %d, want <= baseline %d after break", observed, baseline)
+	}
+}
+
+func TestMapSeqResultsActiveCancelStopsStream(t *testing.T) {
+	active, cancelTask := context.WithCancel(context.Background())
+	defer cancelTask()
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		select {
+		case <-taskContext.Done():
+			return 0, taskContext.Err()
+		case <-time.After(slowDelay):
+			return candidate, nil
+		}
+	}
+	longSequence := func(yield func(int) bool) {
+		for candidate := 0; candidate < 500; candidate++ {
+			if !yield(candidate) {
+				return
+			}
+		}
+	}
+	baseline := runtime.NumGoroutine()
+	go func() {
+		time.Sleep(staggerStep)
+		cancelTask()
+	}()
+	consumed := 0
+	for range flow.MapSeqResults(active, longSequence, 4, transform) {
+		consumed++
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for runtime.NumGoroutine() > baseline && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if observed := runtime.NumGoroutine(); observed > baseline {
+		t.Fatalf("MapSeqResults goroutines = %d, want <= baseline %d after cancel", observed, baseline)
+	}
+}
+
+func TestMapSeqResultsPanicRepanicsInPuller(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	sequence := slices.Values([]int{1, 2, 3})
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		if candidate == 2 {
+			panic(errPanicSentinel)
+		}
+		select {
+		case <-taskContext.Done():
+			return 0, taskContext.Err()
+		default:
+			return candidate * outputFactor, nil
+		}
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		for range flow.MapSeqResults(active, sequence, 2, transform) {
+		}
+		return nil
+	}()
+	assertPanicPayload(panicked, errPanicSentinel, t)
+}
+
+func TestMapSeqResultsPanicWinsOverFail(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	gate := make(chan struct{})
+	var gateOnce sync.Once
+	sequence := slices.Values([]int{0, 1})
+	transform := func(taskContext context.Context, candidate int) (string, error) {
+		if candidate == 1 {
+			gateOnce.Do(func() { close(gate) })
+			panic(errPanicSentinel)
+		}
+		select {
+		case <-gate:
+			return "", errFastFailure
+		case <-taskContext.Done():
+			return "", taskContext.Err()
+		}
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		for range flow.MapSeqResults(active, sequence, 2, transform) {
+		}
+		return nil
+	}()
+	assertPanicPayload(panicked, errPanicSentinel, t)
+}
+
+func TestMapSeqResultsGeneratorPanicPropagates(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	baseline := runtime.NumGoroutine()
+	sequence := func(yield func(int) bool) {
+		if !yield(1) {
+			return
+		}
+		panic(errPanicSentinel)
+	}
+	transform := func(taskContext context.Context, candidate int) (int, error) {
+		select {
+		case <-taskContext.Done():
+			return 0, taskContext.Err()
+		default:
+			return candidate, nil
+		}
+	}
+	panicked := func() (didPanic any) {
+		defer func() { didPanic = recover() }()
+		for range flow.MapSeqResults(active, sequence, 2, transform) {
+		}
+		return nil
+	}()
+	assertPanicPayload(panicked, errPanicSentinel, t)
+	deadline := time.Now().Add(5 * time.Second)
+	for runtime.NumGoroutine() > baseline && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if observed := runtime.NumGoroutine(); observed > baseline {
+		t.Fatalf("MapSeqResults generator-panic goroutines = %d, want <= baseline %d", observed, baseline)
+	}
+}
+
+func TestMapSeqResultsWorkerCountDefaultsWhenNotPositive(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	inputs := []int{1, 2, 3, 4}
+	identity := func(taskContext context.Context, candidate int) (int, error) {
+		select {
+		case <-taskContext.Done():
+			return 0, taskContext.Err()
+		default:
+			return candidate * outputFactor, nil
+		}
+	}
+	for _, workerCount := range []int{0, -3} {
+		collected := slices.Collect(flow.MapSeqResults(active, slices.Values(inputs), workerCount, identity))
+		if len(collected) != len(inputs) {
+			t.Fatalf("MapSeqResults(%d) collected = %d, want %d", workerCount, len(collected), len(inputs))
+		}
+		for position, outcome := range collected {
+			candidate, failure := outcome.Unwrap()
+			if failure != nil {
+				t.Fatalf("MapSeqResults(%d) outcome %d failure = %v, want nil", workerCount, position, failure)
+			}
+			if expected := inputs[position] * outputFactor; candidate != expected {
+				t.Fatalf("MapSeqResults(%d) outcome %d = %d, want %d", workerCount, position, candidate, expected)
+			}
+		}
+	}
+}
+
+func TestMapSeqResultsLargeStreamStaysOrdered(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	inputTotal := 2000
+	longSequence := func(yield func(int) bool) {
+		for candidate := 0; candidate < inputTotal; candidate++ {
+			if !yield(candidate) {
+				return
+			}
+		}
+	}
+	identity := func(taskContext context.Context, candidate int) (int, error) {
+		select {
+		case <-taskContext.Done():
+			return 0, taskContext.Err()
+		default:
+			return candidate, nil
+		}
+	}
+	position := 0
+	for outcome := range flow.MapSeqResults(active, longSequence, 8, identity) {
+		candidate, failure := outcome.Unwrap()
+		if failure != nil {
+			t.Fatalf("MapSeqResults outcome %d failure = %v, want nil", position, failure)
+		}
+		if candidate != position {
+			t.Fatalf("MapSeqResults outcome %d = %d, want %d", position, candidate, position)
+		}
+		position++
+	}
+	if position != inputTotal {
+		t.Fatalf("MapSeqResults yielded = %d, want %d", position, inputTotal)
+	}
+}
+
+func TestMapSeqResultsExactlyOneResultPerInput(t *testing.T) {
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	inputs := []int{0, 1, 2, 3, 4, 5, 6, 7}
+	collected := slices.Collect(flow.MapSeqResults(active, slices.Values(inputs), 3, func(taskContext context.Context, candidate int) (int, error) {
+		if candidate%3 == 0 {
+			return 0, errSlowFailure
+		}
+		return candidate, nil
+	}))
+	if len(collected) != len(inputs) {
+		t.Fatalf("MapSeqResults collected = %d, want %d", len(collected), len(inputs))
+	}
+	okCount := 0
+	failCount := 0
+	for _, outcome := range collected {
+		if outcome.IsOk() {
+			okCount++
+			continue
+		}
+		failCount++
+	}
+	if okCount == 0 || failCount == 0 {
+		t.Fatalf("MapSeqResults ok = %d fail = %d, want both present", okCount, failCount)
+	}
 }

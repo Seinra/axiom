@@ -26,20 +26,21 @@
 //	    }
 //	}
 //
-// Out of scope (YAGNI): no FanIn/FanOut channels, no lazy-out sequences, no
-// Retry/backoff; those are later slices if ever. Reach for plain loops or
-// golang.org/x/sync/errgroup directly for single-goroutine or unshaped work.
+// Out of scope (YAGNI): no FanIn/FanOut channels, no Retry/backoff; those are
+// later slices if ever. Reach for plain loops or golang.org/x/sync/errgroup
+// directly for single-goroutine or unshaped work.
 //
 // Which function?
 //
-// | When you want to ...                  | Reach for ...     |
-// |----------------------------------------|-------------------|
-// | Transform every input, keep input order | Map               |
-// | Run side effects without results        | ForEach           |
-// | Take the first success, cancel siblings | Race              |
-// | Match the empty-Race sentinel           | ErrNoRaceInputs   |
-// | Transform a sequence, keep stream order | MapSeq            |
-// | ForEach over a sequence, result dropped | EachSeq           |
+// | When you want to ...                                   | Reach for ...     |
+// |---------------------------------------------------------|-------------------|
+// | Transform every input, keep input order                  | Map               |
+// | Run side effects without results                         | ForEach           |
+// | Take the first success, cancel siblings                  | Race              |
+// | Match the empty-Race sentinel                            | ErrNoRaceInputs   |
+// | Transform a sequence, keep stream order                  | MapSeq            |
+// | ForEach over a sequence, result dropped                  | EachSeq           |
+// | Transform a sequence, keep stream order, collect Results | MapSeqResults     |
 package flow
 
 import (
@@ -49,6 +50,8 @@ import (
 	"iter"
 	"runtime"
 	"sync"
+
+	"github.com/seinra/axiom/result"
 )
 
 // normalizeWorkerCount resolves runners for inputCount items: a workerCount
@@ -500,4 +503,328 @@ func EachSeq[Input any](active context.Context, sequence iter.Seq[Input], worker
 		return struct{}{}, consumeFailure
 	})
 	return eachFailure
+}
+
+// seqResultsReorderCapacity bounds the ordered fan-in window: at most this
+// many dispatched-but-unyielded outcomes stay buffered while the stream is
+// consumed. The capacity is a documented fixed constant, never tunable, so
+// in-flight plus buffered work stays bounded no matter how long the input
+// sequence runs. The pulling goroutine briefly holds one extra already-pulled
+// candidate while making room, so the live set is capacity plus runners plus
+// one lookahead, still O(1) in the sequence length.
+const seqResultsReorderCapacity = 64
+
+// seqResultsJob carries one dispatched stream value with its ordered reply
+// slot. Workers write exactly one Result per job to the buffered slot, so a
+// send never blocks on an abandoned consumer after cancellation or break.
+type seqResultsJob[Input any, Output any] struct {
+	candidate Input
+	slot      chan result.Result[Output]
+}
+
+// seqResultsWorker drains dispatched jobs through transform, writing exactly
+// one Result per job to its own ordered slot. A transform failure becomes a
+// Fail outcome and never cancels siblings (collect-all); the runner keeps
+// draining. A transform panic latches once, cancels siblings, and stops this
+// runner without unwinding it. Cancellation drains unstarted jobs without
+// running transform. Every path joins workGroup.
+func seqResultsWorker[Input any, Output any](taskContext context.Context, positions <-chan seqResultsJob[Input, Output], transform func(context.Context, Input) (Output, error), panicOnce *sync.Once, panicMutex *sync.Mutex, firstPanic *any, cancelTask context.CancelFunc, workGroup *sync.WaitGroup) {
+	defer workGroup.Done()
+	for offered := range positions {
+		select {
+		case <-taskContext.Done():
+			continue
+		default:
+		}
+		transformed, transformFailure, didPanic := callTransform(taskContext, offered.candidate, transform, func(payload any) {
+			panicOnce.Do(func() {
+				panicMutex.Lock()
+				*firstPanic = payload
+				panicMutex.Unlock()
+			})
+			cancelTask()
+		})
+		if didPanic {
+			return
+		}
+		var outcome result.Result[Output]
+		if transformFailure != nil {
+			outcome = result.Fail[Output](transformFailure)
+		} else {
+			outcome = result.Ok[Output](transformed)
+		}
+		offered.slot <- outcome
+	}
+}
+
+// loadSeqResultsPanic reads the latched transform panic under guard; nil
+// means no worker has panicked yet.
+func loadSeqResultsPanic(panicMutex *sync.Mutex, firstPanic *any) any {
+	panicMutex.Lock()
+	defer panicMutex.Unlock()
+	return *firstPanic
+}
+
+// seqResultsEmit waits for the oldest pending slot and yields it in stream
+// order. It reports shouldStop when the stream must terminate (downstream
+// break or cancellation) and panicPayload when a transform panic latched
+// (caller must re-panic in the pulling goroutine; panic wins over Fail).
+func seqResultsEmit[Output any](taskContext context.Context, pendingSlots []chan result.Result[Output], yield func(result.Result[Output]) bool, loadPanic func() any) ([]chan result.Result[Output], bool, any) {
+	if panicPayload := loadPanic(); panicPayload != nil {
+		return pendingSlots, true, panicPayload
+	}
+	select {
+	case outcome := <-pendingSlots[0]:
+		if panicPayload := loadPanic(); panicPayload != nil {
+			return pendingSlots, true, panicPayload
+		}
+		if !yield(outcome) {
+			return pendingSlots[1:], true, nil
+		}
+		return pendingSlots[1:], false, nil
+	case <-taskContext.Done():
+		if panicPayload := loadPanic(); panicPayload != nil {
+			return pendingSlots, true, panicPayload
+		}
+		return pendingSlots, true, nil
+	}
+}
+
+// seqResultsTryEmit yields the oldest pending slot only when it is already
+// ready, never blocking for it; emitted reports whether a yield happened.
+// Cancellation and latched panics still stop the stream promptly.
+func seqResultsTryEmit[Output any](taskContext context.Context, pendingSlots []chan result.Result[Output], yield func(result.Result[Output]) bool, loadPanic func() any) ([]chan result.Result[Output], bool, any, bool) {
+	if panicPayload := loadPanic(); panicPayload != nil {
+		return pendingSlots, true, panicPayload, false
+	}
+	select {
+	case outcome := <-pendingSlots[0]:
+		if panicPayload := loadPanic(); panicPayload != nil {
+			return pendingSlots, true, panicPayload, false
+		}
+		if !yield(outcome) {
+			return pendingSlots[1:], true, nil, true
+		}
+		return pendingSlots[1:], false, nil, true
+	case <-taskContext.Done():
+		if panicPayload := loadPanic(); panicPayload != nil {
+			return pendingSlots, true, panicPayload, false
+		}
+		return pendingSlots, true, nil, false
+	default:
+		return pendingSlots, false, nil, false
+	}
+}
+
+// seqResultsOffer dispatches one stream value to the workers with its
+// ordered reply slot, reporting shouldStop on cancellation and panicPayload
+// on a latched transform panic.
+func seqResultsOffer[Input any, Output any](taskContext context.Context, positions chan<- seqResultsJob[Input, Output], pendingSlots []chan result.Result[Output], candidate Input, loadPanic func() any) ([]chan result.Result[Output], bool, any) {
+	if loadPanic() != nil {
+		return pendingSlots, true, loadPanic()
+	}
+	select {
+	case <-taskContext.Done():
+		if panicPayload := loadPanic(); panicPayload != nil {
+			return pendingSlots, true, panicPayload
+		}
+		return pendingSlots, true, nil
+	default:
+	}
+	slotChannel := make(chan result.Result[Output], 1)
+	offered := seqResultsJob[Input, Output]{candidate: candidate, slot: slotChannel}
+	select {
+	case positions <- offered:
+		return append(pendingSlots, slotChannel), false, nil
+	case <-taskContext.Done():
+		if panicPayload := loadPanic(); panicPayload != nil {
+			return pendingSlots, true, panicPayload
+		}
+		return pendingSlots, true, nil
+	}
+}
+
+// seqResultsFlushReady yields every already-ready oldest slot without
+// blocking for the next one; emitted stops at the first pending outcome.
+func seqResultsFlushReady[Output any](taskContext context.Context, pendingSlots []chan result.Result[Output], yield func(result.Result[Output]) bool, loadPanic func() any) ([]chan result.Result[Output], bool, any) {
+	for len(pendingSlots) > 0 {
+		var shouldStop bool
+		var panicPayload any
+		var emitted bool
+		pendingSlots, shouldStop, panicPayload, emitted = seqResultsTryEmit(taskContext, pendingSlots, yield, loadPanic)
+		if panicPayload != nil {
+			return pendingSlots, true, panicPayload
+		}
+		if shouldStop {
+			return pendingSlots, true, nil
+		}
+		if !emitted {
+			break
+		}
+	}
+	return pendingSlots, false, nil
+}
+
+// seqResultsDrain emits every remaining pending slot in order, blocking for
+// each oldest outcome until the window empties or the run stops.
+func seqResultsDrain[Output any](taskContext context.Context, pendingSlots []chan result.Result[Output], yield func(result.Result[Output]) bool, loadPanic func() any) ([]chan result.Result[Output], bool, any) {
+	for len(pendingSlots) > 0 {
+		var shouldStop bool
+		var panicPayload any
+		pendingSlots, shouldStop, panicPayload = seqResultsEmit(taskContext, pendingSlots, yield, loadPanic)
+		if panicPayload != nil {
+			return pendingSlots, true, panicPayload
+		}
+		if shouldStop {
+			return pendingSlots, true, nil
+		}
+	}
+	return pendingSlots, false, nil
+}
+
+// seqResultsPump offers one stream value to the workers while keeping the
+// reorder window bounded, then flushes every already-ready outcome. It
+// reports shouldStop when the stream must terminate and panicPayload when a
+// transform panic latched. Split from seqResultsDrive to hold the complexity
+// ceiling: drive owns the range, pump owns one iteration.
+func seqResultsPump[Input any, Output any](taskContext context.Context, positions chan<- seqResultsJob[Input, Output], pendingSlots []chan result.Result[Output], candidate Input, yield func(result.Result[Output]) bool, loadPanic func() any) ([]chan result.Result[Output], bool, any) {
+	for len(pendingSlots) >= seqResultsReorderCapacity {
+		var shouldStop bool
+		var panicPayload any
+		pendingSlots, shouldStop, panicPayload = seqResultsEmit(taskContext, pendingSlots, yield, loadPanic)
+		if panicPayload != nil {
+			return pendingSlots, true, panicPayload
+		}
+		if shouldStop {
+			return pendingSlots, true, nil
+		}
+	}
+	var shouldStop bool
+	var panicPayload any
+	pendingSlots, shouldStop, panicPayload = seqResultsOffer(taskContext, positions, pendingSlots, candidate, loadPanic)
+	if panicPayload != nil {
+		return pendingSlots, true, panicPayload
+	}
+	if shouldStop {
+		return pendingSlots, true, nil
+	}
+	return seqResultsFlushReady(taskContext, pendingSlots, yield, loadPanic)
+}
+
+// seqResultsDrive pulls sequence on the caller's stack while workers
+// transform concurrently, emitting ordered Results through the bounded
+// window. It returns a transform panic payload to re-panic, nil on any
+// normal termination (exhausted input, downstream break, or cancellation).
+// A generator panic is never caught here: it unwinds through the caller
+// after the deferred join closes the run, so it propagates on the puller's
+// stack exactly as ranging the sequence directly would.
+func seqResultsDrive[Input any, Output any](taskContext context.Context, sequence iter.Seq[Input], positions chan<- seqResultsJob[Input, Output], yield func(result.Result[Output]) bool, loadPanic func() any) any {
+	pendingSlots := make([]chan result.Result[Output], 0, seqResultsReorderCapacity+1)
+	for candidate := range sequence {
+		var shouldStop bool
+		var panicPayload any
+		pendingSlots, shouldStop, panicPayload = seqResultsPump(taskContext, positions, pendingSlots, candidate, yield, loadPanic)
+		if panicPayload != nil {
+			return panicPayload
+		}
+		if shouldStop {
+			return nil
+		}
+	}
+	var shouldStop bool
+	var panicPayload any
+	_, shouldStop, panicPayload = seqResultsDrain(taskContext, pendingSlots, yield, loadPanic)
+	if panicPayload != nil {
+		return panicPayload
+	}
+	if shouldStop {
+		return nil
+	}
+	return nil
+}
+
+// MapSeqResults runs transform over sequence with at most workerCount
+// concurrent runners and streams every outcome in stream order as a
+// result.Result: nth input yields nth Result, Ok on success and Fail on
+// transform failure. A Fail never cancels siblings (collect-all): every
+// consumed input yields exactly one Result, so ranging the stream accounts
+// for the whole run — the validate-all lesson, never silent, never
+// truncated.
+//
+// Lazy in AND lazy out: calling MapSeqResults starts nothing (a transform
+// call counter stays put until the first pull), and pulling sequence values
+// plus running transforms happens only while the returned iter.Seq is being
+// ranged. The standard library has no lazy fallible parallel stream over
+// iter.Seq (iter.Seq is infallible by construction); MapSeqResults fills
+// that gap with ordered fan-in instead of a new vocabulary.
+//
+// A workerCount of zero or less falls back to runtime.NumCPU. A nil sequence
+// yields an empty stream without spawning any goroutine (ranging over a nil
+// iter.Seq would panic); an already-canceled active context likewise yields
+// nothing and starts nothing.
+//
+// Bounded fan-out plus ordered fan-in through a bounded reorder buffer:
+// dispatch plus the reorder window stay O(1) in the sequence length
+// (fixed capacity seqResultsReorderCapacity, never tunable), so in-flight
+// plus buffered work stays bounded while the stream is consumed. Collecting
+// the stream (for example with slices.Collect) is O(n) in the sequence
+// length by the caller's explicit decision: unbounded inputs stream, they
+// never materialize unless the caller asks.
+//
+// Cancellation joins everything: active.Done() stops the feeder and the
+// workers and joins every spawned goroutine, and a downstream early break
+// (yield returning false) cancels the run and joins the feeder plus the
+// workers before the range exits — no leaked goroutines on any path.
+// Sibling transforms must honor the context for prompt shutdown; a
+// transform already in flight still runs to completion (Go cannot preempt
+// it), bounded by the runner count.
+//
+// A panicking transform never escapes its runner goroutine: the first panic
+// payload latches, siblings cancel through the same context path, every
+// goroutine joins, and MapSeqResults re-panics the original payload in the
+// pulling goroutine. A latched panic wins over a latched Fail: programmer
+// bugs stay loud. A panic inside the input generator is never caught here:
+// workers join through the deferred cleanup and the payload propagates on
+// the puller's stack, loud, the same as ranging the sequence directly.
+//
+// Out of scope (YAGNI): no fail-fast flag or mode on this symbol (fail-fast
+// already exists: Map, MapSeq, EachSeq, and range-break already cancels),
+// no Filter, no tunable buffers, no unbounded workers.
+func MapSeqResults[Input any, Output any](active context.Context, sequence iter.Seq[Input], workerCount int, transform func(context.Context, Input) (Output, error)) iter.Seq[result.Result[Output]] {
+	return func(yield func(result.Result[Output]) bool) {
+		if active.Err() != nil {
+			return
+		}
+		if sequence == nil {
+			return
+		}
+		runners := workerCount
+		if runners <= 0 {
+			runners = runtime.NumCPU()
+		}
+		taskContext, cancelTask := context.WithCancel(active)
+		defer cancelTask()
+		positions := make(chan seqResultsJob[Input, Output])
+		var workGroup sync.WaitGroup
+		var panicOnce sync.Once
+		var panicMutex sync.Mutex
+		var firstPanic any
+		var closeOnce sync.Once
+		closePositions := func() {
+			closeOnce.Do(func() { close(positions) })
+		}
+		defer func() {
+			cancelTask()
+			closePositions()
+			workGroup.Wait()
+		}()
+		for range runners {
+			workGroup.Add(1)
+			go seqResultsWorker(taskContext, positions, transform, &panicOnce, &panicMutex, &firstPanic, cancelTask, &workGroup)
+		}
+		loadPanic := func() any { return loadSeqResultsPanic(&panicMutex, &firstPanic) }
+		if panicPayload := seqResultsDrive(taskContext, sequence, positions, yield, loadPanic); panicPayload != nil {
+			panic(panicPayload)
+		}
+	}
 }

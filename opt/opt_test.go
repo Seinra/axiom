@@ -490,6 +490,16 @@ func TestOptionScanAssignableYieldsSome(t *testing.T) {
 	}
 }
 
+func TestOptionScanInt64IntoIntFails(t *testing.T) {
+	current := opt.Some(3)
+	if failure := current.Scan(int64(7)); failure == nil {
+		t.Fatal("Scan(int64 into Option[int]) failure = nil, want error (drivers yield int64, never int)")
+	}
+	if got := current.ValueOr(0); got != 3 {
+		t.Fatalf("Scan(int64 into Option[int]) clobbered receiver to %d, want untouched 3", got)
+	}
+}
+
 func TestOptionScanMismatchYieldsError(t *testing.T) {
 	current := opt.Some("kept")
 	if failure := current.Scan(int64(1)); failure == nil {

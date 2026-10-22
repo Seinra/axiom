@@ -49,6 +49,7 @@ func (current *Stack[Element]) Push(element Element) {
 // Pop removes the top element and returns it with held true.
 // An empty stack yields (zero, false): never an error, never a panic.
 // The vacated slot is zeroed so a popped element stays collectable.
+// Draining retains backing capacity for reuse; use a fresh Stack to release memory.
 func (current *Stack[Element]) Pop() (Element, bool) {
 	if len(current.elements) == 0 {
 		var empty Element

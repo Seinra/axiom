@@ -219,6 +219,7 @@ func (current Result[T]) MarshalJSON() ([]byte, error) {
 // failures: a success of exactly that shape round-trips as Fail, by
 // documentation rather than guesswork. Envelope failures carry a fresh
 // error holding the message; sentinel identity does not survive JSON.
+// A non-string "error" value is not an envelope: it falls through to the success decode.
 // Anything else unmarshalable into T yields the encoding/json error, never
 // a panic, and leaves the receiver untouched.
 func (current *Result[T]) UnmarshalJSON(payload []byte) error {

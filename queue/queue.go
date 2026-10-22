@@ -40,6 +40,7 @@ package queue
 
 // compactThreshold is the consumed-prefix length that, together with holding
 // at least half the backing, triggers a slide of the live suffix.
+// The 64-entry floor is a heuristic: slides stay rare on small queues while order stays pinned by tests, never timing.
 const compactThreshold = 64
 
 // Queue holds elements in first-in, first-out order.

@@ -12,7 +12,7 @@ Fourth declared slice (`odd/tasks/axiom-future-slices.md` program row): deferred
 ## Tasks
 
 - T1 (S1, S2, S4): Design lock — verifiable requirements (MUST/SHOULD/MAY + Given/When/Then) + exact API shape + lesson note + Which-table template; owner sign-off — route: parent + foundry-requirements + cognitive-doc-design — commit: ODD-only (this document, branch feat/axiom-f4-task)
-- T2 (S1-S4): Implement Task with tests + Which-table + Example — route: bounded writer — surfaces: task/task.go, task/task_test.go, task/example_test.go — skills: foundry + foundry-testing + cognitive-doc-design — commit: pending
+- T2 (S1-S4): Implement Task with tests + Which-table + Example — route: bounded writer — surfaces: task/task.go, task/task_test.go, task/example_test.go — skills: foundry + foundry-testing + cognitive-doc-design — commit: f3a27f6
 - T3 (S3): Independent verifier + close-out — route: parent + gentle-ai-verify; push/PR owner-gated (new issue + approval) — commit: pending
 - T4 (S3): Delivery — route: parent; issue type:feature + status:approved + PR Closes #N type:feature + CI green; merge owner-gated — commit: pending
 
@@ -22,6 +22,8 @@ Fourth declared slice (`odd/tasks/axiom-future-slices.md` program row): deferred
 - L2 (direction lock verbatim, owner answer 2026-10-22): "Task diferido cancelable → Result" ("Unidad diferida que devuelve Result: pánico→Fail, cancelación con join, sin leaks. Lección 'async done right', compone con flow y Try."). Program gate it satisfies: "weakest stdlib-first story; needs the strongest lesson justification" — justification is the cancel+panic+leak contract (async done right) as DLC lesson material, stdlib-first core (context + sync + result only).
 - L3 (2026-10-22): classified large (new package + new abstraction, resume test fails); rama feat/axiom-f4-task desde main (post-#60); ODD + mirror + todo reconciled before first write; exact API surface explicitly NOT invented here — pinned in T1 with owner sign-off.
 - L4 (2026-10-22, T1 DONE + owner sign-off sin flips): eager + idempotente + pánico→Fail (política exacta Try) + nil-compute/zero-Task panic; API: `task.Task[Output]` + `Spawn(active, compute)` + `Await() Result`; requirements R1-R6 + edges + out-of-scope + lesson note abajo en ## Design; T2 a writer acotado (task/task.go, task/task_test.go, task/example_test.go).
+- L5 (2026-10-22, recomendación Catalyst vía owner): hueco F4 = "el capítulo async pendiente"; recomienda opción 1 (handle de lifecycle, anti-mónada); sin F4 el DLC termina sin el capítulo "ninguna goroutine sin dueño", el único que enseña disciplina y no solo herramientas. Confirma el lock de L2 sin cambiarlo: `Task` es handle de lifecycle (Spawn/Await/join) y `Then`/`Map` ya están fuera de alcance (anti-mónada). Lección titulada en ## Design.
+- L6 (2026-10-22, T2 DONE + verifier Go + close-out): work-unit f3a27f6 (436+/0, task/* 3 files, suite 20/20 -count=1 ok, vet 0, gofmt vacío, lint 0, bench smoke PASS slice+flow 1x); verifier mvk5tqwy-6-p78w Go all S# (0 BLOCKER, 1 bench WARNING closed by parent smoke line, 1 nil-ctx-test SUGGESTION parked with reason: deterministic gap, zero behavior risk, no perturbar la unidad verificada); slice boundary: 485 authored lines over ~400 heuristic = single logical unit (new package), no more code commits — delivery strategy applies. T4 delivery (new issue + approval + PR + CI, merge owner-gated).
 
 ## Design (T1 sign-off, 2026-10-22)
 
@@ -46,4 +48,4 @@ Contrato:
 - R6 Which-table: background single result → `task.Spawn`/`Await`; sync panic boundary → `Try`; parallel fan-out → `flow.Map`; lazy ordered stream → `flow.MapSeqResults`; dedup concurrente → `singleflight`.
 - Edges: `compute == nil` → panic en `Spawn`; `Await` sobre `Task` cero → panic.
 - Out: combinadores `Then`/`Map`, timeouts (ctx deadlines), `TaskGroup` (errgroup/`flow`), buffers tuneables, métricas.
-- Lección DLC: "async done right: todo cómputo spawneado se joinea, todo pánico se vuelve dato, toda cancelación se observa, todo resultado se comparte" (vs goroutine+channel un receptor/join manual/pánico fatal; errgroup scope grupal; singleflight solo dedup).
+- Lección DLC: "ninguna goroutine sin dueño" — async done right: todo cómputo spawneado se joinea, todo pánico se vuelve dato, toda cancelación se observa, todo resultado se comparte (vs goroutine+channel un receptor/join manual/pánico fatal; errgroup scope grupal; singleflight solo dedup). Capítulo de disciplina, no de herramientas.

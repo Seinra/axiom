@@ -95,6 +95,10 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-22 | F1 T1 done + verifier Go | VALIDATE | writer + parent verify (suite 18/18 -count=1, vet 0, gofmt empty, lint 0, bench smoke PASS, full impl read); verifier Go 0B/0S + 1 auth-only WARNING closed by parent evidence; work-unit 7ee6db7; push/PR owner-gated |
 | 2026-10-22 | native review F1 quemado (owner order) | VALIDATE | lineage review-fb21b297839fa5d5 APPROVED + burned (readability+reliability, 617 líneas, group capture limpio); 4 advisories informativas parkeadas (R2-001 WARNING + R2-002/R2-003 + R3-drain-retention); sin correction; push/PR owner-gated (nuevo issue + aprobación) |
 | 2026-10-22 | F1 delivery (issue #51 + PR #52) | DELIVERY | branch pushed; issue #51 approved (grant exacto post-creación) + PR #52 type:feature con Closes #51; validate re-run vía close/reopen → validate+verify pass; merge owner-gated |
+| 2026-10-22 | F1 PR #52 merged + F2 launched | DELIVERY | #52 merged to main (7effce2), #51 auto-closed, build green; branch feat/axiom-f2-orderedmap from main; ODD odd/tasks/axiom-f2-orderedmap.md + Engram mirror; LRU observability decided: no stats (singleflight precedent); writer surfaces orderedmap/* (new files); delivery needs new issue + approval |
+| 2026-10-22 | F2 T1 done + verifier Go | VALIDATE | writer + parent verify (suite 19/19 -count=1, vet 0, gofmt empty, lint 0, bench smoke PASS, full impl read); verifier Go 0B + 1 isolation SUGGESTION applied + 3 auth-only WARNINGs closed by parent evidence; work-unit 336f457; push/PR owner-gated |
+| 2026-10-22 | native review F2 quemado (owner order) | VALIDATE | lineage review-864498bfb3f6a9f2 APPROVED + burned (readability+reliability, 561 líneas, group limpio tras reenvío); 3 SUGGESTIONs informativas parkeadas (R2-001 + R3-001/R3-002); sin correction; push/PR owner-gated (nuevo issue + aprobación) |
+| 2026-10-22 | F2 delivery (issue #53 + PR #54) | DELIVERY | branch pushed; issue #53 approved (grant exacto post-creación) + PR #54 type:feature con Closes #53; validate re-run vía close/reopen → validate+verify pass; merge owner-gated |
 
 ## Debt ledger
 

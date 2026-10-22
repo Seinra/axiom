@@ -53,6 +53,7 @@ Program document: what is declared, what the survey surfaced that fits the thesi
 | F4 Future/Task async | deferred async computation with cancel | async done right, last for a reason | weakest stdlib-first story; needs the strongest lesson justification; goes last |
 
 Order: adoption round (table above, slice-first) → F1 → F2 → F3 → F4. One ODD per slice, owner picks each launch. New packages (`mathx`?, strings, ptr) need an explicit owner package-creation call before any ODD.
+- L3 (2026-10-22, review disposition wording-fix candidate): sha256:cab5f0bd… (4 palabras, pura prosa) explícitamente sin review nativo por owner — regla docs; archivado sin corrección.
 
 ## Log
 

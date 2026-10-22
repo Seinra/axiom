@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/seinra/axiom/mapx"
+	"github.com/seinra/axiom/slice"
 )
 
 // ExampleKeyBy shows the index-and-read path: key a slice, read with fallback.
@@ -18,4 +19,14 @@ func ExampleKeyBy() {
 	// 1
 	// -1
 	// 20
+}
+
+// ExampleFromEntries shows the pairs bridge: Zip feeds FromEntries, and values select back.
+func ExampleFromEntries() {
+	entries := mapx.FromEntries(slice.Zip([]string{"a", "b"}, []int{1, 2}))
+	fmt.Println(entries)
+	fmt.Println(mapx.PickByValues(entries, 2))
+	// Output:
+	// map[a:1 b:2]
+	// map[b:2]
 }

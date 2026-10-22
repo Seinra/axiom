@@ -1,6 +1,7 @@
 package result_test
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -655,5 +656,194 @@ func TestUnwrapOrElseNilFallbackPanicsOnFailureSkipsOnSuccess(t *testing.T) {
 	})
 	if got != 4 {
 		t.Fatalf("UnwrapOrElse(Ok, nil) = %d, want 4", got)
+	}
+}
+
+func TestResultMarshalJSONOkRendersValue(t *testing.T) {
+	payload, failure := json.Marshal(result.Ok(42))
+	if failure != nil {
+		t.Fatalf("Marshal(Ok) failure = %v, want nil", failure)
+	}
+	if string(payload) != "42" {
+		t.Fatalf("Marshal(Ok(42)) = %s, want 42", payload)
+	}
+}
+
+func TestResultMarshalJSONFailRendersEnvelope(t *testing.T) {
+	payload, failure := json.Marshal(result.Fail[int](errors.New("boom")))
+	if failure != nil {
+		t.Fatalf("Marshal(Fail) failure = %v, want nil", failure)
+	}
+	if string(payload) != `{"error":"boom"}` {
+		t.Fatalf("Marshal(Fail(boom)) = %s, want error envelope", payload)
+	}
+}
+
+func TestResultMarshalJSONZeroRendersEnvelope(t *testing.T) {
+	var current result.Result[int]
+	payload, failure := json.Marshal(current)
+	if failure != nil {
+		t.Fatalf("Marshal(zero) failure = %v, want nil (failures stay explicit)", failure)
+	}
+	if !strings.Contains(string(payload), `"error"`) || !strings.Contains(string(payload), "zero Result") {
+		t.Fatalf("Marshal(zero) = %s, want error envelope naming the zero Result", payload)
+	}
+}
+
+func TestResultUnmarshalJSONValueYieldsOk(t *testing.T) {
+	var current result.Result[int]
+	if failure := json.Unmarshal([]byte("42"), &current); failure != nil {
+		t.Fatalf("Unmarshal(42) failure = %v, want nil", failure)
+	}
+	got, failure := current.Unwrap()
+	if failure != nil {
+		t.Fatalf("Unwrap failure = %v, want nil", failure)
+	}
+	if got != 42 {
+		t.Fatalf("Unmarshal(42) = %d, want 42", got)
+	}
+}
+
+func TestResultUnmarshalJSONEnvelopeYieldsFail(t *testing.T) {
+	var current result.Result[int]
+	if failure := json.Unmarshal([]byte(`{"error":"boom"}`), &current); failure != nil {
+		t.Fatalf("Unmarshal(envelope) failure = %v, want nil", failure)
+	}
+	if current.IsOk() {
+		t.Fatal("Unmarshal(envelope) IsOk = true, want false")
+	}
+	_, failure := current.Unwrap()
+	if failure == nil || failure.Error() != "boom" {
+		t.Fatalf("Unwrap failure = %v, want message boom", failure)
+	}
+}
+
+func TestResultUnmarshalJSONEnvelopeSpacedYieldsFail(t *testing.T) {
+	var current result.Result[int]
+	if failure := json.Unmarshal([]byte(` { "error" : "boom" } `), &current); failure != nil {
+		t.Fatalf("Unmarshal(spaced envelope) failure = %v, want nil", failure)
+	}
+	if current.IsOk() {
+		t.Fatal("Unmarshal(spaced envelope) IsOk = true, want false")
+	}
+}
+
+func TestResultUnmarshalJSONEnvelopeWinsOverSuccessShape(t *testing.T) {
+	var current result.Result[map[string]string]
+	if failure := json.Unmarshal([]byte(`{"error":"x"}`), &current); failure != nil {
+		t.Fatalf("Unmarshal(envelope) failure = %v, want nil", failure)
+	}
+	if current.IsOk() {
+		t.Fatal("Unmarshal(envelope into map success) IsOk = true, want false (envelope is reserved)")
+	}
+}
+
+func TestResultUnmarshalJSONInvalidYieldsError(t *testing.T) {
+	current := result.Ok(7)
+	if failure := json.Unmarshal([]byte("{bad}"), &current); failure == nil {
+		t.Fatal("Unmarshal({bad}) failure = nil, want error")
+	}
+	if got, failure := current.Unwrap(); failure != nil || got != 7 {
+		t.Fatalf("Unmarshal({bad}) clobbered receiver to (%d, %v), want untouched (7, nil)", got, failure)
+	}
+}
+
+func TestResultJSONRoundTrip(t *testing.T) {
+	payload, failure := json.Marshal(result.Ok("gopher"))
+	if failure != nil {
+		t.Fatalf("Marshal failure = %v, want nil", failure)
+	}
+	var restored result.Result[string]
+	if failure := json.Unmarshal(payload, &restored); failure != nil {
+		t.Fatalf("Unmarshal failure = %v, want nil", failure)
+	}
+	got, failure := restored.Unwrap()
+	if failure != nil || got != "gopher" {
+		t.Fatalf("round trip = %q, %v, want gopher, nil", got, failure)
+	}
+	failedPayload, failure := json.Marshal(result.Fail[string](errors.New("boom")))
+	if failure != nil {
+		t.Fatalf("Marshal(Fail) failure = %v, want nil", failure)
+	}
+	var restoredFailure result.Result[string]
+	if failure := json.Unmarshal(failedPayload, &restoredFailure); failure != nil {
+		t.Fatalf("Unmarshal(envelope) failure = %v, want nil", failure)
+	}
+	if restoredFailure.IsOk() {
+		t.Fatal("round trip Fail IsOk = true, want false")
+	}
+	if _, failure := restoredFailure.Unwrap(); failure == nil || failure.Error() != "boom" {
+		t.Fatalf("round trip Fail failure = %v, want message boom", failure)
+	}
+}
+
+func TestResultValueOkReturnsHeld(t *testing.T) {
+	stored, failure := result.Ok(int64(7)).Value()
+	if failure != nil {
+		t.Fatalf("Value(Ok) failure = %v, want nil", failure)
+	}
+	if stored != int64(7) {
+		t.Fatalf("Value(Ok(7)) = %v, want 7", stored)
+	}
+}
+
+func TestResultValueFailYieldsHeldError(t *testing.T) {
+	sentinel := errors.New("boom")
+	stored, failure := result.Fail[int64](sentinel).Value()
+	if stored != nil {
+		t.Fatalf("Value(Fail) = %v, want nil", stored)
+	}
+	if !errors.Is(failure, sentinel) {
+		t.Fatalf("Value(Fail) failure = %v, want %v", failure, sentinel)
+	}
+}
+
+func TestResultValueZeroYieldsError(t *testing.T) {
+	var current result.Result[int64]
+	stored, failure := current.Value()
+	if stored != nil {
+		t.Fatalf("Value(zero) = %v, want nil", stored)
+	}
+	if failure == nil {
+		t.Fatal("Value(zero) failure = nil, want explicit error")
+	}
+}
+
+func TestResultScanAssignableYieldsOk(t *testing.T) {
+	var current result.Result[string]
+	if failure := current.Scan("gopher"); failure != nil {
+		t.Fatalf("Scan(gopher) failure = %v, want nil", failure)
+	}
+	got, failure := current.Unwrap()
+	if failure != nil || got != "gopher" {
+		t.Fatalf("Scan(gopher) = %q, %v, want gopher, nil", got, failure)
+	}
+}
+
+func TestResultScanNullYieldsFail(t *testing.T) {
+	var current result.Result[string]
+	failure := current.Scan(nil)
+	if failure == nil {
+		t.Fatal("Scan(NULL) failure = nil, want explicit error (NULL means absence, use opt)")
+	}
+	if current.IsOk() {
+		t.Fatal("Scan(NULL) IsOk = true, want false")
+	}
+	if _, unwrapFailure := current.Unwrap(); !errors.Is(unwrapFailure, failure) {
+		t.Fatalf("Unwrap failure = %v, want scan failure %v", unwrapFailure, failure)
+	}
+}
+
+func TestResultScanMismatchYieldsFail(t *testing.T) {
+	var current result.Result[string]
+	failure := current.Scan(int64(1))
+	if failure == nil {
+		t.Fatal("Scan(int64 into Result[string]) failure = nil, want error (assertion only, no conversion)")
+	}
+	if current.IsOk() {
+		t.Fatal("Scan(mismatch) IsOk = true, want false")
+	}
+	if _, unwrapFailure := current.Unwrap(); !errors.Is(unwrapFailure, failure) {
+		t.Fatalf("Unwrap failure = %v, want scan failure %v", unwrapFailure, failure)
 	}
 }

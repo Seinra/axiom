@@ -2,6 +2,7 @@ package slice_test
 
 import (
 	"fmt"
+	"math/rand"
 
 	"github.com/seinra/axiom/slice"
 )
@@ -70,4 +71,48 @@ func ExampleTake() {
 	// Output:
 	// [1 2]
 	// [1 2 3 4]
+}
+
+// ExampleProduct shows the multiplicative fold: factors multiply, empty yields one.
+func ExampleProduct() {
+	fmt.Println(slice.Product([]int{2, 3, 4}))
+	fmt.Println(slice.Product([]int{}))
+	// Output:
+	// 24
+	// 1
+}
+
+// ExamplePluck shows field projection without reflection.
+func ExamplePluck() {
+	type course struct {
+		slug  string
+		level int
+	}
+	courses := []course{{slug: "go-basics", level: 1}, {slug: "go-maps", level: 2}}
+	fmt.Println(slice.Pluck(courses, func(entry course) string { return entry.slug }))
+	// Output:
+	// [go-basics go-maps]
+}
+
+// ExampleCrossJoin shows cartesian pairs in outer-first-major order.
+func ExampleCrossJoin() {
+	fmt.Println(slice.CrossJoin([]int{1, 2}, []string{"a", "b"}))
+	// Output:
+	// [{1 a} {1 b} {2 a} {2 b}]
+}
+
+// ExampleShuffle shows a reproducible shuffle: the same seed replays the same order.
+func ExampleShuffle() {
+	fmt.Println(slice.Shuffle([]int{1, 2, 3, 4, 5, 6}, rand.New(rand.NewSource(42))))
+	// Output:
+	// [2 4 5 6 1 3]
+}
+
+// ExampleRange shows integer sequences: from zero, or from an offset.
+func ExampleRange() {
+	fmt.Println(slice.Range(4))
+	fmt.Println(slice.RangeFrom(5, 3))
+	// Output:
+	// [0 1 2 3]
+	// [5 6 7]
 }

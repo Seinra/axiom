@@ -83,6 +83,7 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-22 | v0 bar draft (#4) | IMPLEMENT | docs/v0-bar.md borrador (freeze aditivo, set 15, gates, semver v0.1.0, checklist tag/notes/proxy) + ODD axiom-v0-bar; work-unit fb86364 en feat/axiom-v0-bar; suite 16/16 -count=1 ok, vet 0, gofmt vacío, docs-only; licencia + #36-in-v0 + ratificación pendientes |
 | 2026-10-22 | v0 ratified (LICENSE MIT + tag v0.1.0, #36 in v0) | DELIVERY | LICENSE MIT agregada; bar declara #36 Combinations/Permutations dentro de v0 (prima aditiva, cumple bar); suite verde -count=1, vet 0, gofmt vacío; tag v0.1.0 a orden owner |
 | 2026-10-22 | #6-R3 discarded (owner order) | DEBT | búsqueda exhaustiva (Engram 3 queries + zvec probe + rg anchors + git log + Axiom-1) halló solo pins, ningún verbatim; se descarta completo; a futuro: issue NUEVO si aparece un problema relacionado, no reabrir #6 |
+| 2026-10-22 | slice perf pilot done | VALIDATE | 8 benchmarks + 3 fuzz targets en slice (solo tests nuevos, +423/-0); writer + parent verify + verifier Go 0B/0W; suite 16/16 -count=1 ok, vet 0, gofmt vacío, bench smoke PASS, seeds PASS; push/PR owner-gated |
 
 ## Debt ledger
 

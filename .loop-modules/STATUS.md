@@ -89,6 +89,7 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-22 | future program delivered (#47 + PR #48) | DELIVERY | issue #47 approved + PR #48 merged babfaa9 (docs-only, 2 files +62/-0); suite 16/16 -count=1 ok, vet 0, gofmt vacío on feat branch; CI validate+verify pass; no native review per docs rule |
 | 2026-10-22 | slice-2 round T1 launched (worker) | IMPLEMENT | branch feat/axiom-slice2-round from main post-#48; ODD odd/tasks/axiom-slice2-round.md + Engram mirror 5085; writer surfaces slice/mapx/opt/result (12 files); delivery needs new issue + approval |
 | 2026-10-22 | slice-2 round T1 done + verifier Go | VALIDATE | writer + parent verify (suite 16/16 -count=1, vet 0, gofmt empty, lint 0); verifier Go 0B/0W + 2 test-only findings applied inline (result untouched-pin + Scan errors.Is); work-unit 1768a5c; push/PR owner-gated |
+| 2026-10-22 | native review slice-2 quemado (owner order) | VALIDATE | lineage review-e19bfa66f5d06755 APPROVED + burned (readability+reliability, 1632 líneas); 5 advisories informativas parkeadas (R2-1/R2-2/R2-3, R3-001 WARNING, R3-002); sin correction; push/PR owner-gated (nuevo issue + aprobación) |
 
 ## Debt ledger
 

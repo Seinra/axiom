@@ -73,6 +73,10 @@ Start there, then `go doc` the package:
 - [ ] New symbol cites what stdlib lacked + carries godoc with an example
 - [ ] No `any` in public signatures except codec edges with typed wrappers
 
+## Why not just use `lo` (or `mo`)?
+
+Use them — they are excellent, battle-tested reference libraries, and Axiom will never try to out-cover them. Axiom is the teachable companion, not a replacement: every package opens with a Which-function table, every export carries godoc plus a compiling example, and every addition documents what the stdlib lacked. It doubles as the Catalyst generics course material, and its v0 API is frozen — the same library students learn on is the one they keep.
+
 ## Next step
 
 Read `VISION.md` for the product line, then `.loop-modules/ARCHITECTURE.md` for the coverage map — each future package becomes one ODD feature.

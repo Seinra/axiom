@@ -247,6 +247,7 @@ func Product[Number number](numbers []Number) Number {
 
 // checkedMul returns running*factor, panicking when the product overflows
 // the element range. See Product for the guard policy.
+// The MinInt-times--1 check runs first because plain division would trap there instead of failing the check.
 func checkedMul[Number number](running, factor Number) Number {
 	if running == 0 || factor == 0 {
 		return running * factor
@@ -312,7 +313,8 @@ func Pluck[Element any, Field any](elements []Element, field func(Element) Field
 //
 // The result is always a fresh slice: present candidates return a copy of
 // the input, absent candidates return the input plus the candidate. The
-// input is never mutated and neither path aliases it.
+// input is never mutated and neither path aliases it. The present-path copy
+// is deliberate: callers may mutate the result without affecting the input.
 //
 // Nil input plus a candidate yields a one-element slice.
 //

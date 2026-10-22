@@ -193,3 +193,37 @@ func TestQueuesStayIndependent(t *testing.T) {
 		t.Fatalf("first Len = %d, want 2", got)
 	}
 }
+
+func TestCompactionSlideBoundaryKeepsOrder(t *testing.T) {
+	container := queue.New[int]()
+	const seeded = 70
+	const drained = 64
+	for candidate := 0; candidate < seeded; candidate++ {
+		container.Enqueue(candidate)
+	}
+	for wanted := 0; wanted < drained; wanted++ {
+		if got, held := container.Dequeue(); !held || got != wanted {
+			t.Fatalf("Dequeue = (%d, %t), want (%d, true)", got, held, wanted)
+		}
+	}
+	for candidate := seeded; candidate < seeded+10; candidate++ {
+		container.Enqueue(candidate)
+	}
+	wanted := drained
+	for !container.IsEmpty() {
+		got, held := container.Dequeue()
+		if !held {
+			t.Fatalf("Dequeue held = false, want true for %d", wanted)
+		}
+		if got != wanted {
+			t.Fatalf("Dequeue = %d, want %d", got, wanted)
+		}
+		wanted++
+	}
+	if wanted != seeded+10 {
+		t.Fatalf("drained to %d, want %d", wanted, seeded+10)
+	}
+	if got := container.Len(); got != 0 {
+		t.Fatalf("Len = %d, want 0 after draining", got)
+	}
+}

@@ -354,6 +354,7 @@ type seqSlot[Input any] struct {
 // order, so runners write successes back in sequence order. Every offer
 // selects on taskContext.Done, so a canceled run never wedges the feeder.
 // The positions channel closes on every path so runners always join.
+// The six-parameter split mirrors feeder/runner ownership (feeder appends, runners store by index); one call site, so no options struct per YAGNI.
 func seqFeeder[Input any, Output any](taskContext context.Context, sequence iter.Seq[Input], positions chan<- seqSlot[Input], orderedGuard *sync.Mutex, ordered *[]Output, workGroup *sync.WaitGroup) {
 	defer workGroup.Done()
 	defer close(positions)
@@ -363,6 +364,7 @@ func seqFeeder[Input any, Output any](taskContext context.Context, sequence iter
 		var zero Output
 		*ordered = append(*ordered, zero)
 		orderedGuard.Unlock()
+		// Reserved before offered: on cancellation MapSeq returns (nil, err), so a reserved-but-unoffered slot never surfaces as a hole.
 		offer := seqSlot[Input]{position: position, candidate: candidate}
 		select {
 		case <-taskContext.Done():
@@ -415,7 +417,7 @@ func seqRunner[Input any, Output any](taskContext context.Context, positions <-c
 // flow from the sequence through an unbuffered handoff, in flight bounded by
 // the runner count), but the ordered result grows with the stream, so a
 // successful run over an endless sequence never returns — reach for prompt
-// failure plus cancellation, not success, over unbounded inputs. The standard
+// failure plus cancellation, not success, over unbounded inputs. Only range success over bounded sequences; unbounded inputs terminate through prompt failure plus cancellation. The standard
 // library has no parallel ordered fan-in over iter.Seq; MapSeq fills that gap
 // with errgroup parity instead of a new vocabulary: one failure in, that
 // failure out, siblings stopped.
@@ -533,6 +535,7 @@ func seqResultsWorker[Input any, Output any](taskContext context.Context, positi
 	for offered := range positions {
 		select {
 		case <-taskContext.Done():
+			// Abandoned slots are buffered-1 with no reader after cancel plus join, so GC owns them; exactly-once still holds for consumed inputs.
 			continue
 		default:
 		}
@@ -558,7 +561,7 @@ func seqResultsWorker[Input any, Output any](taskContext context.Context, positi
 }
 
 // loadSeqResultsPanic reads the latched transform panic under guard; nil
-// means no worker has panicked yet.
+// means no worker has panicked yet. One uncontended mutex per ordered yield: the emit path already blocks on the slot receive, so a mutex keeps the latch site obvious without measurable cost.
 func loadSeqResultsPanic(panicMutex *sync.Mutex, firstPanic *any) any {
 	panicMutex.Lock()
 	defer panicMutex.Unlock()
@@ -569,6 +572,7 @@ func loadSeqResultsPanic(panicMutex *sync.Mutex, firstPanic *any) any {
 // order. It reports shouldStop when the stream must terminate (downstream
 // break or cancellation) and panicPayload when a transform panic latched
 // (caller must re-panic in the pulling goroutine; panic wins over Fail).
+// Emit/TryEmit/Offer share this select shape on purpose: blocking drain, non-blocking flush, and dispatch each need their own select, so no helper unifies them.
 func seqResultsEmit[Output any](taskContext context.Context, pendingSlots []chan result.Result[Output], yield func(result.Result[Output]) bool, loadPanic func() any) ([]chan result.Result[Output], bool, any) {
 	if panicPayload := loadPanic(); panicPayload != nil {
 		return pendingSlots, true, panicPayload
@@ -586,6 +590,7 @@ func seqResultsEmit[Output any](taskContext context.Context, pendingSlots []chan
 		if panicPayload := loadPanic(); panicPayload != nil {
 			return pendingSlots, true, panicPayload
 		}
+		// Cancellation ends the stream: a ready-but-unyielded outcome is dropped, never half-yielded.
 		return pendingSlots, true, nil
 	}
 }

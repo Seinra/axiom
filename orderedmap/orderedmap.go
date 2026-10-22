@@ -190,6 +190,7 @@ func (recent *LRU[Key, Value]) Put(key Key, value Value) {
 	}
 	recent.entries[key] = recent.recent.PushFront(&lruEntry[Key, Value]{key: key, value: value})
 	if len(recent.entries) > recent.capacity {
+		// Overflow implies a back element holding only *lruEntry values, so Back and the assertion below stay safe.
 		back := recent.recent.Back()
 		recent.recent.Remove(back)
 		delete(recent.entries, back.Value.(*lruEntry[Key, Value]).key)

@@ -1723,3 +1723,36 @@ func TestMapSeqResultsExactlyOneResultPerInput(t *testing.T) {
 		t.Fatalf("MapSeqResults ok = %d fail = %d, want both present", okCount, failCount)
 	}
 }
+
+func TestMapSeqResultsMixedOutcomesKeepInputOrder(t *testing.T) {
+	// Counts alone cannot pin which position failed: every outcome must sit
+	// at its own input index, Fail at multiples of 3, Ok with the input
+	// value everywhere else.
+	active, cancelTask := contextWithTestTimeout(context.Background())
+	defer cancelTask()
+	inputs := []int{0, 1, 2, 3, 4, 5, 6, 7}
+	collected := slices.Collect(flow.MapSeqResults(active, slices.Values(inputs), 3, func(taskContext context.Context, candidate int) (int, error) {
+		if candidate%3 == 0 {
+			return 0, errSlowFailure
+		}
+		return candidate, nil
+	}))
+	if len(collected) != len(inputs) {
+		t.Fatalf("MapSeqResults collected = %d, want %d", len(collected), len(inputs))
+	}
+	for position, outcome := range collected {
+		candidate, failure := outcome.Unwrap()
+		if inputs[position]%3 == 0 {
+			if !errors.Is(failure, errSlowFailure) {
+				t.Fatalf("MapSeqResults outcome %d failure = %v, want %v", position, failure, errSlowFailure)
+			}
+			continue
+		}
+		if failure != nil {
+			t.Fatalf("MapSeqResults outcome %d failure = %v, want nil", position, failure)
+		}
+		if candidate != inputs[position] {
+			t.Fatalf("MapSeqResults outcome %d = %d, want %d", position, candidate, inputs[position])
+		}
+	}
+}

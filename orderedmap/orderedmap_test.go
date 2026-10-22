@@ -280,3 +280,31 @@ func TestMapKeysValuesReturnFreshCopies(t *testing.T) {
 		t.Fatalf("Get(alpha) after Values mutation = (%d, %v), want (1, true)", got, found)
 	}
 }
+
+func TestMapZeroValueOperationsStayPanicFree(t *testing.T) {
+	var ordered orderedmap.Map[string, int]
+	if got, found := ordered.Get("missing"); found || got != 0 {
+		t.Fatalf("zero Get = (%d, %v), want (0, false)", got, found)
+	}
+	ordered.Delete("missing")
+	if keys := ordered.Keys(); len(keys) != 0 {
+		t.Fatalf("zero Keys = %v, want empty", keys)
+	}
+	if values := ordered.Values(); len(values) != 0 {
+		t.Fatalf("zero Values = %v, want empty", values)
+	}
+	if got := ordered.Len(); got != 0 {
+		t.Fatalf("zero Len = %d, want 0", got)
+	}
+	if !ordered.IsEmpty() {
+		t.Fatal("zero IsEmpty = false, want true")
+	}
+	ordered.Put("alpha", 1)
+	ordered.Delete("alpha")
+	if got, found := ordered.Get("alpha"); found || got != 0 {
+		t.Fatalf("Get after Put+Delete = (%d, %v), want (0, false)", got, found)
+	}
+	if !ordered.IsEmpty() {
+		t.Fatal("IsEmpty = false after draining the only key, want true")
+	}
+}

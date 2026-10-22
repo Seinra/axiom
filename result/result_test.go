@@ -738,6 +738,23 @@ func TestResultUnmarshalJSONEnvelopeWinsOverSuccessShape(t *testing.T) {
 	}
 }
 
+func TestResultUnmarshalJSONNonStringErrorFallsThrough(t *testing.T) {
+	var current result.Result[map[string]any]
+	if failure := json.Unmarshal([]byte(`{"error":42}`), &current); failure != nil {
+		t.Fatalf("Unmarshal(non-string error) failure = %v, want nil", failure)
+	}
+	if !current.IsOk() {
+		t.Fatal("Unmarshal(non-string error) IsOk = false, want true (only a string error is an envelope)")
+	}
+	got, failure := current.Unwrap()
+	if failure != nil {
+		t.Fatalf("Unwrap failure = %v, want nil", failure)
+	}
+	if got["error"] != float64(42) {
+		t.Fatalf("Unwrap value = %v, want map holding error:42", got)
+	}
+}
+
 func TestResultUnmarshalJSONInvalidYieldsError(t *testing.T) {
 	current := result.Ok(7)
 	if failure := json.Unmarshal([]byte("{bad}"), &current); failure == nil {

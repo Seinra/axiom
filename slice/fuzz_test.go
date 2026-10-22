@@ -1,6 +1,7 @@
 package slice_test
 
 import (
+	"math"
 	"slices"
 	"testing"
 
@@ -11,7 +12,6 @@ import (
 // are skipped, never failed.
 const (
 	fuzzMaxElements     = 10
-	fuzzMaxCombinations = 2000
 	fuzzMaxPermutations = 5000
 	fuzzMaxChunkInputs  = 256
 )
@@ -77,6 +77,37 @@ func multisetContained(arrangement, source []byte) bool {
 	return true
 }
 
+// allDistinct reports whether every element in values appears exactly once,
+// so oracles only pin output uniqueness when the input has no duplicates.
+func allDistinct(values []byte) bool {
+	seen := make(map[byte]struct{}, len(values))
+	for _, element := range values {
+		if _, dup := seen[element]; dup {
+			return false
+		}
+		seen[element] = struct{}{}
+	}
+	return true
+}
+
+// requireDistinctResults pins pairwise-distinct outputs whenever the input
+// elements are all distinct. Equal values from duplicate inputs remain
+// allowed and correct, so mixed inputs skip this check.
+func requireDistinctResults(t *testing.T, snapshot []byte, actual [][]byte, label string) {
+	t.Helper()
+	if !allDistinct(snapshot) {
+		return
+	}
+	seen := make(map[string]struct{}, len(actual))
+	for _, arrangement := range actual {
+		key := string(arrangement)
+		if _, dup := seen[key]; dup {
+			t.Fatalf("%s duplicate %v for distinct input %v", label, arrangement, snapshot)
+		}
+		seen[key] = struct{}{}
+	}
+}
+
 func requireUnmutated(t *testing.T, snapshot, elements []byte, label string) {
 	t.Helper()
 	if !slices.Equal(snapshot, elements) {
@@ -110,6 +141,7 @@ func checkCombinationSet(t *testing.T, snapshot []byte, actualCombos [][]byte, s
 			t.Fatalf("combination %v breaks input order of %v", combo, snapshot)
 		}
 	}
+	requireDistinctResults(t, snapshot, actualCombos, "Combinations")
 }
 
 func checkPermutationSet(t *testing.T, snapshot []byte, actualOrders [][]byte, selectCount int) {
@@ -138,6 +170,7 @@ func checkPermutationSet(t *testing.T, snapshot []byte, actualOrders [][]byte, s
 			t.Fatalf("arrangement %v draws outside input %v", order, snapshot)
 		}
 	}
+	requireDistinctResults(t, snapshot, actualOrders, "Permutations")
 }
 
 func checkChunkCoverage(t *testing.T, snapshot []byte, actualChunks [][]byte, chunkSize int) {
@@ -146,16 +179,38 @@ func checkChunkCoverage(t *testing.T, snapshot []byte, actualChunks [][]byte, ch
 		t.Fatal("Chunked returned nil, want non-nil")
 	}
 	joined := make([]byte, 0, len(snapshot))
-	for _, chunk := range actualChunks {
+	for index, chunk := range actualChunks {
 		if len(chunk) == 0 || len(chunk) > chunkSize {
 			t.Fatalf("chunk len = %d, want 1..%d", len(chunk), chunkSize)
+		}
+		if index < len(actualChunks)-1 && len(chunk) != chunkSize {
+			t.Fatalf("chunk %d len = %d, want %d (non-final chunks are full)", index, len(chunk), chunkSize)
 		}
 		joined = append(joined, chunk...)
 	}
 	if !slices.Equal(joined, snapshot) {
 		t.Fatalf("chunk concat = %v, want %v", joined, snapshot)
 	}
-	expectedChunks := (len(snapshot) + chunkSize - 1) / chunkSize
+	if len(actualChunks) > 0 {
+		remainder := len(snapshot) % chunkSize
+		wantLast := remainder
+		if remainder == 0 {
+			wantLast = chunkSize
+		}
+		if last := len(actualChunks[len(actualChunks)-1]); last != wantLast {
+			t.Fatalf("last chunk len = %d, want %d", last, wantLast)
+		}
+	}
+	// Overflow-safe chunk count: len(snapshot) <= 256 always, but chunkSize
+	// is a fuzzed int that can reach math.MaxInt, so len+size-1 would wrap.
+	var expectedChunks int
+	if chunkSize >= len(snapshot) {
+		if len(snapshot) > 0 {
+			expectedChunks = 1
+		}
+	} else {
+		expectedChunks = (len(snapshot) + chunkSize - 1) / chunkSize
+	}
 	if len(actualChunks) != expectedChunks {
 		t.Fatalf("chunk count = %d, want %d", len(actualChunks), expectedChunks)
 	}
@@ -203,9 +258,8 @@ func FuzzCombinations(f *testing.F) {
 		if len(elements) > fuzzMaxElements {
 			t.Skip("oversize input would explode the combination count")
 		}
-		if selectCount <= len(elements) && binomialCoefficient(len(elements), selectCount) > fuzzMaxCombinations {
-			t.Skip("combination count beyond the local fuzz budget")
-		}
+		// No combination-count budget guard: len(elements) <= 10 caps the
+		// enumeration at C(10,5) = 252, already below any useful skip budget.
 		snapshot := slices.Clone(elements)
 		actualCombos := axiomslice.Combinations(elements, selectCount)
 		checkCombinationSet(t, snapshot, actualCombos, selectCount)
@@ -267,4 +321,21 @@ func FuzzChunkedWindows(f *testing.F) {
 		checkWindowCoverage(t, snapshot, actualWindows, windowSize)
 		requireUnmutated(t, snapshot, elements, "Chunked/Windows")
 	})
+}
+
+// TestChunkedWindowsHugeSize pins the overflow-safe chunk oracle with an
+// adversarial size fuzz seeds may never hit: chunkSize = math.MaxInt would
+// wrap len+size-1, so Chunked must yield one full chunk and Windows none.
+func TestChunkedWindowsHugeSize(t *testing.T) {
+	elements := []byte{1, 2, 3, 4}
+	snapshot := slices.Clone(elements)
+	checkChunkCoverage(t, snapshot, axiomslice.Chunked(elements, math.MaxInt), math.MaxInt)
+	checkWindowCoverage(t, snapshot, axiomslice.Windows(elements, math.MaxInt), math.MaxInt)
+	requireUnmutated(t, snapshot, elements, "Chunked/Windows")
+
+	empty := []byte{}
+	emptySnapshot := slices.Clone(empty)
+	checkChunkCoverage(t, emptySnapshot, axiomslice.Chunked(empty, math.MaxInt), math.MaxInt)
+	checkWindowCoverage(t, emptySnapshot, axiomslice.Windows(empty, math.MaxInt), math.MaxInt)
+	requireUnmutated(t, emptySnapshot, empty, "Chunked/Windows")
 }

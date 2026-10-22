@@ -81,13 +81,14 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-21 | naming round done (#26/#13/#6) | VALIDATE | Map duplicados fuera; Stats aditivo; mapping notes + delta Flatten; re-triage #6 ledger; verifier Go 0B/0W + 4 findings aplicadas; suite 16/16, -race, vet 0, gofmt/lint 0; push/PR owner-gated |
 | 2026-10-22 | P2 combos done (#36) | IMPLEMENT | Combinations + Permutations en slice (k-subsets/k-arrangements, orden índice, bordes L3); writer + parent verify + verifier Go 0B/0W; work-unit 553e2e7 (362+/0); suite verde -count=1, vet 0, gofmt vacío, lint 0; push/PR owner-gated |
 | 2026-10-22 | v0 bar draft (#4) | IMPLEMENT | docs/v0-bar.md borrador (freeze aditivo, set 15, gates, semver v0.1.0, checklist tag/notes/proxy) + ODD axiom-v0-bar; work-unit fb86364 en feat/axiom-v0-bar; suite 16/16 -count=1 ok, vet 0, gofmt vacío, docs-only; licencia + #36-in-v0 + ratificación pendientes |
+| 2026-10-22 | v0 ratified (LICENSE MIT + tag v0.1.0, #36 in v0) | DELIVERY | LICENSE MIT agregada; bar declara #36 Combinations/Permutations dentro de v0 (prima aditiva, cumple bar); suite verde -count=1, vet 0, gofmt vacío; tag v0.1.0 a orden owner |
 
 ## Debt ledger
 
 | Item | Phase | Ceiling | Upgrade Path |
 | --- | --- | --- | --- |
-| P2 combinations/permutations (#36, approved, next slice) | future slice | stdlib-gap + teachable gate met | one bounded worker slice (godoc + Which-table + Example), verifier, then PR |
-| v0 maturity bar + release checklist (#4) | decision + authoring | owner decision pending | define bar (freeze policy, gates, semver, checklist: tag/notes/go proxy), then ratify |
+| P2 combinations/permutations (#36) | closed (PR #40 merged, in v0) | bar met (Which-table + Example + gates green) | follow: none; additive freeze applies from v0 |
+| v0 maturity bar + release checklist (#4) | closed (ratified MIT + tag v0.1.0, PR #39) | bar frozen; LICENSE present | follow owner-gated: go proxy propagation check |
 | Branch protection on main (#3) | blocked | needs GitHub Pro or public repo | owner infra decision; meanwhile PR-gated merges by discipline |
 | #6 R3 verbatim advisories | parked (closed with scope note) | verbatim unrecoverable (no Engram/git/ODD record) | reopen only if verbatim text appears; triage coverage (8de4842) stands |
 | Axiom-1 clone + chore/delivery-infra | kept | owner order | do not touch without new order |

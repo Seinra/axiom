@@ -23,6 +23,11 @@
 // | Split into matching plus rest             | Partition                   |
 // | Insert a separator between elements       | Intersperse                 |
 // | Sort a copy by key, ties keep input order | SortBy                      |
+// | First or last match, fallback when absent  | FindOrElse / FirstOr / LastOr |
+// | Check whether all, any, or none match      | Every / Some / None           |
+// | Values repeating, or appearing just once   | FindDuplicates / FindUniques  |
+// | Positions of every match                   | FindIndexes                   |
+// | First or last n elements, plus the rest    | Take / Drop / TakeLast / SkipLast |
 // | Running folds element by element          | RunningFold                 |
 // | All k-subsets in index order              | Combinations                |
 // | All k-arrangements in index order         | Permutations                |
@@ -533,4 +538,224 @@ func Permutations[Element any](elements []Element, k int) [][]Element {
 	}
 	build()
 	return orders
+}
+
+// FindOrElse returns the first element where match reports true, or fallback
+// when no element matches.
+//
+// Empty or nil input yields fallback without calling match; there is no bool
+// to check. This is the Or-canonical shape: absence is a value, not a flag.
+// slices has no fallback find; FindSlice reports presence as a bool instead.
+func FindOrElse[Element any](elements []Element, match func(Element) bool, fallback Element) Element {
+	for _, element := range elements {
+		if match(element) {
+			return element
+		}
+	}
+	return fallback
+}
+
+// FirstOr returns the first element, or fallback when the slice is empty.
+//
+// Empty or nil input yields fallback. This is the Or-canonical shape:
+// absence is a value, not a bool, for callers that already have a default.
+// slices has no first-with-fallback; indexing elements[0] panics on empty.
+func FirstOr[Element any](elements []Element, fallback Element) Element {
+	if len(elements) == 0 {
+		return fallback
+	}
+	return elements[0]
+}
+
+// LastOr returns the last element, or fallback when the slice is empty.
+//
+// Empty or nil input yields fallback. This is the Or-canonical shape:
+// absence is a value, not a bool, for callers that already have a default.
+// slices has no last-with-fallback; indexing elements[len(elements)-1] panics on empty.
+func LastOr[Element any](elements []Element, fallback Element) Element {
+	if len(elements) == 0 {
+		return fallback
+	}
+	return elements[len(elements)-1]
+}
+
+// Every reports whether test holds for every element.
+//
+// Empty or nil input yields true: vacuously, nothing violates the test.
+// This mirrors the universal-quantifier convention, not an emptiness check.
+// slices has no quantifiers; hand-rolled loops are the only stdlib route.
+func Every[Element any](elements []Element, test func(Element) bool) bool {
+	for _, element := range elements {
+		if !test(element) {
+			return false
+		}
+	}
+	return true
+}
+
+// Some reports whether test holds for at least one element.
+//
+// Empty or nil input yields false: no element can satisfy the test.
+// slices has no quantifiers; hand-rolled loops are the only stdlib route.
+func Some[Element any](elements []Element, test func(Element) bool) bool {
+	for _, element := range elements {
+		if test(element) {
+			return true
+		}
+	}
+	return false
+}
+
+// None reports whether test holds for no element.
+//
+// Empty or nil input yields true: no element violates the absence.
+// None is the exact complement of Some over the same input and test.
+// slices has no quantifiers; hand-rolled loops are the only stdlib route.
+func None[Element any](elements []Element, test func(Element) bool) bool {
+	for _, element := range elements {
+		if test(element) {
+			return false
+		}
+	}
+	return true
+}
+
+// FindDuplicates returns the values occurring more than once, in order of
+// first occurrence, each reported exactly once.
+//
+// Values appearing exactly once are skipped. Nil or empty input, or input
+// with no repeats, yields an empty non-nil slice.
+// slices has no duplicate finder; maps-plus-loop is the only stdlib route.
+func FindDuplicates[Element comparable](elements []Element) []Element {
+	counts := make(map[Element]int, len(elements))
+	for _, element := range elements {
+		counts[element]++
+	}
+	duplicates := make([]Element, 0, len(elements))
+	emitted := make(map[Element]struct{}, len(elements))
+	for _, element := range elements {
+		if _, done := emitted[element]; done {
+			continue
+		}
+		if counts[element] > 1 {
+			emitted[element] = struct{}{}
+			duplicates = append(duplicates, element)
+		}
+	}
+	return duplicates
+}
+
+// FindUniques returns the values occurring exactly once, in input order.
+//
+// Values appearing more than once are skipped. Nil or empty input, or input
+// where every value repeats, yields an empty non-nil slice.
+// slices has no uniques finder; maps-plus-loop is the only stdlib route.
+func FindUniques[Element comparable](elements []Element) []Element {
+	counts := make(map[Element]int, len(elements))
+	for _, element := range elements {
+		counts[element]++
+	}
+	uniques := make([]Element, 0, len(elements))
+	for _, element := range elements {
+		if counts[element] == 1 {
+			uniques = append(uniques, element)
+		}
+	}
+	return uniques
+}
+
+// FindIndexes returns the positions where match reports true, ascending.
+//
+// Absence is an empty non-nil slice, not a bool or -1: the OrNull shape for
+// find-index absence. Nil or empty input, or no match, yields an empty
+// non-nil slice.
+// slices has no matching-indexes helper; IndexFunc reports only the first.
+func FindIndexes[Element any](elements []Element, match func(Element) bool) []int {
+	indexes := make([]int, 0, len(elements))
+	for position, element := range elements {
+		if match(element) {
+			indexes = append(indexes, position)
+		}
+	}
+	return indexes
+}
+
+// Take returns the first count elements as a fresh copy.
+//
+// Count below zero panics: a negative count is a programmer error, matching
+// the size <= 0 panic policy of Chunked and Windows. Count zero yields an
+// empty non-nil slice; count at or beyond the input length yields a full
+// copy. The input is never mutated and the result shares no backing array.
+// slices has no take-first-n; slicing elements[:count] aliases and panics past the end.
+func Take[Element any](elements []Element, count int) []Element {
+	if count < 0 {
+		panic(fmt.Sprintf("axiom slice: Take needs count >= 0, got %d", count))
+	}
+	if count >= len(elements) {
+		taken := make([]Element, len(elements))
+		copy(taken, elements)
+		return taken
+	}
+	taken := make([]Element, count)
+	copy(taken, elements[:count])
+	return taken
+}
+
+// Drop returns the elements after the first count as a fresh copy.
+//
+// Count below zero panics: a negative count is a programmer error, matching
+// the size <= 0 panic policy of Chunked and Windows. Count zero yields a
+// full copy; count at or beyond the input length yields an empty non-nil
+// slice. The input is never mutated and the result shares no backing array.
+// slices has no drop-first-n; slicing elements[count:] aliases and panics past the end.
+func Drop[Element any](elements []Element, count int) []Element {
+	if count < 0 {
+		panic(fmt.Sprintf("axiom slice: Drop needs count >= 0, got %d", count))
+	}
+	if count >= len(elements) {
+		return make([]Element, 0)
+	}
+	rest := make([]Element, len(elements)-count)
+	copy(rest, elements[count:])
+	return rest
+}
+
+// TakeLast returns the last count elements as a fresh copy.
+//
+// Count below zero panics: a negative count is a programmer error, matching
+// the size <= 0 panic policy of Chunked and Windows. Count zero yields an
+// empty non-nil slice; count at or beyond the input length yields a full
+// copy. The input is never mutated and the result shares no backing array.
+// slices has no take-last-n; slicing the tail aliases and panics past the end.
+func TakeLast[Element any](elements []Element, count int) []Element {
+	if count < 0 {
+		panic(fmt.Sprintf("axiom slice: TakeLast needs count >= 0, got %d", count))
+	}
+	if count >= len(elements) {
+		taken := make([]Element, len(elements))
+		copy(taken, elements)
+		return taken
+	}
+	taken := make([]Element, count)
+	copy(taken, elements[len(elements)-count:])
+	return taken
+}
+
+// SkipLast returns the elements before the last count as a fresh copy.
+//
+// Count below zero panics: a negative count is a programmer error, matching
+// the size <= 0 panic policy of Chunked and Windows. Count zero yields a
+// full copy; count at or beyond the input length yields an empty non-nil
+// slice. The input is never mutated and the result shares no backing array.
+// slices has no skip-last-n; slicing the head aliases and panics past the end.
+func SkipLast[Element any](elements []Element, count int) []Element {
+	if count < 0 {
+		panic(fmt.Sprintf("axiom slice: SkipLast needs count >= 0, got %d", count))
+	}
+	if count >= len(elements) {
+		return make([]Element, 0)
+	}
+	kept := make([]Element, len(elements)-count)
+	copy(kept, elements[:len(elements)-count])
+	return kept
 }

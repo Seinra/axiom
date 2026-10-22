@@ -101,6 +101,7 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-22 | F2 delivery (issue #53 + PR #54) | DELIVERY | branch pushed; issue #53 approved (grant exacto post-creación) + PR #54 type:feature con Closes #53; validate re-run vía close/reopen → validate+verify pass; merge owner-gated |
 | 2026-10-22 | F3 pipeline T1 launched, B1 shape (worker) | IMPLEMENT | branch feat/axiom-f3-pipeline from main post-#54; ODD odd/tasks/axiom-f3-pipeline.md + Engram mirror; B1 (MapSeq+EachSeq, streaming-in/eager-out/fail-fast) per owner call, H staged as F3b; writer surfaces flow/* (3 files); delivery needs new issue + approval |
 | 2026-10-22 | F3 T1 done + verifier Go | VALIDATE | writer + parent verify (suite 19/19 -count=1, vet 0, gofmt empty, lint 0, -race x2 flow ok, smoke PASS, full impl read); parent fixed mid-run-cancel holes → (nil,ctx.Err.); verifier Go 0B + empty-shape SUGGESTION applied + generator-panic WARNING parked with reason; work-unit 89706ff; push/PR owner-gated |
+| 2026-10-22 | native review F3 quemado (owner order) | VALIDATE | lineage review-4cc3f4fe9c6e8ca4 APPROVED + burned (3 lentes, 670 líneas, group 3/3 limpio); 7 advisories informativas parkeadas (R2-001W + R2-002/003, R3-001W + R3-002, R4-001W + R4-002); sin correction; push/PR owner-gated (nuevo issue + aprobación) |
 
 ## Debt ledger
 

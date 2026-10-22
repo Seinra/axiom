@@ -2,6 +2,7 @@ package slice_test
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"testing"
 
@@ -1755,6 +1756,48 @@ func TestTakeDropFamilyNeverMutatesInput(t *testing.T) {
 	_ = axiomslice.SkipLast(numbers, 2)
 	if !reflect.DeepEqual(numbers, []int{1, 2, 3, 4}) {
 		t.Fatalf("input mutated to %v, want [1 2 3 4]", numbers)
+	}
+}
+
+func TestTakeFamilyNilYieldsEmptyNonNil(t *testing.T) {
+	var numbers []int
+	if numbers != nil {
+		t.Fatal("seed is non-nil, want nil input for the nil pin")
+	}
+	counts := []struct {
+		scenario string
+		count    int
+	}{
+		{scenario: "zero count", count: 0},
+		{scenario: "one count", count: 1},
+		{scenario: "beyond length", count: 9},
+		{scenario: "max int count", count: math.MaxInt},
+	}
+	for _, testCase := range counts {
+		t.Run("Take/nil/"+testCase.scenario, func(t *testing.T) {
+			got := axiomslice.Take(numbers, testCase.count)
+			if got == nil || len(got) != 0 {
+				t.Fatalf("Take(nil, %d) = %v, want empty non-nil", testCase.count, got)
+			}
+		})
+		t.Run("Drop/nil/"+testCase.scenario, func(t *testing.T) {
+			got := axiomslice.Drop(numbers, testCase.count)
+			if got == nil || len(got) != 0 {
+				t.Fatalf("Drop(nil, %d) = %v, want empty non-nil", testCase.count, got)
+			}
+		})
+		t.Run("TakeLast/nil/"+testCase.scenario, func(t *testing.T) {
+			got := axiomslice.TakeLast(numbers, testCase.count)
+			if got == nil || len(got) != 0 {
+				t.Fatalf("TakeLast(nil, %d) = %v, want empty non-nil", testCase.count, got)
+			}
+		})
+		t.Run("SkipLast/nil/"+testCase.scenario, func(t *testing.T) {
+			got := axiomslice.SkipLast(numbers, testCase.count)
+			if got == nil || len(got) != 0 {
+				t.Fatalf("SkipLast(nil, %d) = %v, want empty non-nil", testCase.count, got)
+			}
+		})
 	}
 }
 

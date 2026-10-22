@@ -26,7 +26,7 @@
 //	    }
 //	}
 //
-// Out of scope (YAGNI): no FanIn/FanOut channels, no pipelines, no
+// Out of scope (YAGNI): no FanIn/FanOut channels, no lazy-out sequences, no
 // Retry/backoff; those are later slices if ever. Reach for plain loops or
 // golang.org/x/sync/errgroup directly for single-goroutine or unshaped work.
 //
@@ -38,12 +38,15 @@
 // | Run side effects without results        | ForEach           |
 // | Take the first success, cancel siblings | Race              |
 // | Match the empty-Race sentinel           | ErrNoRaceInputs   |
+// | Transform a sequence, keep stream order | MapSeq            |
+// | ForEach over a sequence, result dropped | EachSeq           |
 package flow
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"iter"
 	"runtime"
 	"sync"
 )
@@ -333,4 +336,168 @@ func Race[Input any, Output any](active context.Context, inputs []Input, workerC
 	}
 	var empty Output
 	return empty, taskContext.Err()
+}
+
+// seqSlot carries one streamed sequence value with its stream position, so
+// runners write each success back to its own ordered slot and positions read
+// back in sequence order after every goroutine joins.
+type seqSlot[Input any] struct {
+	position  int
+	candidate Input
+}
+
+// seqFeeder drains sequence into positions, reserving one ordered slot per
+// streamed value before offering it: the reservation order is the stream
+// order, so runners write successes back in sequence order. Every offer
+// selects on taskContext.Done, so a canceled run never wedges the feeder.
+// The positions channel closes on every path so runners always join.
+func seqFeeder[Input any, Output any](taskContext context.Context, sequence iter.Seq[Input], positions chan<- seqSlot[Input], orderedGuard *sync.Mutex, ordered *[]Output, workGroup *sync.WaitGroup) {
+	defer workGroup.Done()
+	defer close(positions)
+	for candidate := range sequence {
+		orderedGuard.Lock()
+		position := len(*ordered)
+		var zero Output
+		*ordered = append(*ordered, zero)
+		orderedGuard.Unlock()
+		offer := seqSlot[Input]{position: position, candidate: candidate}
+		select {
+		case <-taskContext.Done():
+			return
+		case positions <- offer:
+		}
+	}
+}
+
+// seqRunner drains streamed slots through transform, writing each success to
+// its own ordered slot under orderedGuard: the feeder is the only appender
+// while runners only store by index, so no lock is held while transform
+// runs. Mirrors mapRunner: the first failure and the first panic latch once,
+// either stops this runner, and cancellation drains the rest so unstarted
+// inputs never run after the first failure. Every path joins workGroup.
+func seqRunner[Input any, Output any](taskContext context.Context, positions <-chan seqSlot[Input], transform func(context.Context, Input) (Output, error), orderedGuard *sync.Mutex, ordered *[]Output, shared *runShared, cancelTask context.CancelFunc, workGroup *sync.WaitGroup) {
+	defer workGroup.Done()
+	for slot := range positions {
+		select {
+		case <-taskContext.Done():
+			continue
+		default:
+		}
+		transformed, transformFailure, didPanic := callTransform(taskContext, slot.candidate, transform, func(payload any) {
+			latchFirstPanic(&shared.panicOnce, &shared.firstPanic, payload, cancelTask)
+		})
+		if didPanic {
+			return
+		}
+		if transformFailure != nil {
+			shared.failureOnce.Do(func() {
+				shared.firstFailure = transformFailure
+				cancelTask()
+			})
+			return
+		}
+		orderedGuard.Lock()
+		(*ordered)[slot.position] = transformed
+		orderedGuard.Unlock()
+	}
+}
+
+// MapSeq runs transform over sequence with at most workerCount concurrent
+// runners and returns results in stream order, even when later items finish
+// first: the feeder reserves one ordered slot per streamed value, each
+// runner writes only its own slots, and slots read back in stream order
+// after every goroutine joins.
+//
+// Input streams, output materializes: MapSeq never holds the input (values
+// flow from the sequence through an unbuffered handoff, in flight bounded by
+// the runner count), but the ordered result grows with the stream, so a
+// successful run over an endless sequence never returns — reach for prompt
+// failure plus cancellation, not success, over unbounded inputs. The standard
+// library has no parallel ordered fan-in over iter.Seq; MapSeq fills that gap
+// with errgroup parity instead of a new vocabulary: one failure in, that
+// failure out, siblings stopped.
+//
+// A workerCount of zero or less falls back to runtime.NumCPU. A nil sequence
+// yields an empty non-nil slice without spawning any goroutine (ranging over
+// a nil iter.Seq would panic); an empty sequence yields the same. An
+// already-canceled active context returns promptly with active.Err() and
+// starts nothing.
+//
+// The first transform failure cancels its siblings AND the feeder via
+// context cancellation and MapSeq returns that failure (errgroup parity);
+// sibling transforms must honor the context, as shown in the package example,
+// for prompt shutdown. Runners that observe the cancellation drain their
+// remaining slots without invoking transform, so unstarted inputs never run
+// after the first failure; the feeder selects on cancellation on every
+// handoff, so it never wedges. A transform already in flight still runs to
+// completion (Go cannot preempt it), and a transform that ignores the context
+// runs to completion too — extra work stays bounded by the runner count,
+// never by the sequence length. Every spawned goroutine (one feeder plus the
+// runners) joins through a WaitGroup on all paths.
+//
+// A context canceled mid-run with no transform failure returns (nil, the
+// context error): partially ordered output is never presented as success.
+//
+// A panicking transform never escapes its runner goroutine: the first panic
+// payload latches, siblings cancel through the same context path as
+// failures, every goroutine joins, and MapSeq re-panics the original payload
+// in the caller — the Rayon/PLINQ consensus (in-flight work completes, new
+// work stops, panics propagate, never silent). A latched panic wins over a
+// latched failure: programmer bugs stay loud.
+func MapSeq[Input any, Output any](active context.Context, sequence iter.Seq[Input], workerCount int, transform func(context.Context, Input) (Output, error)) ([]Output, error) {
+	if active.Err() != nil {
+		return nil, active.Err()
+	}
+	if sequence == nil {
+		return []Output{}, nil
+	}
+	runners := workerCount
+	if runners <= 0 {
+		runners = runtime.NumCPU()
+	}
+	taskContext, cancelTask := context.WithCancel(active)
+	defer cancelTask()
+	positions := make(chan seqSlot[Input])
+	var workGroup sync.WaitGroup
+	shared := &runShared{}
+	var orderedGuard sync.Mutex
+	ordered := []Output{}
+	workGroup.Add(1)
+	go seqFeeder(taskContext, sequence, positions, &orderedGuard, &ordered, &workGroup)
+	for range runners {
+		workGroup.Add(1)
+		go seqRunner(taskContext, positions, transform, &orderedGuard, &ordered, shared, cancelTask, &workGroup)
+	}
+	workGroup.Wait()
+	if shared.firstPanic != nil {
+		panic(shared.firstPanic)
+	}
+	if shared.firstFailure != nil {
+		return nil, shared.firstFailure
+	}
+	if taskContext.Err() != nil {
+		return nil, taskContext.Err()
+	}
+	return ordered, nil
+}
+
+// EachSeq applies consume to every value in sequence with at most workerCount
+// concurrent runners, unordered and without collecting results; the first
+// consume failure cancels the rest and wins as the returned failure, nil when
+// all succeed. A workerCount of zero or less falls back to runtime.NumCPU.
+// A nil or empty sequence returns nil without running consume. An
+// already-canceled active context returns promptly with active.Err() and
+// starts no consume step. EachSeq inherits the MapSeq fail-fast, drain, and
+// panic policies: a panicking consume re-panics its payload in the caller
+// after every goroutine joins.
+//
+// EachSeq is a fully streaming O(1) side-effect pass: it runs through MapSeq
+// (the ForEach-via-Map precedent) with a zero-sized output, so nothing but
+// the in-flight runners accumulates while the sequence streams.
+func EachSeq[Input any](active context.Context, sequence iter.Seq[Input], workerCount int, consume func(context.Context, Input) error) error {
+	_, eachFailure := MapSeq(active, sequence, workerCount, func(taskContext context.Context, candidate Input) (struct{}, error) {
+		consumeFailure := consume(taskContext, candidate)
+		return struct{}{}, consumeFailure
+	})
+	return eachFailure
 }

@@ -51,6 +51,7 @@ Core packages MUST NOT import Echo, Gin, or GORM. Adapter packages (`httpx`, `re
 6. Functions ≤50 lines / complexity ≤10 / params ≤4; guard clauses over nesting; sentinel errors + `fmt.Errorf("…: %w", …)` wrapping.
 7. Convenience outweighs minimalism (owner decision 2026-10-20): a stdlib-adjacent helper that saves lines or teaches better stays even if it wraps stdlib thinly; YAGNI still kills speculative generality, never proven convenience.
 7. Skeleton slice ships only `result` + `opt` + `slice`; everything else is declared future scope, never stubbed speculatively.
+8. Purity (owner decision 2026-10-22, deduced from package docs + never-mutate pins, then ratified): all helpers are pure — inputs are never mutated, outputs are fresh values. Mutable in-place variants are rejected: callers rely on inputs staying intact, and Go already offers mutation via plain loops and the stdlib when the caller opts in.
 
 ## Coverage map (present → future)
 

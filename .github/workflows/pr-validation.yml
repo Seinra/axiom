@@ -74,6 +74,10 @@ jobs:
         run: |
           gh pr view "$PR" --json commits \
             --jq '.commits[].messageHeadline' | while IFS= read -r subject; do
+            case "$subject" in
+              # GitHub merge commits never follow convention; the PR's own commits do
+              "Merge "*) continue ;;
+            esac
             CCPAT='^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)'
             CCPAT="$CCPAT(\\([a-z0-9._-]+\\))?!?: .+"
             if ! printf '%s' "$subject" | grep -qE "$CCPAT"; then

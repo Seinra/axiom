@@ -1,4 +1,4 @@
-# Axiom future program — declared futures + thesis-compatible steals (no implementation)
+# Axiom future program — declared futures + thesis-compatible adoptions (no implementation)
 
 Program document: what is declared, what the survey surfaced that fits the thesis, and in which order to attack it. Each slice launches as its own ODD when the owner picks it. Nothing here implements anything.
 
@@ -8,9 +8,9 @@ Program document: what is declared, what the survey surfaced that fits the thesi
 - S2 (owner agreements verbatim): purity invariant ratified ("Me gusta lo de invariante de pureza"); Lazy covered by `sync.OnceValue` and tuples T2-T9 rejected as API explosion are "lo mismo" (agreed split).
 - S3 (gate, standing): a candidate enters iff (a) stdlib genuinely lacks it AND (b) it teaches as Catalyst lesson material with a stdlib-first core (godoc + Which-table + compiling Example). Rejections carry the failed gate clause.
 - S4 (evidence snapshot 2026-10-22, parent-verified): lo v1.53 (~21k stars) + mo v1.17 (~3.4k) READMEs read live; go-utils README read live (9 pkgs, per-function docs, AI rules, 100% coverage claim); fp-go README read live (fp-ts port, WIP); gods v2 generics noted; Axiom exports verified via `grep ^func` (slice 25, mapx 12 incl. Pick/Omit/Merge/ValueOr, set full algebra, iterx 22 lazy adapters, flow Map/ForEach/Race).
-- S5 (owner order verbatim 2026-10-22): "todo lo que robamos se implementa a nuestro estilo" — stolen behavior ships under Axiom house style even where foundry skills already push that way: element-only callbacks (indexed variants explicit, never `(v,i,s)`); Which-table row + godoc + compiling Example per export; purity (frozen decision 8); OrNull `(T,bool)` shapes for absence; panic policy for programmer errors (Chunked/Windows precedent); no reflection; stdlib-gap justification recorded; edge + never-mutate pins in tests. Writer handoffs MUST cite ARCHITECTURE + this S5, not just foundry.
+- S5 (owner order verbatim 2026-10-22): "todo lo que robamos se implementa a nuestro estilo" — adopted behavior ships under Axiom house style even where foundry skills already push that way: element-only callbacks (indexed variants explicit, never `(v,i,s)`); Which-table row + godoc + compiling Example per export; purity (frozen decision 8); OrNull `(T,bool)` shapes for absence; panic policy for programmer errors (Chunked/Windows precedent); no reflection; stdlib-gap justification recorded; edge + never-mutate pins in tests. Writer handoffs MUST cite ARCHITECTURE + this S5, not just foundry.
 
-## Steal-list (thesis-compatible only, ranked)
+## Adoption list (thesis-compatible only, ranked)
 
 | Rank | Item | Who has it | stdlib gap | DLC lesson | Suggested home |
 | --- | --- | --- | --- | --- | --- |
@@ -52,7 +52,7 @@ Program document: what is declared, what the survey surfaced that fits the thesi
 | F3 fan-in/out pipeline | bounded fan-out + ordered fan-in over `iter.Seq`, errgroup parity with flow | concurrency you can reason about | extends flow; cancellation + backpressure policy required (flow.Map precedent) |
 | F4 Future/Task async | deferred async computation with cancel | async done right, last for a reason | weakest stdlib-first story; needs the strongest lesson justification; goes last |
 
-Order: steal-round (table above, slice-first) → F1 → F2 → F3 → F4. One ODD per slice, owner picks each launch. New packages (`mathx`?, strings, ptr) need an explicit owner package-creation call before any ODD.
+Order: adoption round (table above, slice-first) → F1 → F2 → F3 → F4. One ODD per slice, owner picks each launch. New packages (`mathx`?, strings, ptr) need an explicit owner package-creation call before any ODD.
 
 ## Log
 

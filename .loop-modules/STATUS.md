@@ -99,6 +99,8 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-22 | F2 T1 done + verifier Go | VALIDATE | writer + parent verify (suite 19/19 -count=1, vet 0, gofmt empty, lint 0, bench smoke PASS, full impl read); verifier Go 0B + 1 isolation SUGGESTION applied + 3 auth-only WARNINGs closed by parent evidence; work-unit 336f457; push/PR owner-gated |
 | 2026-10-22 | native review F2 quemado (owner order) | VALIDATE | lineage review-864498bfb3f6a9f2 APPROVED + burned (readability+reliability, 561 líneas, group limpio tras reenvío); 3 SUGGESTIONs informativas parkeadas (R2-001 + R3-001/R3-002); sin correction; push/PR owner-gated (nuevo issue + aprobación) |
 | 2026-10-22 | F2 delivery (issue #53 + PR #54) | DELIVERY | branch pushed; issue #53 approved (grant exacto post-creación) + PR #54 type:feature con Closes #53; validate re-run vía close/reopen → validate+verify pass; merge owner-gated |
+| 2026-10-22 | F3 pipeline T1 launched, B1 shape (worker) | IMPLEMENT | branch feat/axiom-f3-pipeline from main post-#54; ODD odd/tasks/axiom-f3-pipeline.md + Engram mirror; B1 (MapSeq+EachSeq, streaming-in/eager-out/fail-fast) per owner call, H staged as F3b; writer surfaces flow/* (3 files); delivery needs new issue + approval |
+| 2026-10-22 | F3 T1 done + verifier Go | VALIDATE | writer + parent verify (suite 19/19 -count=1, vet 0, gofmt empty, lint 0, -race x2 flow ok, smoke PASS, full impl read); parent fixed mid-run-cancel holes → (nil,ctx.Err.); verifier Go 0B + empty-shape SUGGESTION applied + generator-panic WARNING parked with reason; work-unit 89706ff; push/PR owner-gated |
 
 ## Debt ledger
 

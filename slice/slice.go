@@ -24,6 +24,8 @@
 // | Insert a separator between elements       | Intersperse                 |
 // | Sort a copy by key, ties keep input order | SortBy                      |
 // | Running folds element by element          | RunningFold                 |
+// | All k-subsets in index order              | Combinations                |
+// | All k-arrangements in index order         | Permutations                |
 //
 // The (value, bool) return on FindSlice, Min, Max, MinBy, MaxBy, and
 // Average is this package's OrNull: the bool reports presence and the
@@ -439,4 +441,96 @@ func RunningFold[Element any, Accumulation any](elements []Element, initial Accu
 		running = append(running, current)
 	}
 	return running
+}
+
+// Combinations returns all k-subsets of elements preserving input order.
+//
+// Each combination keeps the relative order of the input and the result lists
+// combinations in lexicographic order by index: the first combination holds
+// the first k elements and later combinations advance the rightmost index possible.
+//
+// k < 0 panics: a negative selection size is a programmer error, matching the
+// size <= 0 panic policy of Chunked and Windows. k == 0 yields exactly one
+// empty combination. k beyond the input length, or nil/empty input with k > 0,
+// yields an empty non-nil slice. Every inner slice is a fresh copy; the input
+// is never mutated.
+//
+// Cost: O(C(n,k)*k) time and space for n elements — every combination copies k elements.
+func Combinations[Element any](elements []Element, k int) [][]Element {
+	if k < 0 {
+		panic(fmt.Sprintf("axiom slice: Combinations needs k >= 0, got %d", k))
+	}
+	if k == 0 {
+		return [][]Element{make([]Element, 0)}
+	}
+	if k > len(elements) {
+		return make([][]Element, 0)
+	}
+	combos := make([][]Element, 0)
+	current := make([]Element, 0, k)
+	var build func(start int)
+	build = func(start int) {
+		if len(current) == k {
+			combo := make([]Element, k)
+			copy(combo, current)
+			combos = append(combos, combo)
+			return
+		}
+		for position := start; position < len(elements); position++ {
+			current = append(current, elements[position])
+			build(position + 1)
+			current = current[:len(current)-1]
+		}
+	}
+	build(0)
+	return combos
+}
+
+// Permutations returns all k-arrangements of elements in lexicographic order by index.
+//
+// Each arrangement lists k distinct input positions and the result starts with
+// the input order: the first arrangement holds the first k elements. Later
+// arrangements advance in lexicographic order over index tuples.
+//
+// k < 0 panics: a negative selection size is a programmer error, matching the
+// size <= 0 panic policy of Chunked and Windows. k == 0 yields exactly one
+// empty arrangement. k beyond the input length, or nil/empty input with k > 0,
+// yields an empty non-nil slice. Every inner slice is a fresh copy; the input
+// is never mutated.
+//
+// Cost: O(P(n,k)*k) time and space for n elements — every arrangement copies k elements.
+func Permutations[Element any](elements []Element, k int) [][]Element {
+	if k < 0 {
+		panic(fmt.Sprintf("axiom slice: Permutations needs k >= 0, got %d", k))
+	}
+	if k == 0 {
+		return [][]Element{make([]Element, 0)}
+	}
+	if k > len(elements) {
+		return make([][]Element, 0)
+	}
+	orders := make([][]Element, 0)
+	used := make([]bool, len(elements))
+	current := make([]Element, 0, k)
+	var build func()
+	build = func() {
+		if len(current) == k {
+			ordered := make([]Element, k)
+			copy(ordered, current)
+			orders = append(orders, ordered)
+			return
+		}
+		for position := range elements {
+			if used[position] {
+				continue
+			}
+			used[position] = true
+			current = append(current, elements[position])
+			build()
+			current = current[:len(current)-1]
+			used[position] = false
+		}
+	}
+	build()
+	return orders
 }

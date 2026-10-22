@@ -91,6 +91,10 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-22 | slice-2 round T1 done + verifier Go | VALIDATE | writer + parent verify (suite 16/16 -count=1, vet 0, gofmt empty, lint 0); verifier Go 0B/0W + 2 test-only findings applied inline (result untouched-pin + Scan errors.Is); work-unit 1768a5c; push/PR owner-gated |
 | 2026-10-22 | native review slice-2 quemado (owner order) | VALIDATE | lineage review-e19bfa66f5d06755 APPROVED + burned (readability+reliability, 1632 líneas); 5 advisories informativas parkeadas (R2-1/R2-2/R2-3, R3-001 WARNING, R3-002); sin correction; push/PR owner-gated (nuevo issue + aprobación) |
 | 2026-10-22 | slice-2 delivery (issue #49 + PR #50) | DELIVERY | branch pushed; issue #49 approved + PR #50 type:feature con Closes #49; CI validate+verify pass; merge owner-gated |
+| 2026-10-22 | F1 stack/queue T1 launched (worker) | IMPLEMENT | branch feat/axiom-f1-stack-queue from main; ODD odd/tasks/axiom-f1-stack-queue.md + Engram mirror; writer surfaces stack/* + queue/* (new files); F2-F4 staged; delivery needs new issue + approval |
+| 2026-10-22 | F1 T1 done + verifier Go | VALIDATE | writer + parent verify (suite 18/18 -count=1, vet 0, gofmt empty, lint 0, bench smoke PASS, full impl read); verifier Go 0B/0S + 1 auth-only WARNING closed by parent evidence; work-unit 7ee6db7; push/PR owner-gated |
+| 2026-10-22 | native review F1 quemado (owner order) | VALIDATE | lineage review-fb21b297839fa5d5 APPROVED + burned (readability+reliability, 617 líneas, group capture limpio); 4 advisories informativas parkeadas (R2-001 WARNING + R2-002/R2-003 + R3-drain-retention); sin correction; push/PR owner-gated (nuevo issue + aprobación) |
+| 2026-10-22 | F1 delivery (issue #51 + PR #52) | DELIVERY | branch pushed; issue #51 approved (grant exacto post-creación) + PR #52 type:feature con Closes #51; validate re-run vía close/reopen → validate+verify pass; merge owner-gated |
 
 ## Debt ledger
 

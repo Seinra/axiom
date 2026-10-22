@@ -2,7 +2,7 @@ name: PR validation
 
 on:
   pull_request:
-    types: [opened, edited, synchronize, labeled, unlabeled]
+    types: [opened, edited, synchronize, labeled, unlabeled, reopened]
 
 permissions:
   contents: read

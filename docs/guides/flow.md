@@ -31,6 +31,8 @@ The package doc (`go doc ./flow`) is the source; this table mirrors its
 | Run side effects without results | `ForEach` |
 | Take the first success, cancel siblings | `Race` |
 | Match the empty-`Race` sentinel | `ErrNoRaceInputs` |
+| Retry a fallible step, bounded attempts | `Retry` |
+| Retry for a value, bounded attempts | `RetryWithResult` |
 
 ## Example
 

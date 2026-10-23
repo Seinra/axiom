@@ -88,3 +88,6 @@ the DLC, so curriculum need gates P2, not production usage.
 - DoChan/sharding/batching variants: YAGNI (see singleflight package doc).
 - Stdlib-owned duplicates, never reimplemented: sort/reverse/concat
   (`slices`), lazy memoize (`sync.OnceValue`), atomic wrappers (`sync/atomic`).
+- Tuples T2-T9, `Lazy`, gods-style containers: fail the teachability-per-cost
+gate (Go lacks variadic generics; N hand-written types for a weak lesson).
+  `Zip`/`Pair` covers the common case.

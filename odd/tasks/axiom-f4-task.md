@@ -14,7 +14,7 @@ Fourth declared slice (`odd/tasks/axiom-future-slices.md` program row): deferred
 - T1 (S1, S2, S4): Design lock — verifiable requirements (MUST/SHOULD/MAY + Given/When/Then) + exact API shape + lesson note + Which-table template; owner sign-off — route: parent + foundry-requirements + cognitive-doc-design — commit: ODD-only (this document, branch feat/axiom-f4-task)
 - T2 (S1-S4): Implement Task with tests + Which-table + Example — route: bounded writer — surfaces: task/task.go, task/task_test.go, task/example_test.go — skills: foundry + foundry-testing + cognitive-doc-design — commit: f3a27f6
 - T3 (S3): Independent verifier + close-out — route: parent + gentle-ai-verify; push/PR owner-gated (new issue + approval) — commit: pending
-- T4 (S3): Delivery — route: parent; issue type:feature + status:approved + PR Closes #N type:feature + CI green; merge owner-gated — commit: pending
+- T4 (S3): Delivery — route: parent; issue type:feature + status:approved + PR Closes #N type:feature + CI green; merge owner-gated — commit: ODD L8 + STATUS row (docs, pre-merge)
 
 ## Log
 

@@ -116,3 +116,18 @@ func ExampleRange() {
 	// [0 1 2 3]
 	// [5 6 7]
 }
+
+// ExampleHead shows the first element with presence, plus the rest helpers.
+func ExampleHead() {
+	first, found := slice.Head([]string{"go", "rust"})
+	fmt.Println(first, found)
+	_, empty := slice.Head([]string{})
+	fmt.Println(empty)
+	fmt.Println(slice.Tail([]int{1, 2, 3}))
+	fmt.Println(slice.Initial([]int{1, 2, 3}))
+	// Output:
+	// go true
+	// false
+	// [2 3]
+	// [1 2]
+}

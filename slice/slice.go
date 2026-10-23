@@ -24,6 +24,7 @@
 // | Insert a separator between elements       | Intersperse                 |
 // | Sort a copy by key, ties keep input order | SortBy                      |
 // | First or last match, fallback when absent  | FindOrElse / FirstOr / LastOr |
+// | First element, or rest without it         | Head / Tail / Initial         |
 // | Check whether all, any, or none match      | Every / Some / None           |
 // | Values repeating, or appearing just once   | FindDuplicates / FindUniques  |
 // | Positions of every match                   | FindIndexes                   |
@@ -801,6 +802,49 @@ func LastOr[Element any](elements []Element, fallback Element) Element {
 		return fallback
 	}
 	return elements[len(elements)-1]
+}
+
+// Head returns the first element, reporting presence.
+//
+// Empty or nil input yields the zero value and false. This is the OrNull
+// shape: check found before trusting the value. Use FirstOr when the caller
+// already has a fallback value instead of a presence check.
+// slices has no first-element accessor; indexing elements[0] panics on empty.
+func Head[Element any](elements []Element) (Element, bool) {
+	if len(elements) == 0 {
+		var zero Element
+		return zero, false
+	}
+	return elements[0], true
+}
+
+// Tail returns the elements after the first as a fresh copy.
+//
+// Empty or nil input, or a single element, yields an empty non-nil slice.
+// The input is never mutated and the result shares no backing array.
+// slices has no tail helper; slicing elements[1:] aliases and panics on empty.
+func Tail[Element any](elements []Element) []Element {
+	if len(elements) == 0 {
+		return make([]Element, 0)
+	}
+	rest := make([]Element, len(elements)-1)
+	copy(rest, elements[1:])
+	return rest
+}
+
+// Initial returns the elements before the last as a fresh copy.
+//
+// Empty or nil input, or a single element, yields an empty non-nil slice.
+// The input is never mutated and the result shares no backing array.
+// slices has no initial helper; slicing elements[:len(elements)-1] aliases
+// and panics on empty.
+func Initial[Element any](elements []Element) []Element {
+	if len(elements) == 0 {
+		return make([]Element, 0)
+	}
+	kept := make([]Element, len(elements)-1)
+	copy(kept, elements[:len(elements)-1])
+	return kept
 }
 
 // Every reports whether test holds for every element.

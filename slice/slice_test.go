@@ -2394,3 +2394,135 @@ func TestClampLowAboveHighPanics(t *testing.T) {
 		t.Fatalf("Clamp panic = %v, want %q", panicked, want)
 	}
 }
+
+func TestHeadReturnsFirst(t *testing.T) {
+	got, found := axiomslice.Head([]string{"go", "rust", "zig"})
+	if !found {
+		t.Fatal("Head found = false, want true")
+	}
+	if got != "go" {
+		t.Fatalf("Head = %q, want %q", got, "go")
+	}
+}
+
+func TestHeadEmptyYieldsZeroFalse(t *testing.T) {
+	got, found := axiomslice.Head([]string{})
+	if found {
+		t.Fatal("Head(empty) found = true, want false")
+	}
+	if got != "" {
+		t.Fatalf("Head(empty) = %q, want zero value", got)
+	}
+}
+
+func TestHeadNilYieldsZeroFalse(t *testing.T) {
+	var words []string
+	got, found := axiomslice.Head(words)
+	if found {
+		t.Fatal("Head(nil) found = true, want false")
+	}
+	if got != "" {
+		t.Fatalf("Head(nil) = %q, want zero value", got)
+	}
+}
+
+func TestTailDropsFirst(t *testing.T) {
+	got := axiomslice.Tail([]int{1, 2, 3})
+	want := []int{2, 3}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Tail = %v, want %v", got, want)
+	}
+}
+
+func TestTailEmptyYieldsEmptyNonNil(t *testing.T) {
+	got := axiomslice.Tail([]int{})
+	if got == nil {
+		t.Fatal("Tail(empty) = nil, want empty non-nil slice")
+	}
+	if len(got) != 0 {
+		t.Fatalf("Tail(empty) len = %d, want 0", len(got))
+	}
+}
+
+func TestTailNilYieldsEmptyNonNil(t *testing.T) {
+	var numbers []int
+	got := axiomslice.Tail(numbers)
+	if got == nil {
+		t.Fatal("Tail(nil) = nil, want empty non-nil slice")
+	}
+	if len(got) != 0 {
+		t.Fatalf("Tail(nil) len = %d, want 0", len(got))
+	}
+}
+
+func TestTailSingleYieldsEmpty(t *testing.T) {
+	got := axiomslice.Tail([]int{7})
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Tail([7]) = %v, want empty non-nil slice", got)
+	}
+}
+
+func TestTailCopiesNotAliased(t *testing.T) {
+	input := []int{1, 2, 3}
+	got := axiomslice.Tail(input)
+	got[0] = 99
+	if input[1] != 2 {
+		t.Fatalf("Tail aliases input: input = %v, want [1 2 3]", input)
+	}
+}
+
+func TestInitialDropsLast(t *testing.T) {
+	got := axiomslice.Initial([]int{1, 2, 3})
+	want := []int{1, 2}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Initial = %v, want %v", got, want)
+	}
+}
+
+func TestInitialEmptyYieldsEmptyNonNil(t *testing.T) {
+	got := axiomslice.Initial([]int{})
+	if got == nil {
+		t.Fatal("Initial(empty) = nil, want empty non-nil slice")
+	}
+	if len(got) != 0 {
+		t.Fatalf("Initial(empty) len = %d, want 0", len(got))
+	}
+}
+
+func TestInitialNilYieldsEmptyNonNil(t *testing.T) {
+	var numbers []int
+	got := axiomslice.Initial(numbers)
+	if got == nil {
+		t.Fatal("Initial(nil) = nil, want empty non-nil slice")
+	}
+	if len(got) != 0 {
+		t.Fatalf("Initial(nil) len = %d, want 0", len(got))
+	}
+}
+
+func TestInitialSingleYieldsEmpty(t *testing.T) {
+	got := axiomslice.Initial([]int{7})
+	if got == nil || len(got) != 0 {
+		t.Fatalf("Initial([7]) = %v, want empty non-nil slice", got)
+	}
+}
+
+func TestInitialCopiesNotAliased(t *testing.T) {
+	input := []int{1, 2, 3}
+	got := axiomslice.Initial(input)
+	got[0] = 99
+	if input[0] != 1 {
+		t.Fatalf("Initial aliases input: input = %v, want [1 2 3]", input)
+	}
+}
+
+func TestHeadTailInitialNeverMutateInput(t *testing.T) {
+	input := []int{1, 2, 3}
+	seed := append([]int(nil), input...)
+	_, _ = axiomslice.Head(input)
+	_ = axiomslice.Tail(input)
+	_ = axiomslice.Initial(input)
+	if !reflect.DeepEqual(input, seed) {
+		t.Fatalf("input mutated: got %v, want %v", input, seed)
+	}
+}

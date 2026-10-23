@@ -62,4 +62,4 @@ docs:
 state:
   dir: ".loop-modules"
   files: {status: "STATUS.md", success_metrics: "SUCCESS_METRICS.md"}
-currentFeature: odd/tasks/axiom-docs-freshness.md
+currentFeature: odd/tasks/axiom-docs-cleanup.md

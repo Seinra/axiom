@@ -8,7 +8,7 @@ One-line identity: Axiom is a Go generics library (module `github.com/seinra/axi
 
 ## 🎯 Objective & Success Metrics
 
-- Objective: build a complete, human- and AI-friendly Go generics library at Echo-level quality, with clear rules for the hard parts of generics; consumed by Catalyst (`D:\Proyectos\AI Tech\Catalyst`).
+- Objective: build a complete, human- and AI-friendly Go generics library at Echo-level quality, with clear rules for the hard parts of generics; consumed by Catalyst (offline-first course app, module `catalyst`).
 - Definition of Done lives in `.loop-modules/SUCCESS_METRICS.md` — measurable, no aspirational checkboxes.
 
 ## 📦 Module Reference

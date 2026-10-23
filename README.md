@@ -71,7 +71,7 @@ Start there, then `go doc` the package:
 | Rules | stdlib-first (`slices`/`maps`/`cmp`/`iter` before hand-rolled); typed API, `any` only at codec edges; grep-able names (no `data`/`item`/`req`/`res`); godoc on every export + one compiling Example per package happy path |
 | Loop | `AXIOM_LOOP.md` + `.loop-modules/` + `VISION.md` + `loop-config.yaml`; ODD-tracked in `odd/tasks/` |
 | Declared future (owner-gated) | Adoption program closed: P1 Head/Tail/Initial, P2 `mathx`, P3 opt bridges, P4 `flow` retry, P5 `strings` all on main; new packages still need an explicit owner package-creation call before any ODD — see `.loop-modules/ARCHITECTURE.md` |
-| Consumer | Catalyst (`D:\Proyectos\AI Tech\Catalyst`, offline-first course app) pilots via scratch `replace` only — never a Catalyst commit from here |
+| Consumer | Catalyst (offline-first course app, module `catalyst`) pilots via scratch `replace` only — never a Catalyst commit from here |
 
 ## Checklist
 

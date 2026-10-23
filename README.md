@@ -65,10 +65,10 @@ Start there, then `go doc` the package:
 | Topic | Decision |
 | --- | --- |
 | Module / toolchain | `github.com/seinra/axiom`, `go 1.27` (generic methods on concrete types; no generic interface methods) |
-| Ships now (19 pkgs) | `result`, `opt`, `either`, `slice`, `set`, `mapx`, `iterx`, `valid`, `singleflight`, `pool`, `di`, `repo` (+GORM adapter `repogorm`), `httpx` (Echo v5), `flow`, `stack`, `queue`, `orderedmap`, `task` — see `.loop-modules/ARCHITECTURE.md` for the map; every package ships godoc + tests green |
+| Ships now (21 pkgs) | `result`, `opt`, `either`, `slice`, `set`, `mapx`, `iterx`, `valid`, `singleflight`, `pool`, `di`, `repo` (+GORM adapter `repogorm`), `httpx` (Echo v5), `flow`, `stack`, `queue`, `orderedmap`, `task`, `mathx`, `strings` — see `.loop-modules/ARCHITECTURE.md` for the map; every package ships godoc + tests green |
 | Rules | stdlib-first (`slices`/`maps`/`cmp`/`iter` before hand-rolled); typed API, `any` only at codec edges; grep-able names (no `data`/`item`/`req`/`res`); godoc on every export + one compiling Example per package happy path |
 | Loop | `AXIOM_LOOP.md` + `.loop-modules/` + `VISION.md` + `loop-config.yaml`; ODD-tracked in `odd/tasks/` |
-| Declared future (owner-gated) | new packages need an explicit owner package-creation call before any ODD (`mathx`?, pointer↔value bridges, strings helpers, general retry) — see `.loop-modules/ARCHITECTURE.md` |
+| Declared future (owner-gated) | Adoption program closed: P1 Head/Tail/Initial, P2 `mathx`, P3 opt bridges, P4 `flow` retry, P5 `strings` all on main; new packages still need an explicit owner package-creation call before any ODD — see `.loop-modules/ARCHITECTURE.md` |
 | Consumer | Catalyst (`D:\Proyectos\AI Tech\Catalyst`, offline-first course app) pilots via scratch `replace` only — never a Catalyst commit from here |
 
 ## Checklist

@@ -61,7 +61,7 @@ Run it: `go test ./flow/ -run ExampleMap -v`. Recipe (b) in
 | First failure wins in `Map`/`ForEach` | The first transform failure cancels its siblings through context cancellation and is the returned failure (errgroup parity). Runners stop *starting* new work; a transform already in flight still runs to completion — extra work stays bounded by the runner count. Honor the context inside your transform (see the package-doc select pattern) for prompt shutdown. |
 | `Race`: first success in time wins | Failures never cancel siblings — runners keep racing until the first success or until every input fails. All-failed `Race` returns the zero output plus the first failure in time. Use `Race` when any single success is enough and input order does not matter; use `Map` when you need every value in order. |
 | Panics stay loud (latch-first) | A panicking transform never escapes its runner: the first panic payload latches, siblings cancel, every runner joins, and the caller re-panics the original payload. A latched panic wins over a latched failure, and in `Race` it poisons even a claimed championship — programmer bugs never hide behind a lucky winner. |
-| No channels, pipelines, or retry | No FanIn/FanOut, no pipelines, no backoff (YAGNI). For single-goroutine work reach for plain loops or `golang.org/x/sync/errgroup` directly. |
+| No channels, pipelines, or fan-out | No FanIn/FanOut channels or pipelines; bounded retry lives in `flow.Retry`/`flow.RetryWithResult`. For single-goroutine work reach for plain loops or `golang.org/x/sync/errgroup` directly. |
 
 An already-canceled context returns promptly with `active.Err()` and
 starts no transform.

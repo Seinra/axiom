@@ -1,6 +1,6 @@
 # Axiom — typed generics for Go 1.27
 
-One small, dependable generics library at Echo-level quality: typed helpers for results, options, and slices today; the rest of the ecosystem map declared and built one feature at a time.
+One dependable, composable, educative generics library: typed helpers for results, options, and slices today; the rest of the ecosystem map declared and built one feature at a time.
 
 ## Quick path
 

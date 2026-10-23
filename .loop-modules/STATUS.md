@@ -118,6 +118,9 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-23 | guides-missing round done + verifier Go | VALIDATE | capítulo cero + 4 family guides + 2 executed test files + quickstart bridge + family rows + README 19pkgs + Declared-future owner-gated reword + loop-config currentFeature; verifier Go 0B (stacking WARNING closed by single-unit landing, 2 SUGGESTIONs applied/parked); parent re-ran docs suite green, vet 0, gofmt vacío, lint 0; work-unit 704159a + close-out docs; push/PR owner-gated |
 | 2026-10-23 | docs audit P1-P5 aftermath (7 findings, read-only) | VALIDATE | scout (foundry-explore + cognitive-doc-design) + parent spot-check confirmed: README 19-vs-21 + Declared future stale, flow.md YAGNI contradicts tree, no mathx/strings guides, index/quickstart/Which gaps, loop-config pointer stale; no writes |
 | 2026-10-23 | loop v0.3: Docs-sync gate (hard) + slices parked | IMPLEMENT | second docs-drift round → VALIDATION_GATES Docs-sync fail-closed table, ODD Tracking hook, close-out verdict line, currentFeature → axiom-docs-freshness.md; findings parked as S-a/S-b/S-c slices, each one ODD at launch |
+| 2026-10-23 | docs T1 delivery F1+F2 (PR #79) | DELIVERY | README 21 pkgs + Declared-future closed wording + flow.md YAGNI row (ef090fa + 620350a); suite/vet/gofmt green per merge; no native review per docs rule |
+| 2026-10-23 | docs T2 delivery F3+F4 (PR #83) | DELIVERY | mathx+strings family guides + README index + quickstart rows (93024fd + b94c0bd); suite/vet/gofmt green per merge; no native review per docs rule |
+| 2026-10-23 | docs T3 delivery F5 (PR #85) | DELIVERY | Which-table rows for 8 landed exports (6a974c8 + da0d721); suite/vet/gofmt green per merge; no native review per docs rule |
 
 ## Debt ledger
 

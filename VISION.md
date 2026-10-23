@@ -2,7 +2,7 @@
 
 ## Vision
 
-The Echo of Go generics: one small, dependable library that makes the hard parts of generics easy — for humans and for AI — so apps like Catalyst teach and ship typed code instead of `map[string]any`.
+Axiom: one dependable, composable, educative generics library that makes the hard parts of generics easy — for humans and for AI — so apps like Catalyst teach and ship typed code instead of `map[string]any`.
 
 ## Invariants (non-negotiable)
 

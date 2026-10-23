@@ -18,7 +18,7 @@ Stack, versions, and local docs policy for Axiom. Read before domain work. `modu
 
 ## Local docs policy (Refs)
 
-- `D:/Proyectos/Refs` is a Markdown reference store, NOT generic design truth: `go/` (9 files stdlib usage), `echo/` (guide + middleware + cookbook), `gorm/` (8 files CRUD). No local `slices`/`maps`/`iter`/`constraints` docs — design against stdlib official + pinned external truth in REFERENCES.
+- Local `Refs` store is a Markdown reference store, NOT generic design truth: `go/` (9 files stdlib usage), `echo/` (guide + middleware + cookbook), `gorm/` (8 files CRUD). No local `slices`/`maps`/`iter`/`constraints` docs — design against stdlib official + pinned external truth in REFERENCES.
 - Catalyst consumption patterns (from scout): `slices.Sort`, `maps.Copy`, `map[string]any` JSON envelopes (`internal/exam/exam.go:400ff`) — Axiom offers typed alternatives, never `any` in domain (craft-floor ban 17).
 
 ## Dependency policy

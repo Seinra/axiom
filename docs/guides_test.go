@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/seinra/axiom/mathx"
 	"github.com/seinra/axiom/orderedmap"
 	"github.com/seinra/axiom/queue"
 	"github.com/seinra/axiom/stack"
+	"github.com/seinra/axiom/strings"
 	"github.com/seinra/axiom/task"
 )
 
@@ -119,6 +121,54 @@ func TestFamilyGuidesTask(t *testing.T) {
 	want := []string{
 		"42 <nil>",
 		"boom boom",
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("family guide output[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+// TestFamilyGuidesMathx executes the docs/guides/mathx.md example and
+// asserts the exact outputs documented there: prime true, composite false,
+// Euclid's divisor, and the shared multiple.
+func TestFamilyGuidesMathx(t *testing.T) {
+	t.Parallel()
+
+	got := []string{
+		fmt.Sprint(mathx.IsPrime(7)),
+		fmt.Sprint(mathx.IsPrime(9)),
+		fmt.Sprint(mathx.Gcd(12, 18)),
+		fmt.Sprint(mathx.Lcm(4, 6)),
+	}
+	want := []string{
+		"true",
+		"false",
+		"6",
+		"12",
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("family guide output[%d] = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+// TestFamilyGuidesStrings executes the docs/guides/strings.md example and
+// asserts the exact outputs documented there: whitespace words kept whole,
+// rune-boundary chunks, and the suffix-free rune cut.
+func TestFamilyGuidesStrings(t *testing.T) {
+	t.Parallel()
+
+	got := []string{
+		fmt.Sprint(strings.Words("  go   rust\tzig\n")),
+		fmt.Sprint(strings.ChunkString("héllo", 2)),
+		strings.Truncate("héllo", 2),
+	}
+	want := []string{
+		"[go rust zig]",
+		"[hé ll o]",
+		"hé",
 	}
 	for i := range want {
 		if got[i] != want[i] {

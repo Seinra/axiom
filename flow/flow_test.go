@@ -1126,8 +1126,13 @@ func TestMapSeqPanicCancelsSiblings(t *testing.T) {
 	gate := make(chan struct{}) // never closed: progress comes only from cancellation
 	sawCancel := make(chan struct{}, 1)
 	sequence := slices.Values([]int{0, 1})
+	started := make(chan struct{})
 	transform := func(taskContext context.Context, candidate int) (string, error) {
+		if candidate == 0 {
+			close(started)
+		}
 		if candidate == 1 {
+			<-started
 			panic(errPanicSentinel)
 		}
 		select {
@@ -1146,7 +1151,7 @@ func TestMapSeqPanicCancelsSiblings(t *testing.T) {
 	assertPanicPayload(panicked, errPanicSentinel, t)
 	select {
 	case <-sawCancel:
-	default:
+	case <-time.After(slowDelay):
 		t.Fatal("MapSeq sibling did not observe cancellation after panic")
 	}
 }

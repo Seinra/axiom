@@ -94,6 +94,8 @@ Expect `ok` across all packages.
 
 ## Next step
 
+New to generics syntax (`[T]`, constraints, inference)? Read [foundations](guides/foundations.md) first — every guide below assumes it.
+
 Pick the family that matches what you are holding and read its guide with `go doc`:
 
 | If you are holding ... | Start with |
@@ -113,5 +115,9 @@ Pick the family that matches what you are holding and read its guide with `go do
 | the same over GORM | `go doc ./repogorm` |
 | an Echo JSON envelope | `go doc ./httpx` |
 | a bounded concurrent map or first-success race | `go doc ./flow` |
+| a LIFO work pile (undo, depth-first) | `go doc ./stack` |
+| a FIFO line (tickets, breadth-first) | `go doc ./queue` |
+| records that must remember insertion order | `go doc ./orderedmap` |
+| a background computation to join later | `go doc ./task` |
 
 The full package map lives in [README.md](../README.md).

@@ -114,6 +114,7 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-22 | native review F4 quemado (owner order) | VALIDATE | lineage review-bbfc21782dbf0d65 APPROVED + burned (resilience+readability+reliability, 488 líneas, group 3/3 limpio via pi_host_relay); 8 advisories informativas parkeadas (R2-001/002/003 + R3-001W + R3-002/003 + R4-001W + R4-002); sin correction; merge owner-gated (PR pendiente de #61 approved) |
 | 2026-10-22 | F4 T4 delivery listo para merge | DELIVERY | issue #61 type:feature + status:approved (grant exacto, read-back confirmed) + PR #62 type:feature con Closes #61; CI validate+verify pass; merge a pedido owner |
 | 2026-10-23 | findings R2 T1 done + verifier Go | VALIDATE | 2 bounded writers (B1 task/* 8, B2 flow.go + queue_test.go 2) + parent R3-001 closed-by-count triaged 11 advisories: 6 documented + 2 pinned + 3 dismissed-with-evidence (incl. R3-001 closed-by-count), 0 behavior change; parent re-ran task + flow/queue suites + full suite 20/20, vet 0, gofmt vacío, lint 0; work-unit 18f8418 (62+/2-); verifier Go 0B (WARNING closed by commit, SUGGESTION noted no-action); push/PR owner-gated |
+| 2026-10-23 | native review findings R2 quemado (owner order) | VALIDATE | lineage review-ef7592a388fcd99a APPROVED + burned (readability+reliability, 104 líneas, group 2/2 limpio via pi_host_relay); 2 advisories informativas parkeadas (R2-001 + R2-002); sin correction; merge owner-gated (PR con Closes #63) |
 
 ## Debt ledger
 

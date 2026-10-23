@@ -4,6 +4,7 @@ One-line identity: Axiom is a Go generics library (module `github.com/seinra/axi
 
 > **Changelog**: v0.1 (2026-10-20) — initial hub + modules + VISION + config for skeleton slice.
 > v0.2 (2026-10-21) — loop-engineering v1.9 gap-scan: REVIEW_PACKS five-element pack map, ODD canonical-state + delivery-lifecycle pointers, growth index-table rule, TDD tier-frozen note, session close-out disposition; cognitive-doc-design quick-path pass; foundry craft-floor re-affirmed.
+> v0.3 (2026-10-23) — loop-engineering gap-scan 2: Docs-sync gate (hard) in VALIDATION_GATES after the second docs-drift round (guides-missing aftermath + P1–P5); ODD Tracking close-out hook + Session close-out verdict line; no other hub changes.
 
 ## 🎯 Objective & Success Metrics
 
@@ -72,6 +73,7 @@ Track: `odd/tasks/<feature>.md` (header + `## Specs` S# quoted verbatim + `## Ta
 Canonical state: feature doc + mirror + `todo` projection; `phase-*.json` is content-loops-only; on mismatch reconcile (preserve both versions, ask on real conflict) — never silent repair; no-human fallback parks in STATUS debt ledger.
 Work units: ~400 authored lines heuristic (advisory only), tests + docs with unit, Conventional Commits, Risk line; full checklist per `references/delivery-lifecycle.md` (never code-golf). Branch/PR/chain/CI per `references/delivery-lifecycle.md`.
 Delivery gate: work-unit first as candidate, then `assess` + tiered review; burned approval gates push/PR/merge (owner HITL), never commit.
+Docs-sync: `VALIDATION_GATES.md` Docs-sync gate (hard) verdict is recorded in the ODD Log before delivery; code-changing units land blocked without it.
 Every task returns a Result Contract: `status`, `executive_summary`, `artifacts`, `next_recommended`, `risks` — formats ODD Tasks/S#, never parallel `phases/NN`; distinct-validator (distinct session where delegation exists; solo: spot-check, re-run one reported command) validates before advancing; `artifacts` carries ≥1 `command: observed result` line per behavior claim.
 Methodology adapter: the harness methodology is named here (today: ODD) and pinned in REFERENCES as a stable ID; a rename/replacement updates the pin + mapping, never rule prose.
 
@@ -100,7 +102,7 @@ Typed Engram save per discovery/decision:
 
 **Start**: read this loop → read the task file (file-first resume, never newest global memory) → check active changes/artifacts → preflight if first ODD-tracked work (feature document + mirror + todo reconciled) → resolve current status → verify prior deposit/mirror exists; if missing-deposit, reconstruct from artifacts.
 **During**: confirm the deliverable IS the loop (loops-only guard), follow routing table; distinct-validator validates each phase result before advancing (solo: spot-check, re-run one reported command); each fix retry appends a Log row.
-**End**: memory session summary — Goal, Instructions, Discoveries, Accomplished, Next Steps, Relevant Files — plus update STATUS.md if used; paste one externally-measured check (wc / lens / runtime backstop) as evidence at close-out, never asserted. Close-out declares per-artifact disposition (UPDATED vs verified-unchanged with reason); a close-out without it is invalid. On drift, flag in STATUS debt ledger — never silently rewrite ratified intent. Report `modules_read: [...]`. Mirror failure never blocks: preserve local, mark `mirror pending` in Log, resync later; explicit `session_id` on ambiguous-session writes. Generated artifacts default to English; never translate or paraphrase quoted user strings.
+**End**: memory session summary — Goal, Instructions, Discoveries, Accomplished, Next Steps, Relevant Files — plus update STATUS.md if used; paste one externally-measured check (wc / lens / runtime backstop) as evidence at close-out, never asserted. Close-out declares per-artifact disposition (UPDATED vs verified-unchanged with reason) and the Docs-sync gate verdict; a close-out without either is invalid. On drift, flag in STATUS debt ledger — never silently rewrite ratified intent. Report `modules_read: [...]`. Mirror failure never blocks: preserve local, mark `mirror pending` in Log, resync later; explicit `session_id` on ambiguous-session writes. Generated artifacts default to English; never translate or paraphrase quoted user strings.
 
 ## ⚠️ HITL Triggers
 

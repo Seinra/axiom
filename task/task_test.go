@@ -32,6 +32,10 @@ func waitForTaskSignal(t *testing.T, active context.Context, signal <-chan struc
 	}
 }
 
+// waitForGoroutineBaseline polls for goroutine quiescence with a loud
+// deadline: it fails the test on timeout, never passes spuriously, and runs
+// only after a join point (Await) or a spawn-free path, so it asserts no
+// leak without sleeping on the happy path.
 func waitForGoroutineBaseline(t *testing.T, baseline int, what string, timeout time.Duration) {
 	t.Helper()
 	deadline := time.Now().Add(timeout)
@@ -254,6 +258,49 @@ func TestSpawnPreCanceledNeverRunsCompute(t *testing.T) {
 		t.Fatalf("Spawn pre-canceled started = %d, want 0", observed)
 	}
 	waitForGoroutineBaseline(t, baseline, "pre-canceled", 2*time.Second)
+}
+
+func TestAwaitCancelDiscardsCompletedSuccess(t *testing.T) {
+	active, cancelTask := context.WithCancel(context.Background())
+	defer cancelTask()
+	finished := make(chan struct{})
+	future := task.Spawn(active, func(_ context.Context) (int, error) {
+		close(finished)
+		return 42, nil
+	})
+	timeout, cancelTimeout := context.WithTimeout(context.Background(), taskTestTimeout)
+	defer cancelTimeout()
+	waitForTaskSignal(t, timeout, finished, "compute finish")
+	cancelTask()
+	success, failure := future.Await().Unwrap()
+	if failure == nil || !errors.Is(failure, context.Canceled) {
+		t.Fatalf("Await post-cancel failure = %v, want errors.Is context.Canceled", failure)
+	}
+	if success == 42 {
+		t.Fatalf("Await post-cancel success = %d, want completed Ok discarded", success)
+	}
+}
+
+func TestSpawnRunsComputeOnceAcrossRepeatedAwait(t *testing.T) {
+	active, cancelTask := contextWithTaskTimeout(context.Background())
+	defer cancelTask()
+	var runs atomic.Int64
+	future := task.Spawn(active, func(_ context.Context) (int, error) {
+		runs.Add(1)
+		return 42, nil
+	})
+	for range 2 {
+		success, failure := future.Await().Unwrap()
+		if failure != nil {
+			t.Fatalf("Await repeated failure = %v, want nil", failure)
+		}
+		if success != 42 {
+			t.Fatalf("Await repeated success = %d, want 42", success)
+		}
+	}
+	if observed := runs.Load(); observed != 1 {
+		t.Fatalf("Spawn compute runs = %d, want exactly 1", observed)
+	}
 }
 
 func TestSpawnNilComputePanics(t *testing.T) {

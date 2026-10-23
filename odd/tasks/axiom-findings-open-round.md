@@ -33,7 +33,7 @@ Triage-only slice over the five native-review burns since the last findings clos
 
 ## Disposition ledger (27/27, counts reconciled: 13 documented + 5 pinned + 9 dismissed)
 
-Review-time line numbers drifted (+comment lines); documented rows cite current file:line of the added line. Dismissal evidence = worker proof runs re-runnable by the verifier.
+Review-time line numbers drifted (+comment lines); documented rows cite current file:line of the added line. Dismissal evidence = worker proof runs re-runnable by the verifier. Parent re-verified 2026-10-23: 27 rows present exactly once, 13+5+9 reconciles, all tables well-formed (R3-001 ledger-integrity note closed).
 
 ### F3b (lineage review-71da8d1c4a63d8cc, 8)
 

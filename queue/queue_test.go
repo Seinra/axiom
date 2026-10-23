@@ -196,6 +196,10 @@ func TestQueuesStayIndependent(t *testing.T) {
 
 func TestCompactionSlideBoundaryKeepsOrder(t *testing.T) {
 	container := queue.New[int]()
+	// Boundary pin coupled to unexported compactThreshold=64 in queue.go:
+	// drained must equal the threshold and seeded must sit just above it so
+	// the live suffix slides mid-test. If the threshold changes, update both
+	// together or this pin silently stops exercising the slide.
 	const seeded = 70
 	const drained = 64
 	for candidate := 0; candidate < seeded; candidate++ {

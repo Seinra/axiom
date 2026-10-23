@@ -417,7 +417,9 @@ func seqRunner[Input any, Output any](taskContext context.Context, positions <-c
 // flow from the sequence through an unbuffered handoff, in flight bounded by
 // the runner count), but the ordered result grows with the stream, so a
 // successful run over an endless sequence never returns — reach for prompt
-// failure plus cancellation, not success, over unbounded inputs. Only range success over bounded sequences; unbounded inputs terminate through prompt failure plus cancellation. The standard
+// failure plus cancellation, not success, over unbounded inputs. Success ranges
+// to completion only over bounded sequences; unbounded inputs terminate
+// through prompt failure plus cancellation. The standard
 // library has no parallel ordered fan-in over iter.Seq; MapSeq fills that gap
 // with errgroup parity instead of a new vocabulary: one failure in, that
 // failure out, siblings stopped.

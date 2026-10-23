@@ -77,6 +77,9 @@ func Spawn[Output any](active context.Context, compute func(context.Context) (Ou
 	if active == nil {
 		panic("axiom task: Spawn needs a non-nil context")
 	}
+	// settled is the single shared outcome cell and done is the join barrier:
+	// every copy of the returned Task shares both, so all Await callers read
+	// the one Result the spawned goroutine writes.
 	settled := new(result.Result[Output])
 	done := make(chan struct{})
 	future := Task[Output]{active: active, done: done, outcome: settled}
@@ -88,7 +91,9 @@ func Spawn[Output any](active context.Context, compute func(context.Context) (Ou
 	go func() {
 		defer close(done)
 		// The panic boundary delegates to result.Try so the recovered shape
-		// cannot drift from Try; Flatten collapses Result[Result[Output]].
+		// cannot drift from Try; the closure lifts compute's pair into a
+		// Result so panics and failures travel one path, and Flatten
+		// collapses the resulting Result[Result[Output]].
 		*settled = result.Flatten(result.Try(func() result.Result[Output] {
 			value, failure := compute(active)
 			if failure != nil {
@@ -115,6 +120,8 @@ func (future Task[Output]) Await() result.Result[Output] {
 	if future.done == nil || future.outcome == nil {
 		panic("axiom task: Await on zero Task; Spawn a task first")
 	}
+	// Join the spawned goroutine before touching the outcome or the context,
+	// so returning never strands a goroutine even when canceled.
 	<-future.done
 	if failure := future.active.Err(); failure != nil {
 		return result.Fail[Output](failure)

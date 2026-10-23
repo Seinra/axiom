@@ -19,8 +19,9 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          # Exact patch: 1.27.2 stdlib exports (v5) break
-          # golangci-lint 2.13.2; 1.27.0 is verified locally.
+          # Pinned 1.27.0, but GOTOOLCHAIN auto-switches to the 1.27.3
+          # toolchain from the shared module cache, whose stdlib exports (v5)
+          # need golangci-lint >= v2.14.0 (pinned v2.15.0 below).
           go-version: "1.27.0"
           cache: false
           # No cache save: the cache-upload post-job hangs from this
@@ -43,5 +44,5 @@ jobs:
       - name: Lint
         uses: golangci/golangci-lint-action@v8
         with:
-          version: v2.13.2
+          version: v2.15.0
           args: --timeout=5m

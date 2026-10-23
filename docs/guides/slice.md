@@ -58,6 +58,7 @@ Resumed from the package table — see `go doc ./slice` for the full version.
 | Insert a separator between elements | `Intersperse` |
 | Sort a copy by key, ties keep input order | `SortBy` |
 | Running folds element by element | `RunningFold` |
+| First element, or rest without it | `Head` / `Tail` / `Initial` |
 
 ## Example
 

@@ -51,6 +51,9 @@ Resumed from the package table — see `go doc ./opt` for the full version.
 | Fall back to another Option | `OrElse` |
 | Keep the value only when it fits | `Filter` |
 | Convert absence into a failure | `ToResult` (see `result`) |
+| Wrap a value as a fresh pointer | `To` |
+| Read a pointer with presence | `Deref` |
+| First live pointer or nil | `Coalesce` |
 
 ## Example
 

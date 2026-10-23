@@ -26,7 +26,7 @@ composes with `result.Try` (the sync panic boundary) and [flow](flow.md)
 
 ## Steps
 
-1. Spawn eager work: `future := task.Spawn(ctx, func(taskCtx context.Context) (Out, error) { … })` — compute starts before `Spawn` returns.
+1. Spawn eager work: `future := task.Spawn(ctx, func(taskCtx context.Context) (Output, error) { … })` — compute starts before `Spawn` returns.
 2. Await the shared outcome: `outcome := future.Await()` — joins first, then reports `Ok`, compute failure as `Fail`, or compute panic as `Fail` with the `Try` shape. Call it N times from N goroutines; all see the same `Result`.
 3. Cancel to stop: cancel the spawn context and every `Await` reports `Fail(ctx.Err())` after the join. Honor `taskCtx.Done()` inside compute for prompt shutdown.
 4. Never run on nothing: a pre-canceled context starts no goroutine — `Await` reports `Fail` at once. Never `Await` a zero `Task` (it panics) and never pass a nil compute or nil context to `Spawn` (both panic: programmer errors, loud at the spawn site).

@@ -33,7 +33,7 @@ programmer error, never a runtime condition.
 3. Upsert keeps the key's first-insertion position while replacing its value; deleting a missing key is a no-op; re-adding a deleted key takes the back.
 4. Replay in order: `Keys()` and `Values()` return fresh slices — mutating them never disturbs the map.
 5. Refresh recency on purpose: every LRU `Get` hit and `Put` moves the key to the front; a `Put` beyond capacity evicts the back first.
-6. Share the pointer from `New`/`NewLRU` (or the address of a zero `Map`); never copy a `Map` or `LRU` value after use. This package is not safe for concurrent use; [flow and task](flow.md) own concurrency.
+6. Share the pointer from `New`/`NewLRU` (or the address of a zero `Map`); never copy a `Map` or `LRU` value after use. This package is not safe for concurrent use; [flow](flow.md) and [task](task.md) own concurrency.
 
 ## Which type?
 

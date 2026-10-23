@@ -30,6 +30,7 @@ Start there, then `go doc` the package:
 
 | If you are holding ... | Start with | Guide |
 | --- | --- | --- |
+| new to generics syntax (`[T]`, constraints) | the foundations chapter first | [docs/guides/foundations.md](docs/guides/foundations.md) |
 | a maybe-present value | `opt` | `go doc ./opt` ([opt/opt.go](opt/opt.go)) |
 | a success-or-failure outcome | `result` | `go doc ./result` ([result/result.go](result/result.go)) |
 | two typed sides (left / right) | `either` | `go doc ./either` ([either/either.go](either/either.go)) |
@@ -45,6 +46,10 @@ Start there, then `go doc` the package:
 | the same over GORM | `repogorm` | `go doc ./repogorm` ([repogorm/repogorm.go](repogorm/repogorm.go)) |
 | an Echo JSON envelope | `httpx` | `go doc ./httpx` ([httpx/httpx.go](httpx/httpx.go)) |
 | a bounded concurrent map or first-success race | `flow` | `go doc ./flow` ([flow/flow.go](flow/flow.go)) |
+| a LIFO work pile (undo, depth-first) | `stack` | `go doc ./stack` ([stack/stack.go](stack/stack.go)) |
+| a FIFO line (tickets, breadth-first) | `queue` | `go doc ./queue` ([queue/queue.go](queue/queue.go)) |
+| records that must remember insertion order | `orderedmap` | `go doc ./orderedmap` ([orderedmap/orderedmap.go](orderedmap/orderedmap.go)) |
+| a background computation to join later | `task` | `go doc ./task` ([task/task.go](task/task.go)) |
 
 `(T, bool)` is our OrNull across Axiom: the `bool` reports presence — never trust the value without it. Slice helpers (`FindSlice`, `Min`/`Max`, `MinBy`/`MaxBy`, `Average`) and `iterx` callbacks (`Generate`, `FilterMapSeq`, `Unfold`) use this shape.
 
@@ -60,10 +65,10 @@ Start there, then `go doc` the package:
 | Topic | Decision |
 | --- | --- |
 | Module / toolchain | `github.com/seinra/axiom`, `go 1.27` (generic methods on concrete types; no generic interface methods) |
-| Ships now (15 pkgs) | `result`, `opt`, `either`, `slice`, `set`, `mapx`, `iterx`, `valid`, `singleflight`, `pool`, `di`, `repo` (+GORM adapter `repogorm`), `httpx` (Echo v5), `flow` — see `.loop-modules/ARCHITECTURE.md` for the map; every package ships godoc + tests green |
+| Ships now (19 pkgs) | `result`, `opt`, `either`, `slice`, `set`, `mapx`, `iterx`, `valid`, `singleflight`, `pool`, `di`, `repo` (+GORM adapter `repogorm`), `httpx` (Echo v5), `flow`, `stack`, `queue`, `orderedmap`, `task` — see `.loop-modules/ARCHITECTURE.md` for the map; every package ships godoc + tests green |
 | Rules | stdlib-first (`slices`/`maps`/`cmp`/`iter` before hand-rolled); typed API, `any` only at codec edges; grep-able names (no `data`/`item`/`req`/`res`); godoc on every export + one compiling Example per package happy path |
 | Loop | `AXIOM_LOOP.md` + `.loop-modules/` + `VISION.md` + `loop-config.yaml`; ODD-tracked in `odd/tasks/` |
-| Declared future | concurrency (fan-in/out, pipeline, worker pool), async (Future/Task), collections (OrderedMap, Stack, Queue, LRU), combinations — see `.loop-modules/ARCHITECTURE.md` |
+| Declared future (owner-gated) | new packages need an explicit owner package-creation call before any ODD (`mathx`?, pointer↔value bridges, strings helpers, general retry) — see `.loop-modules/ARCHITECTURE.md` |
 | Consumer | Catalyst (`D:\Proyectos\AI Tech\Catalyst`, offline-first course app) pilots via scratch `replace` only — never a Catalyst commit from here |
 
 ## Checklist

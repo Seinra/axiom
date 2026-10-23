@@ -64,3 +64,30 @@ func ExampleMapSeqResults() {
 	// fail
 	// 6
 }
+
+// ExampleRetry shows the bounded retry: a transient failure heals on the
+// second attempt.
+func ExampleRetry() {
+	calls := 0
+	failure := flow.Retry(context.Background(), 3, 0, func(context.Context) error {
+		calls++
+		if calls < 2 {
+			return fmt.Errorf("transient")
+		}
+		return nil
+	})
+	fmt.Println(failure == nil, calls)
+	// Output:
+	// true 2
+}
+
+// ExampleRetryWithResult shows the value retry: the winning value returns
+// once the step succeeds.
+func ExampleRetryWithResult() {
+	got, _ := flow.RetryWithResult(context.Background(), 3, 0, func(context.Context) (string, error) {
+		return "gopher", nil
+	})
+	fmt.Println(got)
+	// Output:
+	// gopher
+}

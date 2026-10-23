@@ -20,6 +20,9 @@
 // | Fall back to another Option      | OrElse                |
 // | Keep the value only when it fits | Filter                |
 // | Convert absence into a failure   | ToResult (see result) |
+// | Wrap a value as a fresh pointer  | To                      |
+// | Read a pointer with presence     | Deref                   |
+// | First live pointer or nil        | Coalesce                |
 // | Render to JSON or database values | MarshalJSON/Value       |
 // | Restore from JSON or database     | UnmarshalJSON/Scan      |
 package opt

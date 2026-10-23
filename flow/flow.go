@@ -26,9 +26,9 @@
 //	    }
 //	}
 //
-// Out of scope (YAGNI): no FanIn/FanOut channels, no Retry/backoff; those are
-// later slices if ever. Reach for plain loops or golang.org/x/sync/errgroup
-// directly for single-goroutine or unshaped work.
+// Out of scope (YAGNI): no FanIn/FanOut channels; those are later slices if
+// ever. Reach for plain loops or golang.org/x/sync/errgroup directly for
+// single-goroutine or unshaped work. Retry landed as the bounded-retry slice.
 //
 // Which function?
 //
@@ -41,6 +41,8 @@
 // | Transform a sequence, keep stream order                  | MapSeq            |
 // | ForEach over a sequence, result dropped                  | EachSeq           |
 // | Transform a sequence, keep stream order, collect Results | MapSeqResults     |
+// | Retry a fallible step, bounded attempts                | Retry             |
+// | Retry for a value, bounded attempts                    | RetryWithResult   |
 package flow
 
 import (

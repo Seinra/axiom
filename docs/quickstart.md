@@ -119,5 +119,7 @@ Pick the family that matches what you are holding and read its guide with `go do
 | a FIFO line (tickets, breadth-first) | `go doc ./queue` |
 | records that must remember insertion order | `go doc ./orderedmap` |
 | a background computation to join later | `go doc ./task` |
+| whole numbers to test, divide, or combine | `go doc ./mathx` |
+| text to split or cut by runes | `go doc ./strings` |
 
 The full package map lives in [README.md](../README.md).

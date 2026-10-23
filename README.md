@@ -50,6 +50,8 @@ Start there, then `go doc` the package:
 | a FIFO line (tickets, breadth-first) | `queue` | `go doc ./queue` ([queue/queue.go](queue/queue.go)) |
 | records that must remember insertion order | `orderedmap` | `go doc ./orderedmap` ([orderedmap/orderedmap.go](orderedmap/orderedmap.go)) |
 | a background computation to join later | `task` | `go doc ./task` ([task/task.go](task/task.go)) |
+| whole numbers to test, divide, or combine | `mathx` | `go doc ./mathx` ([mathx/mathx.go](mathx/mathx.go)) |
+| text to split or cut by runes | `strings` | `go doc ./strings` ([strings/strings.go](strings/strings.go)) |
 
 `(T, bool)` is our OrNull across Axiom: the `bool` reports presence — never trust the value without it. Slice helpers (`FindSlice`, `Min`/`Max`, `MinBy`/`MaxBy`, `Average`) and `iterx` callbacks (`Generate`, `FilterMapSeq`, `Unfold`) use this shape.
 

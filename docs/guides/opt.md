@@ -1,6 +1,6 @@
 # opt — a value that may be absent
 
-**Version:** Axiom on Go 1.27.
+**Version:** Axiom v0.2.0 on Go 1.27.
 **Prereqs:** Go toolchain, generics basics (`[T]`), `go test` green.
 > API source: `go doc ./opt` ([opt/opt.go](../../opt/opt.go)). This guide summarizes; the doc comments are the reference.
 

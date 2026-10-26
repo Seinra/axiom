@@ -1,6 +1,6 @@
 # result — success or failure, with the cause attached
 
-**Version:** Axiom on Go 1.27.
+**Version:** Axiom v0.2.0 on Go 1.27.
 **Prereqs:** Go toolchain, generics basics (`[T]`), `go test` green.
 > API source: `go doc ./result` ([result/result.go](../../result/result.go)). This guide summarizes; the doc comments are the reference.
 

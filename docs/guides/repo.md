@@ -9,7 +9,7 @@ You reach for this shape when records need identity, paging, and a swappable `Re
 
 When not to use it: data that fits in memory for one call stays simpler as plain slices and maps — reach for this package when identity and paging must survive the call.
 
-**Version:** `github.com/seinra/axiom`, Go 1.27.
+**Version:** Axiom v0.2.0, Go 1.27.
 **Prereqs:** `import "github.com/seinra/axiom/repo"`. Define your record
 type plus a `keyOf` extractor; construct with `NewMemoryRepository`.
 

@@ -9,7 +9,7 @@ You reach for this shape for bounded parallel work with errgroup parity: `Map` k
 
 When not to use it: single-goroutine work stays a plain loop, and unshaped concurrency stays `golang.org/x/sync/errgroup` directly — reach for `flow` when you need bounded runners with ordered results or a first-success race.
 
-**Version:** `github.com/seinra/axiom`, Go 1.27.
+**Version:** Axiom v0.2.0, Go 1.27.
 **Prereqs:** `import "github.com/seinra/axiom/flow"`. Transforms receive a
 cancellable context and must honor it, or cancellation stays late.
 
@@ -26,7 +26,7 @@ The package doc (`go doc ./flow`) is the source; this table mirrors its
 "Which function?" table:
 
 | When you want to ... | Reach for ... |
-|---|---|
+| --- | --- |
 | Transform every input, keep input order | `Map` |
 | Run side effects without results | `ForEach` |
 | Take the first success, cancel siblings | `Race` |
@@ -58,7 +58,7 @@ Run it: `go test ./flow/ -run ExampleMap -v`. Recipe (b) in
 ## Contracts and errors
 
 | Contract | What it means for you |
-|---|---|
+| --- | --- |
 | Workers are a convention, not magic | `workerCount <= 0` falls back to `runtime.NumCPU`; runners never exceed `len(inputs)`. Empty `Map`/`ForEach` inputs succeed without running anything; empty `Race` inputs return the zero output plus `ErrNoRaceInputs` (match with `errors.Is`), never a silent zero. |
 | First failure wins in `Map`/`ForEach` | The first transform failure cancels its siblings through context cancellation and is the returned failure (errgroup parity). Runners stop *starting* new work; a transform already in flight still runs to completion — extra work stays bounded by the runner count. Honor the context inside your transform (see the package-doc select pattern) for prompt shutdown. |
 | `Race`: first success in time wins | Failures never cancel siblings — runners keep racing until the first success or until every input fails. All-failed `Race` returns the zero output plus the first failure in time. Use `Race` when any single success is enough and input order does not matter; use `Map` when you need every value in order. |

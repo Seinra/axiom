@@ -9,7 +9,7 @@ You reach for this shape when Echo handlers must speak one uniform envelope: `De
 
 When not to use it: transport, routing, and middleware stay in `net/http` or Echo directly — reach for this package when handlers reply in the shared envelope.
 
-**Version:** `github.com/seinra/axiom`, Go 1.27.
+**Version:** Axiom v0.2.0, Go 1.27.
 **Prereqs:** `import "github.com/seinra/axiom/httpx"` plus
 `github.com/labstack/echo/v5`. Validation itself belongs to `valid` at
 the handler edge — this package only renders the outcome.

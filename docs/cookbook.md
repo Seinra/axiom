@@ -1,18 +1,17 @@
 # Axiom cookbook — three standalone recipes
 
-Each recipe is a standalone program: copy it into an empty module with a
-`replace` to your Axiom checkout, `go run` it, and compare with the
-expected output.
+Each recipe is a standalone program: copy it into an empty module, `go run` it,
+and compare with the expected output.
 
-**Version:** `github.com/seinra/axiom`, Go 1.27.
-**Prereqs for every recipe:** Go 1.27, a local Axiom checkout, and a
-consumer module wired with:
+**Version:** Axiom v0.2.0, Go 1.27.
+**Prereqs for every recipe:** Go 1.27 and a consumer module wired with:
 
-```go.mod
-// go.mod of the consumer
-require github.com/seinra/axiom v0.0.0
-replace github.com/seinra/axiom => ../Axiom
+```bash
+go get github.com/seinra/axiom@v0.2.0
 ```
+
+> [!NOTE]
+> Developing against a local Axiom checkout? Add `replace github.com/seinra/axiom => <path-to-axiom>` to your `go.mod` instead.
 
 ## (a) The ladder of absence — OrNull → opt → result
 

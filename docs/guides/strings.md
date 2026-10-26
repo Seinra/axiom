@@ -1,6 +1,6 @@
 # strings — words and cuts counted in runes, never bytes
 
-**Version:** Axiom on Go 1.27.
+**Version:** Axiom v0.2.0 on Go 1.27.
 **Prereqs:** Go toolchain, generics basics (`[T]`) — or [foundations](foundations.md) first.
 
 > API source: `go doc ./strings` ([strings/strings.go](../../strings/strings.go)). This guide summarizes; the doc comments are the reference.

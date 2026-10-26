@@ -8,7 +8,7 @@ You reach for this shape for one lazy singleton per name: the constructor runs o
 
 When not to use it: scoped lifetimes, eager graphs, or struct-tag injection need hand-wired constructors or a full DI framework — not this container.
 
-**Version:** `github.com/seinra/axiom`, Go 1.27.
+**Version:** Axiom v0.2.0, Go 1.27.
 **Prereqs:** `import "github.com/seinra/axiom/di"`. Share the `*Injector`
 from `New`; never copy it after use.
 
@@ -24,7 +24,7 @@ The package doc (`go doc ./di`) is the source; this table mirrors its
 "Which function?" table:
 
 | When you want to ... | Reach for ... |
-|---|---|
+| --- | --- |
 | Create an empty container | `New` (`Injector`) |
 | Register a lazy constructor | `Provide` |
 | Resolve the shared singleton (retries on fail) | `Resolve` |
@@ -55,7 +55,7 @@ Run it: `go test ./di/ -run ExampleResolve -v`.
 ## Contracts and errors
 
 | Contract | What it means for you |
-|---|---|
+| --- | --- |
 | One type per name | A service name maps to exactly one `Service` type. A second `Provide` with the same name reports `ErrDuplicateService` (match with `errors.Is`) and keeps the first registration. |
 | Failing builds retry | A constructor failure propagates without caching, so the next `Resolve` retries. A panicking build resets the entry too — every caller still panics with the same payload, and the next `Resolve` after the storm retries. |
 | `Replace` swaps constructor and drops cache | The next `Resolve` rebuilds with the new constructor. `Replace` on an unknown name reports `ErrServiceNotFound`; on a `nil` injector the same sentinel. |

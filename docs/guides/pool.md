@@ -8,7 +8,7 @@ You reach for this shape for transient buffers callers `Put` back, so hot paths 
 
 When not to use it: reuse that buys nothing costs complexity — use a plain value directly; anything you must find again belongs in a map or a `repo.Repository`, never in a pool.
 
-**Version:** `github.com/seinra/axiom`, Go 1.27.
+**Version:** Axiom v0.2.0, Go 1.27.
 **Prereqs:** `import "github.com/seinra/axiom/pool"`. Keep the `*Pool`
 from `New` and share it; never copy a `Pool` value after use.
 

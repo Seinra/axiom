@@ -9,7 +9,7 @@ You reach for this shape when callers need the full failure report instead of a 
 
 When not to use it: a single inline check reads clearer as plain `if`s and errors — skip the `Rule` wrapper.
 
-**Version:** `github.com/seinra/axiom`, Go 1.27.
+**Version:** Axiom v0.2.0, Go 1.27.
 **Prereqs:** `import "github.com/seinra/axiom/valid"`. No dependencies
 beyond the standard library.
 

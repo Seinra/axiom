@@ -4,12 +4,12 @@ One dependable, composable, educative generics library: typed helpers for result
 
 ## Quick path
 
-1. Point at it (private library — `replace`, not `go get`):
-   ```go
-   // go.mod of the consumer (e.g. Catalyst)
-   require github.com/seinra/axiom v0.0.0
-   replace github.com/seinra/axiom => ../Axiom
+1. Point at it:
+   ```bash
+   go get github.com/seinra/axiom@v0.2.0
    ```
+   > [!NOTE]
+   > Developing against a local checkout? Add `replace github.com/seinra/axiom => <path-to-axiom>` to your `go.mod` instead.
 2. Use one package:
    ```go
    import (
@@ -69,16 +69,7 @@ Start there, then `go doc` the package:
 | Module / toolchain | `github.com/seinra/axiom`, `go 1.27` (generic methods on concrete types; no generic interface methods) |
 | Ships now (21 pkgs) | `result`, `opt`, `either`, `slice`, `set`, `mapx`, `iterx`, `valid`, `singleflight`, `pool`, `di`, `repo` (+GORM adapter `repogorm`), `httpx` (Echo v5), `flow`, `stack`, `queue`, `orderedmap`, `task`, `mathx`, `strings` — see `.loop-modules/ARCHITECTURE.md` for the map; every package ships godoc + tests green |
 | Rules | stdlib-first (`slices`/`maps`/`cmp`/`iter` before hand-rolled); typed API, `any` only at codec edges; grep-able names (no `data`/`item`/`req`/`res`); godoc on every export + one compiling Example per package happy path |
-| Loop | `AXIOM_LOOP.md` + `.loop-modules/` + `VISION.md` + `loop-config.yaml`; ODD-tracked in `odd/tasks/` |
-| Declared future (owner-gated) | Adoption program closed: P1 Head/Tail/Initial, P2 `mathx`, P3 opt bridges, P4 `flow` retry, P5 `strings` all on main; new packages still need an explicit owner package-creation call before any ODD — see `.loop-modules/ARCHITECTURE.md` |
-| Consumer | Catalyst (offline-first course app, module `catalyst`) pilots via scratch `replace` only — never a Catalyst commit from here |
-
-## Checklist
-
-- [ ] `go test ./...` green on Go 1.27
-- [ ] `go vet ./...` clean and `gofmt -l .` empty
-- [ ] New symbol cites what stdlib lacked + carries godoc with an example
-- [ ] No `any` in public signatures except codec edges with typed wrappers
+| Declared future | Adoption program closed: P1–P5 shipped on main; new packages start with an issue first — see `.loop-modules/ARCHITECTURE.md` |
 
 ## Why not just use `lo` (or `mo`)?
 

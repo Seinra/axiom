@@ -1,5 +1,8 @@
 # v0 maturity bar (draft — unreleased, no tag yet)
 
+> [!NOTE]
+> Superseded by the v0.2.0 release — kept as history, not a live doc. Do not use it to judge the current tree.
+
 v0 is the first public promise of Axiom: what stays stable, what ships, and how a stranger verifies it before `go get`. This bar decides the finish line for everything built so far; #36 enters v0 only if it meets this bar.
 
 **Version:** Axiom is unreleased — no tag yet; this document tracks the working tree toward `v0.1.0`.

@@ -1,6 +1,6 @@
 # either — one of two typed sides, neither favored
 
-**Version:** Axiom on Go 1.27.
+**Version:** Axiom v0.2.0 on Go 1.27.
 **Prereqs:** Go toolchain, generics basics (`[T]`), `go test` green.
 > API source: `go doc ./either` ([either/either.go](../../either/either.go)). This guide summarizes; the doc comments are the reference.
 
@@ -37,7 +37,7 @@ per-side transforms (`MapLeft`/`MapRight`) without touching the other side.
 Resumed from the package table — see `go doc ./either` for the full version.
 
 | When you want to ... | Reach for ... |
-|---|---|
+| --- | --- |
 | Hold the first side | `Left` |
 | Hold the second side | `Right` |
 | Ask which side is held | `IsLeft` / `IsRight` |

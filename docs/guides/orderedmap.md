@@ -1,6 +1,6 @@
 # orderedmap — insertion order you can look up, plus a recency cache
 
-**Version:** Axiom on Go 1.27.
+**Version:** Axiom v0.2.0 on Go 1.27.
 **Prereqs:** Go toolchain, generics basics (`[T]`) — or [foundations](foundations.md) first.
 
 > API source: `go doc ./orderedmap` ([orderedmap/orderedmap.go](../../orderedmap/orderedmap.go)). This guide summarizes; the doc comments are the reference.

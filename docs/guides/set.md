@@ -1,6 +1,6 @@
 # set — distinct values to combine and compare
 
-**Version:** Axiom on Go 1.27.
+**Version:** Axiom v0.2.0 on Go 1.27.
 **Prereqs:** Go toolchain, generics basics (`[T]`), `go test` green.
 > API source: `go doc ./set` ([set/set.go](../../set/set.go)). This guide summarizes; the doc comments are the reference.
 

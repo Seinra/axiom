@@ -8,7 +8,7 @@ You reach for this shape to suppress duplicate work under concurrency: one execu
 
 When not to use it: keys that never overlap concurrently carry nothing to deduplicate — call `execute` directly.
 
-**Version:** `github.com/seinra/axiom`, Go 1.27.
+**Version:** Axiom v0.2.0, Go 1.27.
 **Prereqs:** `import "github.com/seinra/axiom/singleflight"`. Share one
 `Group` per key space through a pointer; the zero value is ready to use.
 

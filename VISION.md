@@ -11,7 +11,7 @@ Axiom: one dependable, composable, educative generics library that makes the har
 3. Names a stranger can grep: no single-letter vars, no abbreviations, no generic names; godoc on every export with an example.
 4. Tree green after every iteration; one logical feature per iteration.
 5. AI-readable: package docs answer "which function?" without reading bodies; stable names across releases.
-6. Private now, public at maturity: consumed via `replace` while developing; published open-source (MIT/BSD) once it passes the library bar — owner decision 2026-10-20. The DLC is its onboarding ramp: students learn on the same library they keep.
+6. Public MIT: go gettable since v0.1.0 (`go get github.com/seinra/axiom@v0.2.0`); local checkout + `replace` only while developing. The DLC is its onboarding ramp: students learn on the same library they keep.
 7. Teachable API: every package doubles as course content for the Catalyst generics DLC — names, godoc, and examples must work as lesson material, not just as reference.
 8. Standalone teachability (owner decision 2026-10-21): the split is inside Axiom — reference (godoc + Which-tables) vs. guide (decision ladders + compiling Examples), all in-repo and standalone. Catalyst DLC consumes that material for curriculum (prerequisites, exercises), never hosts missing content. Axiom is self-sufficient to learn; Catalyst adds classroom.
 

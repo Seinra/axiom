@@ -1,6 +1,6 @@
 # Foundations — the generic mechanism, from concrete to generic
 
-**Version:** Axiom on Go 1.27.
+**Version:** Axiom v0.2.0 on Go 1.27.
 **Prereqs:** Go toolchain. No generics knowledge — this chapter teaches it.
 
 After this chapter you read any generic signature in Axiom: what `[T any]`

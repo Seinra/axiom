@@ -2,32 +2,21 @@
 
 You point a scratch module at Axiom, run one typed pipeline, and watch it print `42` and `[2 4 6]`.
 
-**Version:** Axiom is unreleased — no tagged version yet; these steps track the working tree.
+**Version:** Axiom v0.2.0 on Go 1.27 — these steps track the released module.
 **Prereqs:** Go 1.27 in your `PATH` (`go version` reports `go1.27.x`).
 
 ## Quick path
 
 ### 1. Point a scratch module at Axiom
 
-Axiom is a private library, so you link it with `replace`, not `go get`:
-
 ```bash
 mkdir axiom-hello && cd axiom-hello
 go mod init axiom-hello
-```
-
-Add these lines to your `go.mod`:
-
-```go.mod
-require github.com/seinra/axiom v0.0.0
-
-replace github.com/seinra/axiom => ../Axiom
+go get github.com/seinra/axiom@v0.2.0
 ```
 
 > [!NOTE]
-> Point the `replace` at your local Axiom checkout — Axiom is unreleased, so
-> there is no tagged version to `go get`. Adjust `../Axiom` to the path where
-> you cloned it.
+> Developing against a local Axiom checkout? Add `replace github.com/seinra/axiom => <path-to-axiom>` to your `go.mod` instead, pointing at your checkout.
 
 ### 2. Run your first typed pipeline
 
@@ -80,7 +69,7 @@ Expect `ok` across all packages.
 ## Details
 
 | Topic | Behavior |
-|-------|----------|
+| ------- | ---------- |
 | `result.Ok` | Wraps a success value as a `result.Result`; you build with `Ok`/`Fail`, never the zero value. |
 | `MapValue` | Transforms the success side and carries failures through untouched; it declares its own type params, so calls chain left to right. |
 | `result.UnwrapOr` | Reads the success side with an explicit fallback when the result holds a failure. |
@@ -99,7 +88,7 @@ New to generics syntax (`[T]`, constraints, inference)? Read [foundations](guide
 Pick the family that matches what you are holding and read its guide with `go doc`:
 
 | If you are holding ... | Start with |
-|---|---|
+| --- | --- |
 | a maybe-present value | `go doc ./opt` |
 | a success-or-failure outcome | `go doc ./result` |
 | two typed sides (left / right) | `go doc ./either` |

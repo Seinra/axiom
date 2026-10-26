@@ -8,7 +8,7 @@ You reach for this shape when callers need the `repo.Repository` contract over S
 
 When not to use it: one-off queries stay simpler in `database/sql` or GORM directly — reach for this store when callers program against the `Repository` contract.
 
-**Version:** `github.com/seinra/axiom`, Go 1.27.
+**Version:** Axiom v0.2.0, Go 1.27.
 **Prereqs:** `import "github.com/seinra/axiom/repogorm"` plus
 `gorm.io/gorm` and a driver (tests use `github.com/glebarez/sqlite`).
 Pick the order column before constructing — usually the primary key.

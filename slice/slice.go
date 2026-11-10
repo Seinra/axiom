@@ -297,7 +297,7 @@ func Mode[Element comparable](elements []Element) (frequent Element, ok bool) {
 // Nil or empty input yields an empty non-nil slice.
 //
 // Go generics have no field projection: struct reflection is the only
-// language route, and this package never reflects (see the VISION non-goal
+// language route, and this package never reflects (see the THESIS non-goal
 // carried by the future program). lo calls the same shape Pluck.
 func Pluck[Element any, Field any](elements []Element, field func(Element) Field) []Field {
 	plucked := make([]Field, len(elements))

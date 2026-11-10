@@ -1,14 +1,14 @@
 # REFERENCES
 
-Pinned external truth by category. Packs cite IDs, never raw versions. Prose citing a version without an ID has no standing. `stale`/`missing` rows never support a decision.
+Pinned external truth by category, plus the artifact-store row. Packs cite IDs, never raw versions. Prose citing a version without an ID has no standing. `stale`/`missing` rows never support a decision.
 
 ## How to use
 
-Every design decision cites a stable ID below. A rename/replacement updates the pin + adapter mapping, never rule prose.
+Every design decision cites a stable ID below. A rename/replacement updates the pin + adapter mapping, never rule prose. The store row pins the artifact store + manifest path + glob dialect (Rule 15).
 
 ## Pins
 
-| ID | Category | Source | Pin |
+| ID | category | artifact | pin note |
 | --- | --- | --- | --- |
 | GO-TOOLCHAIN | toolchain | local `go version` | `go1.27.0 windows/amd64` (2026-10-20) |
 | GO-GENERIC-METHODS | library | `https://go.dev/blog/generic-methods` | generic methods on concrete types only; no generic interface methods (Go 1.27) |
@@ -17,8 +17,8 @@ Every design decision cites a stable ID below. A rename/replacement updates the 
 | REFS-ECHO | external-docs | local reference store `echo/` (guide + middleware + cookbook) | consumption patterns for future `httpx` |
 | REFS-GORM | external-docs | local reference store `gorm/` (8 files CRUD) | consumption patterns for future `repo` |
 | CATALYST-TREE | cloned-repo | `catalyst` (`module catalyst`, `go 1.27`) | no own generics; `slices`/`maps` + `map[string]any` envelopes |
-| ODD-HARNESS | methodology | el Gentleman orchestrator (this session) | Authorize → Explore → Resolve → Classify → Track → Implement → Close |
-| LOOP-ENGINEERING | methodology | `loop-engineering` skill v1.9 | loop authoring discipline (this loop complies) |
+| ODD-HARNESS | methodology | ODD harness methodology (Authorize → Explore → Resolve → Classify → Track → Implement → Close) | harness methodology pin; a rename/replacement updates this pin + the hub adapter mapping, never rule prose |
+| LOOP-ENGINEERING | methodology | `loop-engineering` skill v1.13 | loop authoring discipline (this loop complies) |
 | COG-DOC | methodology | `cognitive-doc-design` skill v1.0 | lead-with-answer, progressive disclosure, chunking, signposting |
 | FOUNDRY | methodology | `foundry` skill v1.0 + `references/craft-floor.md` | absolute bans + quality floor (single policy source) |
 | FOUNDRY-EXPLORE | methodology | `foundry-explore` skill v1.0 | read-only mapping, stops before design |
@@ -33,6 +33,7 @@ Every design decision cites a stable ID below. A rename/replacement updates the 
 | AGENT-GIT-COMMIT | methodology | `agent-git-commit` skill v1.0 | safe commits under coding-agent runtime gates |
 | RDD-DEFECT | methodology | `rdd-defect-workflow` skill v1.4 | review authority, correction/recovery, delivery gate |
 | ISSUE-CREATION | methodology | `issue-creation` skill v1.4 | triage + create from repo evidence with read-back |
+| CONDUIT-STORE | store | Conduit content-addressed artifact store; manifest `.private` (repo root), dialect gitignore-lite | default store (Rule 15); manifest lists paths only, never content; every tracked glob mirrored in `.gitignore`, manifest itself never ignored |
 | ECO-LO | external-docs | `https://github.com/samber/lo` | collections / functional utilities (target coverage) |
 | ECO-MO | external-docs | `https://github.com/samber/mo` | Option / Result / Either / Future / Task (target coverage) |
 | ECO-DO | external-docs | `https://github.com/samber/do` | type-safe DI incl. Echo/Gin/Fiber/Chi (target coverage) |

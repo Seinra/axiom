@@ -1,6 +1,14 @@
+# Agent work artifacts — Conduit-tracked, never GitHub/GitLab (paths only, never content).
+# Official docs (README, THESIS, CONTRIBUTING, docs/, godoc) stay in git; caches stay ignored.
+
+# Loop-engineering outputs: loop mother + modules + config
 VISION.md
 AXIOM_LOOP.md
 loop-config.yaml
 .loop-modules/
+
+# ODD slices: specs, tasks, logs, archive
 odd/
+
+# SDD specs (future shape, absent from the tree today)
 openspec/

@@ -121,6 +121,7 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | 2026-10-23 | docs T1 delivery F1+F2 (PR #79) | DELIVERY | README 21 pkgs + Declared-future closed wording + flow.md YAGNI row (ef090fa + 620350a); suite/vet/gofmt green per merge; no native review per docs rule |
 | 2026-10-23 | docs T2 delivery F3+F4 (PR #83) | DELIVERY | mathx+strings family guides + README index + quickstart rows (93024fd + b94c0bd); suite/vet/gofmt green per merge; no native review per docs rule |
 | 2026-10-23 | docs T3 delivery F5 (PR #85) | DELIVERY | Which-table rows for 8 landed exports (6a974c8 + da0d721); suite/vet/gofmt green per merge; no native review per docs rule |
+| 2026-11-10 | loop v0.4 (loop-engineering v1.13 compliance) | IMPLEMENT | hub artifact-boundary block (Rules 5/12/14–16) + routing/verbatim/controller/currency wording; REFERENCES store row + v1.13 pin + stable-ID headers; committed artifacts grandfathered (see debt ledger); Rule 16 link-detector clean, bare-sweep hits loop-self only |
 
 ## Debt ledger
 
@@ -132,3 +133,4 @@ Progress log + debt ledger. Columns: Item, Phase, Ceiling, Upgrade Path. NEVER d
 | #6 R3 verbatim advisories | discarded (owner 2026-10-22, caso cerrado) | exhaustive search: pins only, no verbatim in any store | do NOT reopen #6; file a NEW issue if a related problem surfaces; triage coverage (8de4842) stands |
 | Axiom-1 clone + chore/delivery-infra | kept | owner order | do not touch without new order |
 | Catalyst replace-directive pilot | T5 | scratch only | versioned release + pin before any Catalyst commit |
+| Committed loop artifacts → Conduit-materialized (Rules 14/15 grandfathering, 2026-11-10) | DEBT | owner-agreed deadline pending | untrack AXIOM_LOOP.md, loop-config.yaml, .loop-modules/, odd/ once owner agrees; materialize loop files + VISION.md at runtime from Conduit; keep `.private` manifest (paths only) + `.gitignore` mirror; manifest itself never ignored; past deadline the committed copies are history, not standing; odd `## Log` L-row still pending (odd/ outside this task's allowed surfaces) |

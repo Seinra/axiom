@@ -27,11 +27,21 @@ Thumbs.db
 # Local scratch for pilot verification (never commit)
 /.tmp/
 
-# Harness state: keys are secrets (ban 2), caches are local
-.crystallize/keys/
-.atl/.skill-registry.cache.json
+# Harness state: indexes, keys, caches — local only, never commit
+/.atl/
+/.crystallize/
 
 # Local search/code indexes (regenerable, never commit)
 .zvec-grep/
 .codegraph/
-.crystallize/raw/
+
+# Conduit-tracked agent artifacts (mirror of .private — never in git)
+/VISION.md
+/AXIOM_LOOP.md
+/loop-config.yaml
+/.loop-modules/
+/odd/
+/openspec/
+
+# Conduit local pool (content-addressed snapshots, never commit)
+/.conduit-pool/

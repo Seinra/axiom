@@ -5,6 +5,7 @@ One-line identity: Axiom is a Go generics library (module `github.com/seinra/axi
 > **Changelog**: v0.1 (2026-10-20) — initial hub + modules + VISION + config for skeleton slice.
 > v0.2 (2026-10-21) — loop-engineering v1.9 gap-scan: REVIEW_PACKS five-element pack map, ODD canonical-state + delivery-lifecycle pointers, growth index-table rule, TDD tier-frozen note, session close-out disposition; cognitive-doc-design quick-path pass; foundry craft-floor re-affirmed.
 > v0.3 (2026-10-23) — loop-engineering gap-scan 2: Docs-sync gate (hard) in VALIDATION_GATES after the second docs-drift round (guides-missing aftermath + P1–P5); ODD Tracking close-out hook + Session close-out verdict line; no other hub changes.
+> v0.4 (2026-11-10) — loop-engineering v1.13 compliance: Conduit store row + manifest/gitignore enforcement (Rules 11/15), artifact boundary + one-way pointer rule (Rules 14/16), VISION materialized row + close-out currency (Rule 12), scout-first/non-trivial routing (Rule 6), verbatim deposits (Rule 8), controller definition (Step 6); grandfather note for committed artifacts in STATUS.
 
 ## 🎯 Objective & Success Metrics
 
@@ -16,12 +17,13 @@ One-line identity: Axiom is a Go generics library (module `github.com/seinra/axi
 | Module | Purpose |
 | --- | --- |
 | `.loop-modules/TECH_STACK.md` | Stack, versions, local docs policy |
-| `.loop-modules/REFERENCES.md` | Pinned external truth by category |
+| `.loop-modules/REFERENCES.md` | Pinned external truth by category + Conduit store row (Rule 11; rows `\| ID \| category \| artifact \| pin note \|`) |
 | `.loop-modules/ARCHITECTURE.md` | Component layout, data flow, frozen decisions |
-| `.loop-modules/REVIEW_PACKS.md` | Skills-per-phase pack map |
+| `.loop-modules/REVIEW_PACKS.md` | Skills-per-phase pack map, all five elements (Rule 9; lean: none-mapped + reason) |
 | `.loop-modules/VALIDATION_GATES.md` | Per-layer command tables + evidence rules |
 | `.loop-modules/SUCCESS_METRICS.md` | Definition of Done |
 | `.loop-modules/STATUS.md` | Progress log + debt ledger — NEVER in hub |
+| `VISION.md` (next to hub, materialized from store, never committed) | Product vision + currency (Rule 12; close-out enforces currency on the materialized file) |
 
 **Rule**: Always read the relevant module before working in that domain.
 
@@ -57,7 +59,7 @@ One-line identity: Axiom is a Go generics library (module `github.com/seinra/axi
 | Single writer | implementation | ≥2 non-trivial files |
 | Pause + delegate | budget guard | ~20 tool calls / ~5 reads without delegation (self-counted, advisory) |
 
-For ODD work orchestrator triggers win; the numeric table is legacy-only for live content loops without ODD — writers only for a reason (parallel units, context), never file count alone.
+For ODD work orchestrator triggers win; the numeric table is legacy-only for live content loops without ODD — writers only for a reason (parallel units, context), never file count alone. Overlap resolves scout-first (map before implementing); non-trivial means the task needs a decision the handoff does not already make (unknown blast radius, multi-file design, ~100+ changed lines) — applying a decided change is trivial at any file count.
 
 ### Growth
 
@@ -77,6 +79,16 @@ Docs-sync: `VALIDATION_GATES.md` Docs-sync gate (hard) verdict is recorded in th
 Every task returns a Result Contract: `status`, `executive_summary`, `artifacts`, `next_recommended`, `risks` — formats ODD Tasks/S#, never parallel `phases/NN`; distinct-validator (distinct session where delegation exists; solo: spot-check, re-run one reported command) validates before advancing; `artifacts` carries ≥1 `command: observed result` line per behavior claim.
 Methodology adapter: the harness methodology is named here (today: ODD) and pinned in REFERENCES as a stable ID; a rename/replacement updates the pin + mapping, never rule prose.
 
+### Artifact boundary (Rules 12/14–16)
+
+- Precedence: Hard Rules govern; the template gives shape and references give detail — neither overrides a Hard Rule. Governance lives here once; other files back-reference it, never copy it.
+- Boundary test: "would a new consumer need this to use the product?" Yes → official (README, guides, API reference, license, standing product-truth doc — committed, pushed). "Does this describe how we work?" → artifact (loop protocol, modules, task docs, logs, review evidence, plans/scratch — Conduit-tracked, never committed, never pushed).
+- Store + manifest: default store is Conduit (pinned in REFERENCES with manifest path + glob dialect). The manifest (repo-root `.private`) lists artifact paths/globs only — never content; bytes never leave the machine. Absent or empty manifest ⇒ tracking inert: close out on whatever materialized, never invent. Without a configured store there is no tracking — never silent local accumulation.
+- Gitignore enforcement (v1.13): every manifest-tracked glob is also gitignored in the same migration commit; the manifest itself is never ignored.
+- VISION is an artifact: materialized next to the hub from the store at runtime, never committed; the step-5 close-out pass enforces currency on the materialized file (Rule 12).
+- One-way pointers: no link, import, or "read X for the product line" from an official doc to an artifact; promotion copies ratified wording verbatim with source + date, never links in place. Run the Step 8 detector before delivering.
+- Grandfathering: live violations carry a dated migration note (STATUS log + odd `## Log` L-row) with an owner-agreed deadline in the debt ledger; past it, the old copy is history, not standing. Committed loop artifacts pre-dating Rules 14/15 are grandfathered — see STATUS debt ledger.
+
 ### TDD Scope Matrix
 
 | Component | TDD? | Evidence |
@@ -86,23 +98,23 @@ Methodology adapter: the harness methodology is named here (today: ODD) and pinn
 
 Assertion-quality rules: ban tautological tests, ghost loops, implementation-detail coupling.
 Matrix is default; per-change ODD applicability wins — no RED → state it; proportionate verification; never invent RED/GREEN.
-Review-tier request signals (tier frozen by controller; a request, never a grant): auth/secrets/guards → risk; public contracts → readability; failure paths/concurrency → resilience.
+Review-tier request signals (tier frozen by controller — the orchestrator session applying loop-engineering, never a delegated worker — at review START, never re-derived at validate; a request, never a grant): auth/secrets/guards → risk; public contracts → readability; failure paths/concurrency → resilience.
 
 ### Failure Policy
 
 - Fix limit: **≤3 attempts per cycle** (loop-cycle counter, self-counted advisory; Log history rules), then STOP → human-in-the-loop. ODD verifier bound (one correction + bounded re-verify) is verifier-only.
-- HITL triggers: structural format changes, security findings, unreproducible divergence, store/policy questions, >3 failures anywhere.
+- HITL triggers: see ⚠️ HITL Triggers below (defaults: structural change to core formats/schemas; security findings or sandbox escapes; unreproducible state divergence; external-policy interpretation (stores, licenses); any cycle exceeding its fix limit). Project triggers extend this list in the hub — never subtract the defaults.
 
 ## 🧠 Memory Deposit (end of every cycle)
 
 Typed Engram save per discovery/decision:
-`title=[VERIFIED|DECISION|...]`, `type`, `topic_key` namespaced (`axiom/<area>/<slug>`), content with What/Why/Where/Learned. Project facts ≠ user preferences (separate deposits/scopes).
+`title=[VERIFIED|DECISION|...]`, `type`, `topic_key` namespaced (`axiom/<area>/<slug>`), content with What/Why/Where/Learned. Project facts ≠ user preferences (separate deposits/scopes). Findings deposits carry the verbatim claim + `path:line`; counts-only is never a record. Improvements cite sources.
 
 ## 📋 Session Protocol
 
 **Start**: read this loop → read the task file (file-first resume, never newest global memory) → check active changes/artifacts → preflight if first ODD-tracked work (feature document + mirror + todo reconciled) → resolve current status → verify prior deposit/mirror exists; if missing-deposit, reconstruct from artifacts.
 **During**: confirm the deliverable IS the loop (loops-only guard), follow routing table; distinct-validator validates each phase result before advancing (solo: spot-check, re-run one reported command); each fix retry appends a Log row.
-**End**: memory session summary — Goal, Instructions, Discoveries, Accomplished, Next Steps, Relevant Files — plus update STATUS.md if used; paste one externally-measured check (wc / lens / runtime backstop) as evidence at close-out, never asserted. Close-out declares per-artifact disposition (UPDATED vs verified-unchanged with reason) and the Docs-sync gate verdict; a close-out without either is invalid. On drift, flag in STATUS debt ledger — never silently rewrite ratified intent. Report `modules_read: [...]`. Mirror failure never blocks: preserve local, mark `mirror pending` in Log, resync later; explicit `session_id` on ambiguous-session writes. Generated artifacts default to English; never translate or paraphrase quoted user strings.
+**End**: memory session summary — Goal, Instructions, Discoveries, Accomplished, Next Steps, Relevant Files — plus update STATUS.md if used; paste one externally-measured check (wc / lens / runtime backstop) as evidence at close-out, never asserted. Close-out declares per-artifact disposition (UPDATED vs verified-unchanged with reason), the Docs-sync gate verdict, and currency on the materialized VISION.md (vision/invariants/non-goals/MVP: updated vs verified-unchanged with reason; drift flagged, never silently rewritten; vision changes are owner-ratified — owner verbatim + date, else no standing); a close-out without all three is invalid. On drift, flag in STATUS debt ledger — never silently rewrite ratified intent. Report `modules_read: [path, ...]` at the foot of each Result Contract. Mirror failure never blocks: preserve local, mark `mirror pending` in Log, resync later; explicit `session_id` on ambiguous-session writes. Generated artifacts default to English; never translate or paraphrase quoted user strings.
 
 ## ⚠️ HITL Triggers
 
@@ -111,3 +123,5 @@ Typed Engram save per discovery/decision:
 3. Unreproducible state divergence
 4. External-policy interpretation (stores, licenses)
 5. Any cycle exceeding its fix limit
+
+Project triggers extend this list here; never subtract the defaults.

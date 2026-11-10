@@ -44,4 +44,4 @@ Owner request 2026-10-20 (biblioteca de genéricos, futuro framework, consumida 
 
 ## What this document is not
 
-No currency, no open decisions, no history. Evolution (drift, open decisions, currency per close-out, DLC roadmap) lives in the private loop mother (`VISION.md`, Conduit-tracked), not here.
+No currency, no open decisions, no history. Evolution (drift, open decisions, currency per close-out, DLC roadmap) lives in the private loop mother (owner-only, Conduit-tracked), not here.

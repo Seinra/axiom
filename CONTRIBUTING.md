@@ -6,10 +6,9 @@ External PRs are welcome — and judged by one rule.
 
 A requested feature or PR is accepted **only if it is genuinely good _and_ it fits the thesis**. Anything else will be declined: please fork it or use another library (`lo` and `mo` are excellent, battle-tested choices for broader coverage).
 
-"Genuinely good" is not about enthusiasm; it is about fit. The thesis lives in three places — read them before writing code:
+"Genuinely good" is not about enthusiasm; it is about fit. The thesis lives in two places — read them before writing code:
 
-- [VISION.md](VISION.md) — the 8 invariants (stdlib-first, typed over `any`, grep-able names, green tree, AI-readable, teachable API).
-- [.loop-modules/ARCHITECTURE.md](.loop-modules/ARCHITECTURE.md) — frozen decisions, the coverage map, and the rejected list.
+- [THESIS.md](THESIS.md) — the 8 invariants (stdlib-first, typed over `any`, grep-able names, green tree, AI-readable, teachable API) plus non-goals and the rejected list.
 - The package godoc — every export documents what the stdlib lacked.
 
 ## Checklist for a fitting PR

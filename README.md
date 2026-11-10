@@ -67,9 +67,9 @@ Start there, then `go doc` the package:
 | Topic | Decision |
 | --- | --- |
 | Module / toolchain | `github.com/seinra/axiom`, `go 1.27` (generic methods on concrete types; no generic interface methods) |
-| Ships now (21 pkgs) | `result`, `opt`, `either`, `slice`, `set`, `mapx`, `iterx`, `valid`, `singleflight`, `pool`, `di`, `repo` (+GORM adapter `repogorm`), `httpx` (Echo v5), `flow`, `stack`, `queue`, `orderedmap`, `task`, `mathx`, `strings` — see `.loop-modules/ARCHITECTURE.md` for the map; every package ships godoc + tests green |
+| Ships now (21 pkgs) | `result`, `opt`, `either`, `slice`, `set`, `mapx`, `iterx`, `valid`, `singleflight`, `pool`, `di`, `repo` (+GORM adapter `repogorm`), `httpx` (Echo v5), `flow`, `stack`, `queue`, `orderedmap`, `task`, `mathx`, `strings` — every package ships godoc + tests green |
 | Rules | stdlib-first (`slices`/`maps`/`cmp`/`iter` before hand-rolled); typed API, `any` only at codec edges; grep-able names (no `data`/`item`/`req`/`res`); godoc on every export + one compiling Example per package happy path |
-| Declared future | Adoption program closed: P1–P5 shipped on main; new packages start with an issue first — see `.loop-modules/ARCHITECTURE.md` |
+| Declared future | Adoption program closed: P1–P5 shipped on main; new packages start with an issue first |
 
 ## Why not just use `lo` (or `mo`)?
 
@@ -81,4 +81,4 @@ External PRs are judged by one rule: genuinely good **and** thesis-fitting, or f
 
 ## Next step
 
-Read `VISION.md` for the product line, then `.loop-modules/ARCHITECTURE.md` for the coverage map — each future package becomes one ODD feature.
+Read `THESIS.md` for the product line.
